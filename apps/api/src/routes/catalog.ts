@@ -1,0 +1,213 @@
+import { zValidator } from '@hono/zod-validator';
+import {
+  addBarcodePayload,
+  createItemPayload,
+  createStorePayload,
+  maxItems,
+  updateItemPayload,
+  updateStorePayload,
+} from '@grosify/shared';
+import { and, count, eq, isNull } from 'drizzle-orm';
+import { Hono } from 'hono';
+import { db } from '../db/index.js';
+import { itemBarcodes, items, stores } from '../db/schema.js';
+import { requireHousehold, type HouseholdEnv } from '../middleware/household.js';
+
+/** Erro de violação de unique (Postgres SQLSTATE 23505). Drizzle embrulha em `cause`. */
+function isUniqueViolation(err: unknown): boolean {
+  const codeOf = (e: unknown) =>
+    typeof e === 'object' && e !== null ? (e as { code?: string }).code : undefined;
+  return codeOf(err) === '23505' || codeOf((err as { cause?: unknown }).cause) === '23505';
+}
+
+export const catalogRoute = new Hono<HouseholdEnv>()
+  .use(requireHousehold)
+
+  // ---------- Itens ----------
+  .get('/items', async (c) => {
+    const hid = c.get('householdId');
+    const rows = await db
+      .select()
+      .from(items)
+      .where(and(eq(items.householdId, hid), isNull(items.deletedAt)));
+    const barcodes = await db
+      .select()
+      .from(itemBarcodes)
+      .where(and(eq(itemBarcodes.householdId, hid), isNull(itemBarcodes.deletedAt)));
+    const byItem = new Map<string, typeof barcodes>();
+    for (const b of barcodes) {
+      const list = byItem.get(b.itemId) ?? [];
+      list.push(b);
+      byItem.set(b.itemId, list);
+    }
+    return c.json({
+      items: rows.map((item) => ({ ...item, barcodes: byItem.get(item.id) ?? [] })),
+    });
+  })
+
+  .get('/items/by-barcode/:barcode', async (c) => {
+    const hid = c.get('householdId');
+    const rows = await db
+      .select({ itemId: itemBarcodes.itemId })
+      .from(itemBarcodes)
+      .where(
+        and(
+          eq(itemBarcodes.householdId, hid),
+          eq(itemBarcodes.barcode, c.req.param('barcode')),
+          isNull(itemBarcodes.deletedAt),
+        ),
+      )
+      .limit(1);
+    return c.json({ itemId: rows[0]?.itemId ?? null });
+  })
+
+  .post('/items', zValidator('json', createItemPayload), async (c) => {
+    const hid = c.get('householdId');
+    const payload = c.req.valid('json');
+
+    const [{ value: itemCount } = { value: 0 }] = await db
+      .select({ value: count() })
+      .from(items)
+      .where(and(eq(items.householdId, hid), isNull(items.deletedAt)));
+    if (itemCount >= maxItems(c.get('plan'))) {
+      return c.json({ error: 'item_limit_reached' }, 403);
+    }
+
+    try {
+      const created = await db.transaction(async (tx) => {
+        const [item] = await tx
+          .insert(items)
+          .values({
+            id: payload.id,
+            householdId: hid,
+            name: payload.name,
+            category: payload.category ?? null,
+            photoKey: payload.photoKey ?? null,
+            unit: payload.unit,
+          })
+          .returning();
+        const insertedBarcodes = payload.barcodes.length
+          ? await tx
+              .insert(itemBarcodes)
+              .values(
+                payload.barcodes.map((b) => ({
+                  id: b.id,
+                  householdId: hid,
+                  itemId: payload.id,
+                  barcode: b.barcode,
+                })),
+              )
+              .returning()
+          : [];
+        return { ...item!, barcodes: insertedBarcodes };
+      });
+      return c.json({ item: created }, 201);
+    } catch (err) {
+      if (isUniqueViolation(err)) return c.json({ error: 'barcode_exists' }, 409);
+      throw err;
+    }
+  })
+
+  .patch('/items/:id', zValidator('json', updateItemPayload), async (c) => {
+    const hid = c.get('householdId');
+    const updates = c.req.valid('json');
+    const [item] = await db
+      .update(items)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(items.id, c.req.param('id')), eq(items.householdId, hid)))
+      .returning();
+    if (!item) return c.json({ error: 'not_found' }, 404);
+    return c.json({ item });
+  })
+
+  .delete('/items/:id', async (c) => {
+    const hid = c.get('householdId');
+    const id = c.req.param('id');
+    const now = new Date();
+    await db.transaction(async (tx) => {
+      await tx
+        .update(items)
+        .set({ deletedAt: now, updatedAt: now })
+        .where(and(eq(items.id, id), eq(items.householdId, hid)));
+      await tx
+        .update(itemBarcodes)
+        .set({ deletedAt: now, updatedAt: now })
+        .where(and(eq(itemBarcodes.itemId, id), eq(itemBarcodes.householdId, hid)));
+    });
+    return c.json({ ok: true });
+  })
+
+  // ---------- Códigos de barras ----------
+  .post('/items/:id/barcodes', zValidator('json', addBarcodePayload), async (c) => {
+    const hid = c.get('householdId');
+    const { id, barcode } = c.req.valid('json');
+    try {
+      const [row] = await db
+        .insert(itemBarcodes)
+        .values({ id, householdId: hid, itemId: c.req.param('id'), barcode })
+        .returning();
+      return c.json({ barcode: row }, 201);
+    } catch (err) {
+      if (isUniqueViolation(err)) return c.json({ error: 'barcode_exists' }, 409);
+      throw err;
+    }
+  })
+
+  .delete('/barcodes/:id', async (c) => {
+    const hid = c.get('householdId');
+    const now = new Date();
+    await db
+      .update(itemBarcodes)
+      .set({ deletedAt: now, updatedAt: now })
+      .where(and(eq(itemBarcodes.id, c.req.param('id')), eq(itemBarcodes.householdId, hid)));
+    return c.json({ ok: true });
+  })
+
+  // ---------- Lojas ----------
+  .get('/stores', async (c) => {
+    const hid = c.get('householdId');
+    const rows = await db
+      .select()
+      .from(stores)
+      .where(and(eq(stores.householdId, hid), isNull(stores.deletedAt)));
+    return c.json({ stores: rows });
+  })
+
+  .post('/stores', zValidator('json', createStorePayload), async (c) => {
+    const hid = c.get('householdId');
+    const p = c.req.valid('json');
+    const [store] = await db
+      .insert(stores)
+      .values({
+        id: p.id,
+        householdId: hid,
+        name: p.name,
+        city: p.city ?? null,
+        neighborhood: p.neighborhood ?? null,
+        lat: p.lat ?? null,
+        lng: p.lng ?? null,
+      })
+      .returning();
+    return c.json({ store }, 201);
+  })
+
+  .patch('/stores/:id', zValidator('json', updateStorePayload), async (c) => {
+    const hid = c.get('householdId');
+    const [store] = await db
+      .update(stores)
+      .set({ ...c.req.valid('json'), updatedAt: new Date() })
+      .where(and(eq(stores.id, c.req.param('id')), eq(stores.householdId, hid)))
+      .returning();
+    if (!store) return c.json({ error: 'not_found' }, 404);
+    return c.json({ store });
+  })
+
+  .delete('/stores/:id', async (c) => {
+    const hid = c.get('householdId');
+    const now = new Date();
+    await db
+      .update(stores)
+      .set({ deletedAt: now, updatedAt: now })
+      .where(and(eq(stores.id, c.req.param('id')), eq(stores.householdId, hid)));
+    return c.json({ ok: true });
+  });

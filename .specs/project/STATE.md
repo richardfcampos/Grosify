@@ -22,6 +22,8 @@
 4. Better Auth Expo plugin maturidade (fase 7)
 5. Rocicorp Zero: reavaliar 1 dia antes da fase 3 se estabilizou com Expo
 
+| 2026-06-12 | Fase 1 (Catálogo): tabelas items/item_barcodes/stores com colunas sync + trigger server_version; rotas CRUD household-scoped; client gera UUIDv7; repository sobre Dexie (pull naive na carga, UI lê via useLiveQuery); scanner via pacote `barcode-detector` + manual; foto WebP 800px como blob local no Dexie | Fase 1 do plano; repository desde já evita rewrite na fase 3 |
+
 ## Bloqueios
 
 - Deploy (Railway/Neon/CF Pages/R2) precisa de contas/credenciais do usuário — build local primeiro, deploy quando usuário fornecer
@@ -38,6 +40,7 @@
 - packages/ui compartilhado (só quando Expo existir)
 - Multi-foto por item
 - Conversão entre moedas (câmbio) — moeda é fixa por household; sem conversão por ora
+- Upload da foto pro R2 (hoje foto é blob local-only no Dexie; não compartilha entre devices até R2)
 
 ## Preferências
 

@@ -15,6 +15,20 @@
       "when": 1781315570440,
       "tag": "0001_thin_absorbing_man",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1781316432520,
+      "tag": "0002_fixed_spencer_smythe",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1781316450541,
+      "tag": "0003_sync_version_trigger",
+      "breakpoints": true
     }
   ]
 }

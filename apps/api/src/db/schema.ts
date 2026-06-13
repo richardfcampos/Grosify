@@ -1,4 +1,15 @@
-import { boolean, index, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import {
+  bigint,
+  boolean,
+  doublePrecision,
+  index,
+  pgTable,
+  primaryKey,
+  text,
+  timestamp,
+  unique,
+  uuid,
+} from 'drizzle-orm/pg-core';
 
 // ===== Better Auth (gerenciadas pelo better-auth, ids text) =====
 
@@ -100,3 +111,75 @@ export const householdInvites = pgTable('household_invites', {
   usedBy: text('used_by').references(() => user.id),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+// ===== Catálogo [sync] — colunas de sync em toda tabela do domínio =====
+// updated_at: relógio do escritor (comparador LWW na fase 3)
+// deleted_at: tombstone (soft delete)
+// server_version: bigint atribuído por trigger via sync_version_seq (cursor do pull, fase 3)
+
+const syncColumns = {
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  serverVersion: bigint('server_version', { mode: 'number' }).notNull().default(0),
+};
+
+export const items = pgTable(
+  'items',
+  {
+    id: uuid('id').primaryKey(),
+    householdId: uuid('household_id')
+      .notNull()
+      .references(() => households.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    category: text('category'),
+    photoKey: text('photo_key'),
+    unit: text('unit', { enum: ['un', 'kg', 'g', 'l', 'ml'] })
+      .notNull()
+      .default('un'),
+    ...syncColumns,
+  },
+  (t) => [
+    index('items_household_version_idx').on(t.householdId, t.serverVersion),
+    index('items_household_idx').on(t.householdId),
+  ],
+);
+
+export const itemBarcodes = pgTable(
+  'item_barcodes',
+  {
+    id: uuid('id').primaryKey(),
+    householdId: uuid('household_id')
+      .notNull()
+      .references(() => households.id, { onDelete: 'cascade' }),
+    itemId: uuid('item_id')
+      .notNull()
+      .references(() => items.id, { onDelete: 'cascade' }),
+    barcode: text('barcode').notNull(),
+    ...syncColumns,
+  },
+  (t) => [
+    index('item_barcodes_household_version_idx').on(t.householdId, t.serverVersion),
+    index('item_barcodes_item_idx').on(t.itemId),
+    unique('item_barcodes_household_barcode_uq').on(t.householdId, t.barcode),
+  ],
+);
+
+export const stores = pgTable(
+  'stores',
+  {
+    id: uuid('id').primaryKey(),
+    householdId: uuid('household_id')
+      .notNull()
+      .references(() => households.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    city: text('city'),
+    neighborhood: text('neighborhood'),
+    lat: doublePrecision('lat'),
+    lng: doublePrecision('lng'),
+    ...syncColumns,
+  },
+  (t) => [
+    index('stores_household_version_idx').on(t.householdId, t.serverVersion),
+    index('stores_household_idx').on(t.householdId),
+  ],
+);

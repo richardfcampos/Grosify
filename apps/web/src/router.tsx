@@ -1,56 +1,85 @@
-import {
-  createRootRoute,
-  createRoute,
-  createRouter,
-  Outlet,
-} from '@tanstack/react-router';
+import { createRootRoute, createRoute, createRouter, Outlet } from '@tanstack/react-router';
 import { z } from 'zod';
+import { AppLayout } from './features/catalog/app-layout.js';
 import { CadastroPage, EntrarPage } from './pages/auth-pages.js';
 import { DashboardPage } from './pages/dashboard-page.js';
 import { CasaPage, ConvitePage } from './pages/household-pages.js';
+import { ItemFormPage } from './pages/item-form-page.js';
+import { ItensPage } from './pages/itens-page.js';
+import { LojasPage } from './pages/lojas-page.js';
 
 const redirectSearch = z.object({ redirect: z.string().startsWith('/').optional() });
 
 const rootRoute = createRootRoute({ component: Outlet });
 
-const indexRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/',
-  component: DashboardPage,
-});
-
+// rotas públicas
 const entrarRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/entrar',
   validateSearch: redirectSearch,
   component: EntrarPage,
 });
-
 const cadastroRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/cadastro',
   validateSearch: redirectSearch,
   component: CadastroPage,
 });
-
 const casaRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/casa',
   component: CasaPage,
 });
-
 const conviteRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/convite/$code',
   component: ConvitePage,
 });
 
+// casca autenticada com nav inferior
+const appLayoutRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  id: 'app',
+  component: AppLayout,
+});
+const indexRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/',
+  component: DashboardPage,
+});
+const itensRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/itens',
+  component: ItensPage,
+});
+const itemNovoRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/itens/novo',
+  component: ItemFormPage,
+});
+const itemEditRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/itens/$id',
+  component: ItemFormPage,
+});
+const lojasRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/lojas',
+  component: LojasPage,
+});
+
 const routeTree = rootRoute.addChildren([
-  indexRoute,
   entrarRoute,
   cadastroRoute,
   casaRoute,
   conviteRoute,
+  appLayoutRoute.addChildren([
+    indexRoute,
+    itensRoute,
+    itemNovoRoute,
+    itemEditRoute,
+    lojasRoute,
+  ]),
 ]);
 
 export const router = createRouter({ routeTree });
