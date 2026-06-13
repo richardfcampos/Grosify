@@ -3,6 +3,7 @@ import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { db, type LocalStore } from '../db/dexie.js';
 import { createStore, deleteStore, updateStore } from '../db/repositories.js';
+import { usePlacesSearch, type PlaceResult } from '../lib/use-places-search.js';
 
 const inputClass =
   'min-h-12 w-full rounded-xl border border-zinc-300 px-4 py-3 text-base outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100';
@@ -68,7 +69,22 @@ function StoreSheet({ store, onClose }: { store: LocalStore | null; onClose: () 
   const [name, setName] = useState(store?.name ?? '');
   const [city, setCity] = useState(store?.city ?? '');
   const [neighborhood, setNeighborhood] = useState(store?.neighborhood ?? '');
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
+    store?.lat != null && store?.lng != null ? { lat: store.lat, lng: store.lng } : null,
+  );
+  const [search, setSearch] = useState('');
+  const [showResults, setShowResults] = useState(false);
+  const { results } = usePlacesSearch(search);
   const [busy, setBusy] = useState(false);
+
+  function pickPlace(p: PlaceResult) {
+    setName(p.name);
+    if (p.city) setCity(p.city);
+    if (p.neighborhood) setNeighborhood(p.neighborhood);
+    setCoords({ lat: p.lat, lng: p.lng });
+    setSearch('');
+    setShowResults(false);
+  }
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -77,6 +93,8 @@ function StoreSheet({ store, onClose }: { store: LocalStore | null; onClose: () 
       name: name.trim(),
       city: city.trim() || null,
       neighborhood: neighborhood.trim() || null,
+      lat: coords?.lat ?? null,
+      lng: coords?.lng ?? null,
     };
     if (store) await updateStore(store.id, payload);
     else await createStore(payload);
@@ -100,6 +118,34 @@ function StoreSheet({ store, onClose }: { store: LocalStore | null; onClose: () 
         <h2 className="text-lg font-bold text-zinc-900">
           {store ? t('catalog.editStore') : t('catalog.newStore')}
         </h2>
+
+        <div className="relative">
+          <input
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setShowResults(true);
+            }}
+            placeholder={t('catalog.searchPlaceHint')}
+            className={inputClass}
+          />
+          {showResults && results.length > 0 && (
+            <ul className="absolute z-10 mt-1 max-h-60 w-full overflow-y-auto rounded-xl border border-zinc-200 bg-white shadow-lg">
+              {results.map((p, i) => (
+                <li key={i}>
+                  <button
+                    type="button"
+                    onClick={() => pickPlace(p)}
+                    className="block w-full px-4 py-2.5 text-left text-sm active:bg-zinc-100"
+                  >
+                    {p.label}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -131,6 +177,7 @@ function StoreSheet({ store, onClose }: { store: LocalStore | null; onClose: () 
             {t('catalog.deleteStore')}
           </button>
         )}
+        <p className="text-center text-xs text-zinc-400">{t('catalog.poweredBy')}</p>
       </form>
     </div>
   );

@@ -148,6 +148,8 @@ export interface NewStoreInput {
   name: string;
   city?: string | null;
   neighborhood?: string | null;
+  lat?: number | null;
+  lng?: number | null;
 }
 
 export async function createStore(input: NewStoreInput): Promise<string> {
@@ -158,8 +160,8 @@ export async function createStore(input: NewStoreInput): Promise<string> {
     name: input.name,
     city: input.city ?? null,
     neighborhood: input.neighborhood ?? null,
-    lat: null,
-    lng: null,
+    lat: input.lat ?? null,
+    lng: input.lng ?? null,
     updatedAt: nowISO(),
     deletedAt: null,
     serverVersion: 0,
@@ -167,7 +169,14 @@ export async function createStore(input: NewStoreInput): Promise<string> {
   await enqueue({
     method: 'POST',
     path: '/catalog/stores',
-    body: { id, name: input.name, city: input.city ?? undefined, neighborhood: input.neighborhood ?? undefined },
+    body: {
+      id,
+      name: input.name,
+      city: input.city ?? undefined,
+      neighborhood: input.neighborhood ?? undefined,
+      lat: input.lat ?? undefined,
+      lng: input.lng ?? undefined,
+    },
     rowId: id,
   });
   return id;
@@ -175,7 +184,7 @@ export async function createStore(input: NewStoreInput): Promise<string> {
 
 export async function updateStore(
   id: string,
-  updates: { name?: string; city?: string | null; neighborhood?: string | null },
+  updates: { name?: string; city?: string | null; neighborhood?: string | null; lat?: number | null; lng?: number | null },
 ): Promise<void> {
   await db.stores.update(id, { ...updates, updatedAt: nowISO() });
   await enqueue({ method: 'PATCH', path: `/catalog/stores/${id}`, body: updates, rowId: id });

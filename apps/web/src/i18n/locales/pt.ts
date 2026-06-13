@@ -99,6 +99,9 @@ export default {
       noStores: 'Cadastre uma loja primeiro.',
     },
     catalog: {
+      searchPlace: 'Buscar estabelecimento',
+      searchPlaceHint: 'Digite nome, bairro, cidade',
+      poweredBy: 'Endereços © OpenStreetMap',
       monthlyTarget: 'Recomendado por mês',
       monthlyTargetHint: 'Quanto você compra por mês (ex.: 10 kg de arroz)',
       itemsTitle: 'Itens',

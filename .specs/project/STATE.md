@@ -45,6 +45,8 @@
 
 | 2026-06-13 | Billing: provedor = **Mercado Pago** (verificado por web search — suporta cartão recorrente E Pix Automático, recorrente via Pix no ar desde jun/2025). Scaffold sem provedor pronto: filtro histórico 90d no free (client-side via historyCutoff), seção de plano + CTA "Seja Pro" (desabilitado até MP) em Ajustes | Usuário perguntou se MP aceita ambos — sim. Recomendado MP por cobrir Pix recorrente (melhor pro BR) |
 
+| 2026-06-13 | Autocomplete de loja via **Photon** (komoot/OpenStreetMap, grátis, sem chave): campo único busca estabelecimento por nome/bairro/cidade, preenche nome/cidade/bairro + lat/lng. Debounce 350ms, atribuição OSM. Campos seguem editáveis (POI pequeno pode faltar no OSM) | Pedido do usuário; Photon escolhido por ter autocomplete real (Nominatim não tem) e ser grátis sem chave |
+
 ## Bloqueios
 
 - **Deploy**: configs prontas (Dockerfile, _redirects, docs/deployment.md). Usuário vai executar seguindo a doc (criar Neon+Railway+CF Pages). Eu de plantão.

@@ -99,6 +99,9 @@ export default {
       noStores: 'Add a store first.',
     },
     catalog: {
+      searchPlace: 'Search place',
+      searchPlaceHint: 'Type name, neighborhood, city',
+      poweredBy: 'Addresses © OpenStreetMap',
       monthlyTarget: 'Recommended per month',
       monthlyTargetHint: 'How much you buy monthly (e.g. 10 kg of rice)',
       itemsTitle: 'Items',
