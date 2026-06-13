@@ -146,6 +146,9 @@ export function CadastroPage() {
           {t('auth.login')}
         </Link>
       </p>
+      <Link to="/privacidade" className="text-center text-xs text-zinc-400 underline">
+        {t('settings.privacy')}
+      </Link>
     </AuthShell>
   );
 }

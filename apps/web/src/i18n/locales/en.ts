@@ -136,6 +136,7 @@ export default {
       generic: 'Something went wrong, please try again',
     },
     settings: {
+      privacy: 'Privacy policy',
       title: 'Settings',
       account: 'Account',
       data: 'Your data',
@@ -148,6 +149,8 @@ export default {
       seedHint: 'Start with common grocery items.',
     },
     shopping: {
+      share: 'Share receipt',
+      receiptTag: 'monthly shopping',
       start: 'Start shopping',
       title: 'Shopping mode',
       current: 'In cart',

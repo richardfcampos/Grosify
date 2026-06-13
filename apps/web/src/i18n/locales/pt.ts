@@ -136,6 +136,7 @@ export default {
       generic: 'Algo deu errado, tente de novo',
     },
     settings: {
+      privacy: 'Política de privacidade',
       title: 'Ajustes',
       account: 'Conta',
       data: 'Seus dados',
@@ -148,6 +149,8 @@ export default {
       seedHint: 'Começa com itens de mercado comuns.',
     },
     shopping: {
+      share: 'Compartilhar recibo',
+      receiptTag: 'compra do mês',
       start: 'Iniciar compra',
       title: 'Modo compra',
       current: 'No carrinho',

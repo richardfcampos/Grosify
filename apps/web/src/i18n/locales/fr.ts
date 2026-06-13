@@ -136,6 +136,7 @@ export default {
       generic: 'Une erreur est survenue, réessayez',
     },
     settings: {
+      privacy: 'Confidentialité',
       title: 'Réglages',
       account: 'Compte',
       data: 'Vos données',
@@ -148,6 +149,8 @@ export default {
       seedHint: 'Commencez avec des articles courants.',
     },
     shopping: {
+      share: 'Partager le reçu',
+      receiptTag: 'courses du mois',
       start: 'Commencer les courses',
       title: 'Mode courses',
       current: 'Dans le panier',

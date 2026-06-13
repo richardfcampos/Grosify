@@ -62,7 +62,14 @@ export function CompraPage() {
   if (!session) return null;
 
   if (session.status === 'completed') {
-    return <Summary sessionItems={sessionItems} estimated={estimated} current={current} />;
+    return (
+      <Summary
+        sessionItems={sessionItems}
+        itemById={itemById}
+        estimated={estimated}
+        current={current}
+      />
+    );
   }
 
   return (
@@ -156,10 +163,12 @@ export function CompraPage() {
 
 function Summary({
   sessionItems,
+  itemById,
   estimated,
   current,
 }: {
   sessionItems: LocalSessionItem[];
+  itemById: Map<string, LocalItem>;
   estimated: number;
   current: number;
 }) {
@@ -167,7 +176,34 @@ function Summary({
   const navigate = useNavigate();
   const fmt = useFormatMoney();
   const saved = estimated - current;
-  const bought = sessionItems.filter((si) => si.checkedAt).length;
+  const boughtItems = sessionItems.filter((si) => si.checkedAt);
+
+  function receiptText(): string {
+    const lines = [`🛒 Grosify — ${t('shopping.receiptTag')}`];
+    for (const si of boughtItems) {
+      const name = itemById.get(si.itemId)?.name ?? '';
+      if (si.actualUnitPriceCents && si.actualQty) {
+        lines.push(`${name}  ${si.actualQty}×${fmt(si.actualUnitPriceCents)}`);
+      }
+    }
+    lines.push('—');
+    lines.push(`${t('shopping.current')}: ${fmt(current)}`);
+    lines.push(
+      saved >= 0
+        ? `✓ ${t('shopping.savedVsEstimate', { amount: fmt(saved) })}`
+        : t('shopping.overEstimate', { amount: fmt(-saved) }),
+    );
+    return lines.join('\n');
+  }
+
+  async function onShare() {
+    const text = receiptText();
+    if (navigator.share) {
+      await navigator.share({ text }).catch(() => {});
+    } else {
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    }
+  }
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col items-center justify-center gap-4 bg-stone-950 px-6 text-center text-stone-50">
@@ -175,15 +211,21 @@ function Summary({
       <p className="font-['Anton'] text-4xl" style={{ color: saved >= 0 ? '#4ADE80' : '#F87171' }}>
         {fmt(current)}
       </p>
-      <p className="text-stone-300">{t('shopping.itemsBought', { count: bought })}</p>
+      <p className="text-stone-300">{t('shopping.itemsBought', { count: boughtItems.length })}</p>
       <p className="text-lg font-semibold" style={{ color: saved >= 0 ? '#4ADE80' : '#F87171' }}>
         {saved >= 0
           ? t('shopping.savedVsEstimate', { amount: fmt(saved) })
           : t('shopping.overEstimate', { amount: fmt(-saved) })}
       </p>
       <button
+        onClick={onShare}
+        className="mt-4 min-h-12 w-full rounded-xl bg-green-600 px-8 font-bold text-white"
+      >
+        {t('shopping.share')}
+      </button>
+      <button
         onClick={() => navigate({ to: '/listas' })}
-        className="mt-4 min-h-12 rounded-xl bg-yellow-400 px-8 font-bold text-stone-900"
+        className="min-h-12 w-full rounded-xl bg-yellow-400 px-8 font-bold text-stone-900"
       >
         {t('shopping.back')}
       </button>

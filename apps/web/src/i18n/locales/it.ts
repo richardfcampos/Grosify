@@ -136,6 +136,7 @@ export default {
       generic: 'Qualcosa è andato storto, riprova',
     },
     settings: {
+      privacy: 'Informativa privacy',
       title: 'Impostazioni',
       account: 'Account',
       data: 'I tuoi dati',
@@ -148,6 +149,8 @@ export default {
       seedHint: 'Inizia con articoli di spesa comuni.',
     },
     shopping: {
+      share: 'Condividi ricevuta',
+      receiptTag: 'spesa del mese',
       start: 'Inizia spesa',
       title: 'Modalità spesa',
       current: 'Nel carrello',

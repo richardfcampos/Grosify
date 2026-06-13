@@ -1,4 +1,4 @@
-import { useNavigate } from '@tanstack/react-router';
+import { Link, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SUPPORTED_LANGUAGES } from '../i18n/index.js';
@@ -96,6 +96,10 @@ export function AjustesPage() {
       >
         {t('auth.logout')}
       </button>
+
+      <Link to="/privacidade" className="text-center text-sm text-zinc-400 underline">
+        {t('settings.privacy')}
+      </Link>
     </main>
   );
 }

@@ -6,6 +6,7 @@ import { CadastroPage, EntrarPage } from './pages/auth-pages.js';
 import { DashboardPage } from './pages/dashboard-page.js';
 import { CasaPage, ConvitePage } from './pages/household-pages.js';
 import { CompraPage } from './pages/compra-page.js';
+import { PrivacidadePage } from './pages/privacidade-page.js';
 import { InventarioPage } from './pages/inventario-page.js';
 import { ItemFormPage } from './pages/item-form-page.js';
 import { ItensPage } from './pages/itens-page.js';
@@ -39,6 +40,11 @@ const conviteRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/convite/$code',
   component: ConvitePage,
+});
+const privacidadeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/privacidade',
+  component: PrivacidadePage,
 });
 
 // casca autenticada com nav inferior
@@ -103,6 +109,7 @@ const routeTree = rootRoute.addChildren([
   cadastroRoute,
   casaRoute,
   conviteRoute,
+  privacidadeRoute,
   appLayoutRoute.addChildren([
     indexRoute,
     itensRoute,

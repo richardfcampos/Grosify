@@ -136,6 +136,7 @@ export default {
       generic: 'Etwas ist schiefgelaufen, bitte erneut versuchen',
     },
     settings: {
+      privacy: 'Datenschutz',
       title: 'Einstellungen',
       account: 'Konto',
       data: 'Deine Daten',
@@ -148,6 +149,8 @@ export default {
       seedHint: 'Starte mit häufigen Einkaufsartikeln.',
     },
     shopping: {
+      share: 'Beleg teilen',
+      receiptTag: 'Monatseinkauf',
       start: 'Einkauf starten',
       title: 'Einkaufsmodus',
       current: 'Im Wagen',
