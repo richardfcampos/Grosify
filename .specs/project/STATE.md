@@ -28,6 +28,8 @@
 
 | 2026-06-13 | Fase 3 (Sync offline): outbox no Dexie (replay HTTP das rotas existentes, idempotentes via ON CONFLICT DO NOTHING); pull incremental `/sync/pull?cursor=N` com tombstones; engine com gatilhos online/focus/30s; repos viraram local-first (escrita otimista + enqueue); status UI offline/pendências | Fase 3. Desvios do plano original (honestos): (a) reuso rotas REST em vez de /sync/push genérico — menos código novo, transporte trocado; (b) sem tabela `clients` (idempotência via id+upsert); (c) LWW vira "last-sync-wins" (server seta updatedAt) — aceitável p/ casa 2-4 pessoas; (d) `packages/sync` adiado pro Expo (fase 7) — engine fica no web |
 
+| 2026-06-13 | Fase 4 (Modo Compra — MVP): tabelas shopping_sessions/items + triggers; rotas criar sessão (snapshot needed-qty + estimativa), atualizar item/sessão; tela escura fullscreen (carimbo COMPRADO, total corrente vs estimado verde/vermelho, scan-pra-marcar, tem-mais-barato), resumo com economia; tudo offline-first | Fase 4, lançamento MVP. Bug corrigido: CORS não permitia PATCH (todos os updates falhavam no browser) |
+
 ## Limitações conhecidas (fase 3)
 - Sessão/membership exigem API online: navegação com page-load fresca offline cai no login. Uso real (já logado, fica offline mid-sessão via SPA nav) funciona — verificado. App shell offline via Workbox precache (build gera SW; testar em prod build).
 - Edição concorrente do MESMO item por 2 membros offline: last-sync-wins (sem per-field LWW). Raro em escala de casa.

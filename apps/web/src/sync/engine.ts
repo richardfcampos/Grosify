@@ -62,6 +62,14 @@ function num<T extends { qty?: unknown; qtyOnHand?: unknown }>(row: T): T {
   return row;
 }
 
+/** Converte numeric (string) → number nos campos de quantidade do item de sessão. */
+function numSessionItem(row: unknown): unknown {
+  const r = row as { neededQty: unknown; actualQty: unknown };
+  r.neededQty = Number(r.neededQty);
+  r.actualQty = r.actualQty === null || r.actualQty === undefined ? null : Number(r.actualQty);
+  return r;
+}
+
 /** Puxa mudanças do servidor e aplica no Dexie, sem clobrar pendências locais nem fotos. */
 async function pull(): Promise<void> {
   const cursor = await getCursor();
@@ -82,7 +90,17 @@ async function pull(): Promise<void> {
 
   await db.transaction(
     'rw',
-    [db.items, db.barcodes, db.stores, db.prices, db.lists, db.listEntries, db.inventory],
+    [
+      db.items,
+      db.barcodes,
+      db.stores,
+      db.prices,
+      db.lists,
+      db.listEntries,
+      db.inventory,
+      db.sessions,
+      db.sessionItems,
+    ],
     async () => {
       for (const row of changes.items ?? []) {
         const r = row as unknown as LocalItem;
@@ -102,6 +120,12 @@ async function pull(): Promise<void> {
       await applyTable(
         db.inventory,
         (changes.inventory_counts ?? []).map((i) => num(i as LocalInventory)),
+        pendingIds,
+      );
+      await applyTable(db.sessions, changes.shopping_sessions, pendingIds);
+      await applyTable(
+        db.sessionItems,
+        (changes.shopping_session_items ?? []).map((i) => numSessionItem(i)),
         pendingIds,
       );
     },

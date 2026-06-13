@@ -1,4 +1,4 @@
-import type { Unit } from '@grosify/shared';
+import { cheapestStore, neededQty, type Unit } from '@grosify/shared';
 import { v7 as uuidv7 } from 'uuid';
 import { enqueue, householdId, syncNow } from '../sync/engine.js';
 import {
@@ -8,6 +8,8 @@ import {
   type LocalList,
   type LocalListEntry,
   type LocalPrice,
+  type LocalSession,
+  type LocalSessionItem,
   type LocalStore,
 } from './dexie.js';
 
@@ -278,5 +280,133 @@ export async function setInventory(itemId: string, qtyOnHand: number): Promise<v
   await enqueue({ method: 'PUT', path: '/shopping/inventory', body: { id, itemId, qtyOnHand }, rowId: id });
 }
 
+// ---------- Sessão de compra ----------
+
+/**
+ * Inicia sessão a partir de uma lista. Snapshot das quantidades necessárias
+ * (recorrente desconta inventário) e da estimativa (loja mais barata atual).
+ */
+export async function startShoppingSession(listId: string): Promise<string> {
+  const [list, entries, prices, inventory] = await Promise.all([
+    db.lists.get(listId),
+    db.listEntries.where('listId').equals(listId).filter((e) => e.deletedAt === null).toArray(),
+    db.prices.filter((p) => p.deletedAt === null).toArray(),
+    db.inventory.filter((i) => i.deletedAt === null).toArray(),
+  ]);
+  if (!list) throw new Error('list_not_found');
+
+  const onHand = new Map(inventory.map((i) => [i.itemId, i.qtyOnHand]));
+  const sessionId = uuidv7();
+  const ts = nowISO();
+
+  const items = entries.map((entry) => {
+    const need = list.isRecurring ? neededQty(entry.qty, onHand.get(entry.itemId) ?? 0) : entry.qty;
+    const cheapest = cheapestStore(prices.filter((p) => p.itemId === entry.itemId));
+    return {
+      id: uuidv7(),
+      itemId: entry.itemId,
+      neededQty: need,
+      estimatedUnitPriceCents: cheapest?.priceCents ?? null,
+      estimatedPriceStoreId: cheapest?.storeId ?? null,
+    };
+  });
+
+  await db.sessions.put({
+    id: sessionId,
+    householdId: hid(),
+    listId,
+    storeId: null,
+    status: 'active',
+    startedAt: ts,
+    completedAt: null,
+    updatedAt: ts,
+    deletedAt: null,
+    serverVersion: 0,
+  });
+  await db.sessionItems.bulkPut(
+    items.map((it) => ({
+      id: it.id,
+      householdId: hid(),
+      sessionId,
+      itemId: it.itemId,
+      neededQty: it.neededQty,
+      estimatedUnitPriceCents: it.estimatedUnitPriceCents,
+      estimatedPriceStoreId: it.estimatedPriceStoreId,
+      checkedAt: null,
+      actualQty: null,
+      actualUnitPriceCents: null,
+      updatedAt: ts,
+      deletedAt: null,
+      serverVersion: 0,
+    })),
+  );
+  await enqueue({
+    method: 'POST',
+    path: '/shopping/sessions',
+    body: { id: sessionId, listId, startedAt: ts, items },
+    rowId: sessionId,
+  });
+  return sessionId;
+}
+
+/** Marca item da sessão como comprado: registra preço real + atualiza o item. */
+export async function checkSessionItem(
+  sessionItemId: string,
+  itemId: string,
+  storeId: string,
+  actualQty: number,
+  actualUnitPriceCents: number,
+): Promise<void> {
+  await recordPrice(itemId, storeId, actualUnitPriceCents);
+  const ts = nowISO();
+  await db.sessionItems.update(sessionItemId, {
+    checkedAt: ts,
+    actualQty,
+    actualUnitPriceCents,
+    updatedAt: ts,
+  });
+  await enqueue({
+    method: 'PATCH',
+    path: `/shopping/sessions/items/${sessionItemId}`,
+    body: { checkedAt: ts, actualQty, actualUnitPriceCents },
+    rowId: sessionItemId,
+  });
+}
+
+export async function uncheckSessionItem(sessionItemId: string): Promise<void> {
+  await db.sessionItems.update(sessionItemId, {
+    checkedAt: null,
+    actualQty: null,
+    actualUnitPriceCents: null,
+    updatedAt: nowISO(),
+  });
+  await enqueue({
+    method: 'PATCH',
+    path: `/shopping/sessions/items/${sessionItemId}`,
+    body: { checkedAt: null, actualQty: null, actualUnitPriceCents: null },
+    rowId: sessionItemId,
+  });
+}
+
+export async function completeSession(sessionId: string): Promise<void> {
+  const ts = nowISO();
+  await db.sessions.update(sessionId, { status: 'completed', completedAt: ts, updatedAt: ts });
+  await enqueue({
+    method: 'PATCH',
+    path: `/shopping/sessions/${sessionId}`,
+    body: { status: 'completed', completedAt: ts },
+    rowId: sessionId,
+  });
+}
+
 // tipos reexportados pra telas que ainda referenciam
-export type { LocalInventory, LocalItem, LocalList, LocalListEntry, LocalPrice, LocalStore };
+export type {
+  LocalInventory,
+  LocalItem,
+  LocalList,
+  LocalListEntry,
+  LocalPrice,
+  LocalSession,
+  LocalSessionItem,
+  LocalStore,
+};

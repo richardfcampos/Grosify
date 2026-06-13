@@ -8,6 +8,8 @@ import {
   priceRecords,
   shoppingListEntries,
   shoppingLists,
+  shoppingSessionItems,
+  shoppingSessions,
   stores,
 } from '../db/schema.js';
 import { requireHousehold, type HouseholdEnv } from '../middleware/household.js';
@@ -21,6 +23,8 @@ const TABLES = {
   shopping_lists: shoppingLists,
   shopping_list_entries: shoppingListEntries,
   inventory_counts: inventoryCounts,
+  shopping_sessions: shoppingSessions,
+  shopping_session_items: shoppingSessionItems,
 } as const;
 
 export const syncRoute = new Hono<HouseholdEnv>()

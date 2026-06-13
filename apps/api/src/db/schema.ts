@@ -272,3 +272,50 @@ export const inventoryCounts = pgTable(
     unique('inventory_counts_household_item_uq').on(t.householdId, t.itemId),
   ],
 );
+
+export const shoppingSessions = pgTable(
+  'shopping_sessions',
+  {
+    id: uuid('id').primaryKey(),
+    householdId: uuid('household_id')
+      .notNull()
+      .references(() => households.id, { onDelete: 'cascade' }),
+    listId: uuid('list_id').references(() => shoppingLists.id, { onDelete: 'set null' }),
+    storeId: uuid('store_id').references(() => stores.id, { onDelete: 'set null' }),
+    status: text('status', { enum: ['active', 'completed', 'abandoned'] })
+      .notNull()
+      .default('active'),
+    startedAt: timestamp('started_at', { withTimezone: true }).notNull(),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+    ...syncColumns,
+  },
+  (t) => [index('shopping_sessions_household_version_idx').on(t.householdId, t.serverVersion)],
+);
+
+export const shoppingSessionItems = pgTable(
+  'shopping_session_items',
+  {
+    id: uuid('id').primaryKey(),
+    householdId: uuid('household_id')
+      .notNull()
+      .references(() => households.id, { onDelete: 'cascade' }),
+    sessionId: uuid('session_id')
+      .notNull()
+      .references(() => shoppingSessions.id, { onDelete: 'cascade' }),
+    itemId: uuid('item_id')
+      .notNull()
+      .references(() => items.id, { onDelete: 'cascade' }),
+    neededQty: numeric('needed_qty', { precision: 10, scale: 3 }).notNull(),
+    estimatedUnitPriceCents: integer('estimated_unit_price_cents'),
+    estimatedPriceStoreId: uuid('estimated_price_store_id'),
+    checkedAt: timestamp('checked_at', { withTimezone: true }),
+    actualQty: numeric('actual_qty', { precision: 10, scale: 3 }),
+    actualUnitPriceCents: integer('actual_unit_price_cents'),
+    ...syncColumns,
+  },
+  (t) => [
+    index('shopping_session_items_household_version_idx').on(t.householdId, t.serverVersion),
+    index('shopping_session_items_session_idx').on(t.sessionId),
+    unique('shopping_session_items_session_item_uq').on(t.sessionId, t.itemId),
+  ],
+);

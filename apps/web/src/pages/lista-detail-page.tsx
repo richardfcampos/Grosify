@@ -4,7 +4,12 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { db, type LocalItem } from '../db/dexie.js';
-import { deleteList, removeListEntry, setListEntry } from '../db/repositories.js';
+import {
+  deleteList,
+  removeListEntry,
+  setListEntry,
+  startShoppingSession,
+} from '../db/repositories.js';
 import { PrecoSheet } from '../features/prices/preco-sheet.js';
 import { useFormatMoney } from '../lib/use-currency.js';
 
@@ -81,14 +86,27 @@ export function ListaDetailPage() {
         )}
       </div>
 
-      {list.isRecurring && (
-        <Link
-          to="/inventario"
-          className="rounded-xl border border-green-600 px-4 py-2.5 text-center text-sm font-semibold text-green-700"
-        >
-          {t('lists.inventory')}
-        </Link>
-      )}
+      <div className="flex gap-2">
+        {list.isRecurring && (
+          <Link
+            to="/inventario"
+            className="flex-1 rounded-xl border border-green-600 px-4 py-2.5 text-center text-sm font-semibold text-green-700"
+          >
+            {t('lists.inventory')}
+          </Link>
+        )}
+        {entries.length > 0 && (
+          <button
+            onClick={async () => {
+              const sid = await startShoppingSession(id);
+              navigate({ to: '/compra/$id', params: { id: sid } });
+            }}
+            className="flex-1 rounded-xl bg-green-600 px-4 py-2.5 text-center text-sm font-bold text-white active:bg-green-700"
+          >
+            {t('shopping.start')}
+          </button>
+        )}
+      </div>
 
       {entries.length === 0 ? (
         <p className="mt-4 text-center text-zinc-500">{t('lists.empty')}</p>

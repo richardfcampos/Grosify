@@ -4,6 +4,7 @@ import { AppLayout } from './features/catalog/app-layout.js';
 import { CadastroPage, EntrarPage } from './pages/auth-pages.js';
 import { DashboardPage } from './pages/dashboard-page.js';
 import { CasaPage, ConvitePage } from './pages/household-pages.js';
+import { CompraPage } from './pages/compra-page.js';
 import { InventarioPage } from './pages/inventario-page.js';
 import { ItemFormPage } from './pages/item-form-page.js';
 import { ItensPage } from './pages/itens-page.js';
@@ -85,6 +86,11 @@ const inventarioRoute = createRoute({
   path: '/inventario',
   component: InventarioPage,
 });
+const compraRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/compra/$id',
+  component: CompraPage,
+});
 
 const routeTree = rootRoute.addChildren([
   entrarRoute,
@@ -100,6 +106,7 @@ const routeTree = rootRoute.addChildren([
     listasRoute,
     listaDetailRoute,
     inventarioRoute,
+    compraRoute,
   ]),
 ]);
 

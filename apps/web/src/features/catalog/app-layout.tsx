@@ -45,12 +45,19 @@ export function AppLayout() {
   if (!session) return <Navigate to="/entrar" search={{ redirect: location.pathname }} />;
   if (!membership.data) return <Navigate to="/casa" />;
 
+  // Modo compra é fullscreen — sem nav inferior.
+  const fullscreen = location.pathname.startsWith('/compra');
+
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col">
-      <div className="flex-1 pb-20">
+      <div className={fullscreen ? 'flex-1' : 'flex-1 pb-20'}>
         <Outlet />
       </div>
-      <nav className="fixed inset-x-0 bottom-0 mx-auto flex max-w-md border-t border-zinc-200 bg-white">
+      <nav
+        className={`fixed inset-x-0 bottom-0 mx-auto flex max-w-md border-t border-zinc-200 bg-white ${
+          fullscreen ? 'hidden' : ''
+        }`}
+      >
         {NAV.map((n) => {
           const active = n.to === '/' ? location.pathname === '/' : location.pathname.startsWith(n.to);
           return (

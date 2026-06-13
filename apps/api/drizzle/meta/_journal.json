@@ -43,6 +43,20 @@
       "when": 1781319663371,
       "tag": "0005_sync_trigger_phase2",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1781327953075,
+      "tag": "0006_lethal_hex",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1781327953637,
+      "tag": "0007_sync_trigger_sessions",
+      "breakpoints": true
     }
   ]
 }

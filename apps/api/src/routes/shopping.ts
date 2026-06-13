@@ -2,9 +2,12 @@ import { zValidator } from '@hono/zod-validator';
 import {
   createListPayload,
   createPricePayload,
+  createSessionPayload,
   setInventoryPayload,
   setListEntryPayload,
   updateListPayload,
+  updateSessionItemPayload,
+  updateSessionPayload,
 } from '@grosify/shared';
 import { and, eq, isNull } from 'drizzle-orm';
 import { Hono } from 'hono';
@@ -14,6 +17,8 @@ import {
   priceRecords,
   shoppingListEntries,
   shoppingLists,
+  shoppingSessionItems,
+  shoppingSessions,
 } from '../db/schema.js';
 import { requireHousehold, type HouseholdEnv } from '../middleware/household.js';
 
@@ -168,4 +173,99 @@ export const shoppingRoute = new Hono<HouseholdEnv>()
       })
       .returning();
     return c.json({ count }, 201);
+  })
+
+  // ---------- Sessões de compra ----------
+  .get('/sessions', async (c) => {
+    const hid = c.get('householdId');
+    const sessions = await db
+      .select()
+      .from(shoppingSessions)
+      .where(and(eq(shoppingSessions.householdId, hid), isNull(shoppingSessions.deletedAt)));
+    const sessionItems = await db
+      .select()
+      .from(shoppingSessionItems)
+      .where(and(eq(shoppingSessionItems.householdId, hid), isNull(shoppingSessionItems.deletedAt)));
+    return c.json({ sessions, sessionItems });
+  })
+
+  .post('/sessions', zValidator('json', createSessionPayload), async (c) => {
+    const hid = c.get('householdId');
+    const p = c.req.valid('json');
+    const session = await db.transaction(async (tx) => {
+      const [s] = await tx
+        .insert(shoppingSessions)
+        .values({
+          id: p.id,
+          householdId: hid,
+          listId: p.listId ?? null,
+          storeId: p.storeId ?? null,
+          status: 'active',
+          startedAt: p.startedAt ? new Date(p.startedAt) : new Date(),
+        })
+        .onConflictDoNothing()
+        .returning();
+      if (p.items.length) {
+        await tx
+          .insert(shoppingSessionItems)
+          .values(
+            p.items.map((it) => ({
+              id: it.id,
+              householdId: hid,
+              sessionId: p.id,
+              itemId: it.itemId,
+              neededQty: String(it.neededQty),
+              estimatedUnitPriceCents: it.estimatedUnitPriceCents ?? null,
+              estimatedPriceStoreId: it.estimatedPriceStoreId ?? null,
+            })),
+          )
+          .onConflictDoNothing();
+      }
+      return s ?? null;
+    });
+    return c.json({ session }, 201);
+  })
+
+  .patch('/sessions/:id', zValidator('json', updateSessionPayload), async (c) => {
+    const hid = c.get('householdId');
+    const p = c.req.valid('json');
+    const [session] = await db
+      .update(shoppingSessions)
+      .set({
+        ...(p.status !== undefined ? { status: p.status } : {}),
+        ...(p.storeId !== undefined ? { storeId: p.storeId } : {}),
+        ...(p.completedAt !== undefined
+          ? { completedAt: p.completedAt ? new Date(p.completedAt) : null }
+          : {}),
+        updatedAt: new Date(),
+      })
+      .where(and(eq(shoppingSessions.id, c.req.param('id')), eq(shoppingSessions.householdId, hid)))
+      .returning();
+    if (!session) return c.json({ error: 'not_found' }, 404);
+    return c.json({ session });
+  })
+
+  .patch('/sessions/items/:id', zValidator('json', updateSessionItemPayload), async (c) => {
+    const hid = c.get('householdId');
+    const p = c.req.valid('json');
+    const [item] = await db
+      .update(shoppingSessionItems)
+      .set({
+        ...(p.checkedAt !== undefined
+          ? { checkedAt: p.checkedAt ? new Date(p.checkedAt) : null }
+          : {}),
+        ...(p.actualQty !== undefined
+          ? { actualQty: p.actualQty === null ? null : String(p.actualQty) }
+          : {}),
+        ...(p.actualUnitPriceCents !== undefined
+          ? { actualUnitPriceCents: p.actualUnitPriceCents }
+          : {}),
+        updatedAt: new Date(),
+      })
+      .where(
+        and(eq(shoppingSessionItems.id, c.req.param('id')), eq(shoppingSessionItems.householdId, hid)),
+      )
+      .returning();
+    if (!item) return c.json({ error: 'not_found' }, 404);
+    return c.json({ item });
   });

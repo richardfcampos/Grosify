@@ -91,3 +91,38 @@ export const setInventoryPayload = z.object({
   qtyOnHand: qty,
 });
 export type SetInventoryPayload = z.infer<typeof setInventoryPayload>;
+
+// ---------- Sessão de compra ----------
+
+export const createSessionPayload = z.object({
+  id: z.uuid(),
+  listId: z.uuid().nullable().optional(),
+  storeId: z.uuid().nullable().optional(),
+  startedAt: isoDate.optional(),
+  items: z
+    .array(
+      z.object({
+        id: z.uuid(),
+        itemId: z.uuid(),
+        neededQty: qty,
+        estimatedUnitPriceCents: z.number().int().positive().nullable().optional(),
+        estimatedPriceStoreId: z.uuid().nullable().optional(),
+      }),
+    )
+    .max(500),
+});
+export type CreateSessionPayload = z.infer<typeof createSessionPayload>;
+
+export const updateSessionPayload = z.object({
+  status: z.enum(['active', 'completed', 'abandoned']).optional(),
+  storeId: z.uuid().nullable().optional(),
+  completedAt: isoDate.nullable().optional(),
+});
+export type UpdateSessionPayload = z.infer<typeof updateSessionPayload>;
+
+export const updateSessionItemPayload = z.object({
+  checkedAt: isoDate.nullable().optional(),
+  actualQty: qty.nullable().optional(),
+  actualUnitPriceCents: z.number().int().positive().nullable().optional(),
+});
+export type UpdateSessionItemPayload = z.infer<typeof updateSessionItemPayload>;
