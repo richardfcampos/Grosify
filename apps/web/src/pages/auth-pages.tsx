@@ -20,6 +20,12 @@ const inputClass =
 const buttonClass =
   'w-full rounded-xl bg-green-600 px-4 py-3 text-base font-semibold text-white active:bg-green-700 disabled:opacity-50';
 
+/** Evita redirecionar de volta pra telas de auth (loop). */
+function safeRedirect(redirect: string | undefined): string {
+  if (!redirect || redirect === '/entrar' || redirect === '/cadastro') return '/';
+  return redirect;
+}
+
 export function EntrarPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -41,7 +47,7 @@ export function EntrarPage() {
       setError(t('auth.invalidCredentials'));
       return;
     }
-    navigate({ to: search.redirect ?? '/' });
+    navigate({ to: safeRedirect(search.redirect) });
   }
 
   return (
@@ -103,7 +109,7 @@ export function CadastroPage() {
       setError(err.message ?? t('auth.signupFailed'));
       return;
     }
-    navigate({ to: search.redirect ?? '/' });
+    navigate({ to: safeRedirect(search.redirect) });
   }
 
   return (

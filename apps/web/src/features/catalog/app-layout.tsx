@@ -1,7 +1,7 @@
 import { Link, Outlet, useLocation } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { pullCatalog } from '../../db/repositories.js';
+import { pullCatalog, pullShopping } from '../../db/repositories.js';
 import { useSession } from '../../lib/auth-client.js';
 import { useMembership } from '../../lib/use-membership.js';
 import { Loading } from '../../pages/household-pages.js';
@@ -9,6 +9,7 @@ import { Navigate } from '@tanstack/react-router';
 
 const NAV = [
   { to: '/', key: 'home', icon: '🏠' },
+  { to: '/listas', key: 'lists', icon: '📋' },
   { to: '/itens', key: 'items', icon: '🛒' },
   { to: '/lojas', key: 'stores', icon: '🏬' },
 ] as const;
@@ -22,7 +23,9 @@ export function AppLayout() {
   const [synced, setSynced] = useState(false);
 
   useEffect(() => {
-    if (membership.data) pullCatalog().finally(() => setSynced(true));
+    if (membership.data) {
+      Promise.all([pullCatalog(), pullShopping()]).finally(() => setSynced(true));
+    }
   }, [membership.data]);
 
   if (isPending || (session && membership.isLoading)) return <Loading />;

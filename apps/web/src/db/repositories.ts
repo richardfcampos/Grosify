@@ -1,7 +1,14 @@
 import type { Unit } from '@grosify/shared';
 import { v7 as uuidv7 } from 'uuid';
 import { api } from '../lib/api.js';
-import { db, type LocalItem } from './dexie.js';
+import {
+  db,
+  type LocalInventory,
+  type LocalItem,
+  type LocalList,
+  type LocalListEntry,
+  type LocalPrice,
+} from './dexie.js';
 
 /**
  * Camada de repositório: gera id no client, escreve na API, cacheia no Dexie.
@@ -155,4 +162,116 @@ export async function updateStore(
 export async function deleteStore(id: string): Promise<void> {
   await jsonOrThrow(await api.catalog.stores[':id'].$delete({ param: { id } }));
   await db.stores.delete(id);
+}
+
+// ============ Fase 2: preços, listas, inventário ============
+
+/** numeric do Postgres chega como string; converte qty/qtyOnHand pra number. */
+function numEntry(e: LocalListEntry & { qty: unknown }): LocalListEntry {
+  return { ...e, qty: Number(e.qty) };
+}
+function numInventory(i: LocalInventory & { qtyOnHand: unknown }): LocalInventory {
+  return { ...i, qtyOnHand: Number(i.qtyOnHand) };
+}
+
+/** Puxa preços, listas, entradas e inventário pro Dexie. */
+export async function pullShopping(): Promise<void> {
+  const [listsRes, pricesRes, invRes] = await Promise.all([
+    api.shopping.lists.$get(),
+    api.shopping.prices.$get(),
+    api.shopping.inventory.$get(),
+  ]);
+  const listsData = (await jsonOrThrow(listsRes)) as { lists: LocalList[]; entries: never[] };
+  const pricesData = (await jsonOrThrow(pricesRes)) as { prices: LocalPrice[] };
+  const invData = (await jsonOrThrow(invRes)) as { inventory: never[] };
+
+  await db.transaction('rw', db.lists, db.listEntries, db.prices, db.inventory, async () => {
+    await Promise.all([
+      db.lists.clear(),
+      db.listEntries.clear(),
+      db.prices.clear(),
+      db.inventory.clear(),
+    ]);
+    await db.lists.bulkPut(listsData.lists);
+    await db.listEntries.bulkPut(listsData.entries.map(numEntry));
+    await db.prices.bulkPut(pricesData.prices);
+    await db.inventory.bulkPut(invData.inventory.map(numInventory));
+  });
+}
+
+// ---------- Listas ----------
+
+export async function createList(name: string, isRecurring: boolean): Promise<string> {
+  const id = uuidv7();
+  const res = await api.shopping.lists.$post({ json: { id, name, isRecurring } });
+  const data = (await jsonOrThrow(res)) as { list: LocalList };
+  await db.lists.put(data.list);
+  return id;
+}
+
+export async function updateList(
+  id: string,
+  updates: { name?: string; isRecurring?: boolean },
+): Promise<void> {
+  const res = await api.shopping.lists[':id'].$patch({ param: { id }, json: updates });
+  const data = (await jsonOrThrow(res)) as { list: LocalList };
+  await db.lists.put(data.list);
+}
+
+export async function deleteList(id: string): Promise<void> {
+  await jsonOrThrow(await api.shopping.lists[':id'].$delete({ param: { id } }));
+  await db.transaction('rw', db.lists, db.listEntries, async () => {
+    await db.lists.delete(id);
+    await db.listEntries.where('listId').equals(id).delete();
+  });
+}
+
+/** Define a quantidade de um item na lista (cria ou atualiza). */
+export async function setListEntry(listId: string, itemId: string, qty: number): Promise<void> {
+  const existing = await db.listEntries
+    .where('listId')
+    .equals(listId)
+    .and((e) => e.itemId === itemId && e.deletedAt === null)
+    .first();
+  const id = existing?.id ?? uuidv7();
+  const res = await api.shopping.lists[':id'].entries.$put({
+    param: { id: listId },
+    json: { id, itemId, qty },
+  });
+  const data = (await jsonOrThrow(res)) as { entry: LocalListEntry & { qty: unknown } };
+  await db.listEntries.put(numEntry(data.entry));
+}
+
+export async function removeListEntry(id: string): Promise<void> {
+  await jsonOrThrow(await api.shopping.lists.entries[':id'].$delete({ param: { id } }));
+  await db.listEntries.delete(id);
+}
+
+// ---------- Preços ----------
+
+export async function recordPrice(
+  itemId: string,
+  storeId: string,
+  priceCents: number,
+): Promise<void> {
+  const id = uuidv7();
+  const res = await api.shopping.prices.$post({
+    json: { id, itemId, storeId, priceCents },
+  });
+  const data = (await jsonOrThrow(res)) as { price: LocalPrice };
+  await db.prices.put(data.price);
+}
+
+// ---------- Inventário ----------
+
+export async function setInventory(itemId: string, qtyOnHand: number): Promise<void> {
+  const existing = await db.inventory
+    .where('itemId')
+    .equals(itemId)
+    .and((i) => i.deletedAt === null)
+    .first();
+  const id = existing?.id ?? uuidv7();
+  const res = await api.shopping.inventory.$put({ json: { id, itemId, qtyOnHand } });
+  const data = (await jsonOrThrow(res)) as { count: LocalInventory & { qtyOnHand: unknown } };
+  await db.inventory.put(numInventory(data.count));
 }

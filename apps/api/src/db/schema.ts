@@ -3,6 +3,8 @@ import {
   boolean,
   doublePrecision,
   index,
+  integer,
+  numeric,
   pgTable,
   primaryKey,
   text,
@@ -181,5 +183,92 @@ export const stores = pgTable(
   (t) => [
     index('stores_household_version_idx').on(t.householdId, t.serverVersion),
     index('stores_household_idx').on(t.householdId),
+  ],
+);
+
+export const priceRecords = pgTable(
+  'price_records',
+  {
+    id: uuid('id').primaryKey(),
+    householdId: uuid('household_id')
+      .notNull()
+      .references(() => households.id, { onDelete: 'cascade' }),
+    itemId: uuid('item_id')
+      .notNull()
+      .references(() => items.id, { onDelete: 'cascade' }),
+    storeId: uuid('store_id')
+      .notNull()
+      .references(() => stores.id, { onDelete: 'cascade' }),
+    /** Unidades mínimas da moeda da casa. */
+    priceCents: integer('price_cents').notNull(),
+    recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull(),
+    source: text('source', { enum: ['manual', 'shopping'] })
+      .notNull()
+      .default('manual'),
+    ...syncColumns,
+  },
+  (t) => [
+    index('price_records_household_version_idx').on(t.householdId, t.serverVersion),
+    index('price_records_lookup_idx').on(t.householdId, t.itemId, t.storeId, t.recordedAt),
+  ],
+);
+
+export const shoppingLists = pgTable(
+  'shopping_lists',
+  {
+    id: uuid('id').primaryKey(),
+    householdId: uuid('household_id')
+      .notNull()
+      .references(() => households.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    isRecurring: boolean('is_recurring').notNull().default(false),
+    ...syncColumns,
+  },
+  (t) => [
+    index('shopping_lists_household_version_idx').on(t.householdId, t.serverVersion),
+    index('shopping_lists_household_idx').on(t.householdId),
+  ],
+);
+
+export const shoppingListEntries = pgTable(
+  'shopping_list_entries',
+  {
+    id: uuid('id').primaryKey(),
+    householdId: uuid('household_id')
+      .notNull()
+      .references(() => households.id, { onDelete: 'cascade' }),
+    listId: uuid('list_id')
+      .notNull()
+      .references(() => shoppingLists.id, { onDelete: 'cascade' }),
+    itemId: uuid('item_id')
+      .notNull()
+      .references(() => items.id, { onDelete: 'cascade' }),
+    qty: numeric('qty', { precision: 10, scale: 3 }).notNull(),
+    ...syncColumns,
+  },
+  (t) => [
+    index('shopping_list_entries_household_version_idx').on(t.householdId, t.serverVersion),
+    index('shopping_list_entries_list_idx').on(t.listId),
+    unique('shopping_list_entries_list_item_uq').on(t.listId, t.itemId),
+  ],
+);
+
+export const inventoryCounts = pgTable(
+  'inventory_counts',
+  {
+    id: uuid('id').primaryKey(),
+    householdId: uuid('household_id')
+      .notNull()
+      .references(() => households.id, { onDelete: 'cascade' }),
+    itemId: uuid('item_id')
+      .notNull()
+      .references(() => items.id, { onDelete: 'cascade' }),
+    qtyOnHand: numeric('qty_on_hand', { precision: 10, scale: 3 }).notNull().default('0'),
+    countedAt: timestamp('counted_at', { withTimezone: true }).notNull(),
+    ...syncColumns,
+  },
+  (t) => [
+    index('inventory_counts_household_version_idx').on(t.householdId, t.serverVersion),
+    unique('inventory_counts_household_item_uq').on(t.householdId, t.itemId),
   ],
 );

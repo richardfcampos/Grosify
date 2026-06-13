@@ -24,6 +24,8 @@
 
 | 2026-06-12 | Fase 1 (Catálogo): tabelas items/item_barcodes/stores com colunas sync + trigger server_version; rotas CRUD household-scoped; client gera UUIDv7; repository sobre Dexie (pull naive na carga, UI lê via useLiveQuery); scanner via pacote `barcode-detector` + manual; foto WebP 800px como blob local no Dexie | Fase 1 do plano; repository desde já evita rewrite na fase 3 |
 
+| 2026-06-13 | Fase 2 (Preços+Listas): tabelas price_records/shopping_lists/shopping_list_entries/inventory_counts + triggers; rotas com upsert (entry por lista+item, inventário por casa+item); telas listas múltiplas (recorrente/avulsa), detalhe com qty inline + total estimado, PrecoSheet (registrar/histórico/loja mais barata/alerta aumento), inventário com needed-qty; moeda da casa formatada por locale | Fase 2 do plano; domínio shared (cheapestStore/priceChange/neededQty/estimateTotal) reusado client+server |
+
 ## Bloqueios
 
 - Deploy (Railway/Neon/CF Pages/R2) precisa de contas/credenciais do usuário — build local primeiro, deploy quando usuário fornecer

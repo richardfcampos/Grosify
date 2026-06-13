@@ -1,0 +1,169 @@
+import { zValidator } from '@hono/zod-validator';
+import {
+  createListPayload,
+  createPricePayload,
+  setInventoryPayload,
+  setListEntryPayload,
+  updateListPayload,
+} from '@grosify/shared';
+import { and, eq, isNull } from 'drizzle-orm';
+import { Hono } from 'hono';
+import { db } from '../db/index.js';
+import {
+  inventoryCounts,
+  priceRecords,
+  shoppingListEntries,
+  shoppingLists,
+} from '../db/schema.js';
+import { requireHousehold, type HouseholdEnv } from '../middleware/household.js';
+
+export const shoppingRoute = new Hono<HouseholdEnv>()
+  .use(requireHousehold)
+
+  // ---------- Listas ----------
+  .get('/lists', async (c) => {
+    const hid = c.get('householdId');
+    const lists = await db
+      .select()
+      .from(shoppingLists)
+      .where(and(eq(shoppingLists.householdId, hid), isNull(shoppingLists.deletedAt)));
+    const entries = await db
+      .select()
+      .from(shoppingListEntries)
+      .where(and(eq(shoppingListEntries.householdId, hid), isNull(shoppingListEntries.deletedAt)));
+    return c.json({ lists, entries });
+  })
+
+  .post('/lists', zValidator('json', createListPayload), async (c) => {
+    const hid = c.get('householdId');
+    const p = c.req.valid('json');
+    const [list] = await db
+      .insert(shoppingLists)
+      .values({ id: p.id, householdId: hid, name: p.name, isRecurring: p.isRecurring })
+      .returning();
+    return c.json({ list }, 201);
+  })
+
+  .patch('/lists/:id', zValidator('json', updateListPayload), async (c) => {
+    const hid = c.get('householdId');
+    const [list] = await db
+      .update(shoppingLists)
+      .set({ ...c.req.valid('json'), updatedAt: new Date() })
+      .where(and(eq(shoppingLists.id, c.req.param('id')), eq(shoppingLists.householdId, hid)))
+      .returning();
+    if (!list) return c.json({ error: 'not_found' }, 404);
+    return c.json({ list });
+  })
+
+  .delete('/lists/:id', async (c) => {
+    const hid = c.get('householdId');
+    const id = c.req.param('id');
+    const now = new Date();
+    await db.transaction(async (tx) => {
+      await tx
+        .update(shoppingLists)
+        .set({ deletedAt: now, updatedAt: now })
+        .where(and(eq(shoppingLists.id, id), eq(shoppingLists.householdId, hid)));
+      await tx
+        .update(shoppingListEntries)
+        .set({ deletedAt: now, updatedAt: now })
+        .where(and(eq(shoppingListEntries.listId, id), eq(shoppingListEntries.householdId, hid)));
+    });
+    return c.json({ ok: true });
+  })
+
+  /** Upsert de entrada (item+qty) por (lista,item). */
+  .put('/lists/:id/entries', zValidator('json', setListEntryPayload), async (c) => {
+    const hid = c.get('householdId');
+    const listId = c.req.param('id');
+    const p = c.req.valid('json');
+    const [entry] = await db
+      .insert(shoppingListEntries)
+      .values({
+        id: p.id,
+        householdId: hid,
+        listId,
+        itemId: p.itemId,
+        qty: String(p.qty),
+      })
+      .onConflictDoUpdate({
+        target: [shoppingListEntries.listId, shoppingListEntries.itemId],
+        set: { qty: String(p.qty), deletedAt: null, updatedAt: new Date() },
+      })
+      .returning();
+    return c.json({ entry }, 201);
+  })
+
+  .delete('/lists/entries/:id', async (c) => {
+    const hid = c.get('householdId');
+    const now = new Date();
+    await db
+      .update(shoppingListEntries)
+      .set({ deletedAt: now, updatedAt: now })
+      .where(
+        and(
+          eq(shoppingListEntries.id, c.req.param('id')),
+          eq(shoppingListEntries.householdId, hid),
+        ),
+      );
+    return c.json({ ok: true });
+  })
+
+  // ---------- Preços ----------
+  .get('/prices', async (c) => {
+    const hid = c.get('householdId');
+    const rows = await db
+      .select()
+      .from(priceRecords)
+      .where(and(eq(priceRecords.householdId, hid), isNull(priceRecords.deletedAt)));
+    return c.json({ prices: rows });
+  })
+
+  .post('/prices', zValidator('json', createPricePayload), async (c) => {
+    const hid = c.get('householdId');
+    const p = c.req.valid('json');
+    const [price] = await db
+      .insert(priceRecords)
+      .values({
+        id: p.id,
+        householdId: hid,
+        itemId: p.itemId,
+        storeId: p.storeId,
+        priceCents: p.priceCents,
+        recordedAt: p.recordedAt ? new Date(p.recordedAt) : new Date(),
+        source: 'manual',
+      })
+      .returning();
+    return c.json({ price }, 201);
+  })
+
+  // ---------- Inventário ----------
+  .get('/inventory', async (c) => {
+    const hid = c.get('householdId');
+    const rows = await db
+      .select()
+      .from(inventoryCounts)
+      .where(and(eq(inventoryCounts.householdId, hid), isNull(inventoryCounts.deletedAt)));
+    return c.json({ inventory: rows });
+  })
+
+  /** Upsert da contagem por (casa,item). */
+  .put('/inventory', zValidator('json', setInventoryPayload), async (c) => {
+    const hid = c.get('householdId');
+    const p = c.req.valid('json');
+    const [count] = await db
+      .insert(inventoryCounts)
+      .values({
+        id: p.id,
+        householdId: hid,
+        itemId: p.itemId,
+        qtyOnHand: String(p.qtyOnHand),
+        countedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: [inventoryCounts.householdId, inventoryCounts.itemId],
+        set: { qtyOnHand: String(p.qtyOnHand), countedAt: new Date(), deletedAt: null, updatedAt: new Date() },
+      })
+      .returning();
+    return c.json({ count }, 201);
+  });

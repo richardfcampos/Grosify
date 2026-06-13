@@ -1,6 +1,10 @@
 import { z } from 'zod';
 import { itemSchema, storeSchema, unitSchema } from './index.js';
 
+const qty = z.number().nonnegative().multipleOf(0.001);
+const positiveQty = qty.refine((v) => v > 0, 'quantidade deve ser positiva');
+const isoDate = z.iso.datetime({ offset: true });
+
 const barcode = z.string().regex(/^\d{8,14}$/, 'barcode_invalid');
 
 /** Payload de criação de item (id gerado no client, com barcodes embutidos). */
@@ -43,3 +47,47 @@ export const updateStorePayload = z.object({
   lng: storeSchema.shape.lng.optional(),
 });
 export type UpdateStorePayload = z.infer<typeof updateStorePayload>;
+
+// ---------- Preços ----------
+
+export const createPricePayload = z.object({
+  id: z.uuid(),
+  itemId: z.uuid(),
+  storeId: z.uuid(),
+  priceCents: z.number().int().positive(),
+  recordedAt: isoDate.optional(),
+});
+export type CreatePricePayload = z.infer<typeof createPricePayload>;
+
+// ---------- Listas ----------
+
+export const createListPayload = z.object({
+  id: z.uuid(),
+  name: z.string().trim().min(1).max(100),
+  isRecurring: z.boolean().default(false),
+});
+export type CreateListPayload = z.infer<typeof createListPayload>;
+
+export const updateListPayload = z.object({
+  name: z.string().trim().min(1).max(100).optional(),
+  isRecurring: z.boolean().optional(),
+});
+export type UpdateListPayload = z.infer<typeof updateListPayload>;
+
+/** Upsert de entrada da lista (item + qty); idempotente por (lista,item). */
+export const setListEntryPayload = z.object({
+  id: z.uuid(),
+  itemId: z.uuid(),
+  qty: positiveQty,
+});
+export type SetListEntryPayload = z.infer<typeof setListEntryPayload>;
+
+// ---------- Inventário ----------
+
+/** Upsert da contagem de estoque de um item. */
+export const setInventoryPayload = z.object({
+  id: z.uuid(),
+  itemId: z.uuid(),
+  qtyOnHand: qty,
+});
+export type SetInventoryPayload = z.infer<typeof setInventoryPayload>;

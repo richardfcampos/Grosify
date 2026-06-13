@@ -4,8 +4,11 @@ import { AppLayout } from './features/catalog/app-layout.js';
 import { CadastroPage, EntrarPage } from './pages/auth-pages.js';
 import { DashboardPage } from './pages/dashboard-page.js';
 import { CasaPage, ConvitePage } from './pages/household-pages.js';
+import { InventarioPage } from './pages/inventario-page.js';
 import { ItemFormPage } from './pages/item-form-page.js';
 import { ItensPage } from './pages/itens-page.js';
+import { ListaDetailPage } from './pages/lista-detail-page.js';
+import { ListasPage } from './pages/listas-page.js';
 import { LojasPage } from './pages/lojas-page.js';
 
 const redirectSearch = z.object({ redirect: z.string().startsWith('/').optional() });
@@ -67,6 +70,21 @@ const lojasRoute = createRoute({
   path: '/lojas',
   component: LojasPage,
 });
+const listasRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/listas',
+  component: ListasPage,
+});
+const listaDetailRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/listas/$id',
+  component: ListaDetailPage,
+});
+const inventarioRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/inventario',
+  component: InventarioPage,
+});
 
 const routeTree = rootRoute.addChildren([
   entrarRoute,
@@ -79,6 +97,9 @@ const routeTree = rootRoute.addChildren([
     itemNovoRoute,
     itemEditRoute,
     lojasRoute,
+    listasRoute,
+    listaDetailRoute,
+    inventarioRoute,
   ]),
 ]);
 
