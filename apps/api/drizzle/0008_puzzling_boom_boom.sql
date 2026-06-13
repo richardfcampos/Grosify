@@ -1,0 +1,1 @@
+ALTER TABLE "items" ADD COLUMN "monthly_target" numeric(10, 3);

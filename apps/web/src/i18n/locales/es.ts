@@ -44,6 +44,17 @@ export default {
       copied: '¡Copiado!',
       language: 'Idioma',
     },
+    restock: {
+      title: 'Reposición del mes',
+      subtitle: 'Falta comprar, según tu inventario',
+      nothing: '¡Inventario al día! Nada que reponer.',
+      noTargets: 'Define el recomendado/mes en los artículos para generar la reposición.',
+      toBuy: 'Comprar',
+      estimatedTotal: 'Total estimado',
+      startShopping: 'Iniciar compra',
+      doInventory: 'Hacer inventario',
+      invite: 'Invitar a alguien',
+    },
     nav: {
       home: 'Inicio',
       lists: 'Listas',
@@ -88,6 +99,8 @@ export default {
       noStores: 'Agrega una tienda primero.',
     },
     catalog: {
+      monthlyTarget: 'Recomendado por mes',
+      monthlyTargetHint: 'Cuánto compras al mes (ej.: 10 kg de arroz)',
       itemsTitle: 'Artículos',
       searchItems: 'Buscar artículo…',
       noItems: 'Aún no hay artículos. Agrega el primero.',

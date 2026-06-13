@@ -23,6 +23,8 @@ export const itemSchema = syncMetaSchema.extend({
   category: z.string().trim().min(1).max(100).nullable(),
   photoKey: z.string().max(500).nullable(),
   unit: unitSchema,
+  /** Quantidade recomendada por mês (alvo de estoque). Null = sem reposição. */
+  monthlyTarget: z.number().nonnegative().nullable(),
 });
 export type Item = z.infer<typeof itemSchema>;
 

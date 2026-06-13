@@ -74,14 +74,21 @@ export function CompraPage() {
 
   return (
     <div className="min-h-dvh bg-stone-950 text-stone-50">
-      <header className="sticky top-0 z-10 flex items-center justify-between bg-stone-900 px-5 py-4">
-        <div>
-          <p className="text-xs uppercase tracking-wide text-stone-400">{t('shopping.current')}</p>
-          <p className="font-['Anton'] text-2xl" style={{ color: over ? '#F87171' : '#4ADE80' }}>
-            {fmt(current)}
-          </p>
-        </div>
-        <div className="text-right">
+      <header className="sticky top-0 z-10 bg-stone-900 px-5 pb-4 pt-3">
+        <button
+          onClick={() => navigate({ to: '/' })}
+          className="mb-2 text-sm text-stone-400"
+        >
+          ← {t('shopping.back')}
+        </button>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-wide text-stone-400">{t('shopping.current')}</p>
+            <p className="font-['Anton'] text-2xl" style={{ color: over ? '#F87171' : '#4ADE80' }}>
+              {fmt(current)}
+            </p>
+          </div>
+          <div className="text-right">
           <p className="text-xs uppercase tracking-wide text-stone-400">{t('shopping.estimated')}</p>
           <p className="font-mono text-sm text-stone-300">{fmt(estimated)}</p>
           {current > 0 && (
@@ -89,6 +96,7 @@ export function CompraPage() {
               {over ? '▲' : '▼'} {fmt(Math.abs(estimated - current))} {over ? t('shopping.above') : t('shopping.below')}
             </p>
           )}
+          </div>
         </div>
       </header>
 
@@ -153,10 +161,6 @@ export function CompraPage() {
         />
       )}
       {scannerOpen && <ScannerModal onDetect={onScanned} onClose={() => setScannerOpen(false)} />}
-
-      <button onClick={() => navigate({ to: '/listas' })} className="fixed left-4 top-4 z-20 text-sm text-stone-400">
-        ← {t('shopping.back')}
-      </button>
     </div>
   );
 }

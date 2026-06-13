@@ -44,6 +44,17 @@ export default {
       copied: 'Kopiert!',
       language: 'Sprache',
     },
+    restock: {
+      title: 'Monatliches Auffüllen',
+      subtitle: 'Zu kaufen, je nach Bestand',
+      nothing: 'Bestand ist gut! Nichts aufzufüllen.',
+      noTargets: 'Lege Empfohlen/Monat bei Artikeln fest, um die Liste zu erzeugen.',
+      toBuy: 'Kaufen',
+      estimatedTotal: 'Geschätzter Gesamtbetrag',
+      startShopping: 'Einkauf starten',
+      doInventory: 'Inventur machen',
+      invite: 'Jemanden einladen',
+    },
     nav: {
       home: 'Start',
       lists: 'Listen',
@@ -88,6 +99,8 @@ export default {
       noStores: 'Füge zuerst einen Laden hinzu.',
     },
     catalog: {
+      monthlyTarget: 'Empfohlen pro Monat',
+      monthlyTargetHint: 'Wie viel du monatlich kaufst (z. B. 10 kg Reis)',
       itemsTitle: 'Artikel',
       searchItems: 'Artikel suchen…',
       noItems: 'Noch keine Artikel. Füge den ersten hinzu.',

@@ -32,6 +32,7 @@ export interface NewItemInput {
   name: string;
   category?: string | null;
   unit: Unit;
+  monthlyTarget?: number | null;
   photoBlob?: Blob | null;
   barcodes: string[];
 }
@@ -48,6 +49,7 @@ export async function createItem(input: NewItemInput): Promise<string> {
     category: input.category ?? null,
     photoKey: null,
     unit: input.unit,
+    monthlyTarget: input.monthlyTarget ?? null,
     updatedAt: ts,
     deletedAt: null,
     serverVersion: 0,
@@ -67,7 +69,14 @@ export async function createItem(input: NewItemInput): Promise<string> {
   await enqueue({
     method: 'POST',
     path: '/catalog/items',
-    body: { id, name: input.name, category: input.category ?? undefined, unit: input.unit, barcodes: barcodeRows },
+    body: {
+      id,
+      name: input.name,
+      category: input.category ?? undefined,
+      unit: input.unit,
+      monthlyTarget: input.monthlyTarget ?? null,
+      barcodes: barcodeRows,
+    },
     rowId: id,
   });
   return id;
@@ -75,7 +84,13 @@ export async function createItem(input: NewItemInput): Promise<string> {
 
 export async function updateItem(
   id: string,
-  updates: { name?: string; category?: string | null; unit?: Unit; photoBlob?: Blob | null },
+  updates: {
+    name?: string;
+    category?: string | null;
+    unit?: Unit;
+    monthlyTarget?: number | null;
+    photoBlob?: Blob | null;
+  },
 ): Promise<void> {
   const { photoBlob, ...serverFields } = updates;
   await db.items.update(id, {
@@ -344,6 +359,74 @@ export async function startShoppingSession(listId: string): Promise<string> {
     method: 'POST',
     path: '/shopping/sessions',
     body: { id: sessionId, listId, startedAt: ts, items },
+    rowId: sessionId,
+  });
+  return sessionId;
+}
+
+/**
+ * Inicia sessão de reposição automática: itens com alvo mensal definido onde
+ * falta comprar (alvo − estoque > 0). Quantidade = alvo − estoque.
+ */
+export async function startReplenishmentSession(): Promise<string | null> {
+  const [items, prices, inventory] = await Promise.all([
+    db.items.filter((i) => i.deletedAt === null && i.monthlyTarget != null).toArray(),
+    db.prices.filter((p) => p.deletedAt === null).toArray(),
+    db.inventory.filter((i) => i.deletedAt === null).toArray(),
+  ]);
+  const onHand = new Map(inventory.map((i) => [i.itemId, i.qtyOnHand]));
+
+  const needed = items
+    .map((item) => ({ item, need: neededQty(item.monthlyTarget ?? 0, onHand.get(item.id) ?? 0) }))
+    .filter((x) => x.need > 0);
+  if (needed.length === 0) return null;
+
+  const sessionId = uuidv7();
+  const ts = nowISO();
+  const sessionItems = needed.map(({ item, need }) => {
+    const cheapest = cheapestStore(prices.filter((p) => p.itemId === item.id));
+    return {
+      id: uuidv7(),
+      itemId: item.id,
+      neededQty: need,
+      estimatedUnitPriceCents: cheapest?.priceCents ?? null,
+      estimatedPriceStoreId: cheapest?.storeId ?? null,
+    };
+  });
+
+  await db.sessions.put({
+    id: sessionId,
+    householdId: hid(),
+    listId: null,
+    storeId: null,
+    status: 'active',
+    startedAt: ts,
+    completedAt: null,
+    updatedAt: ts,
+    deletedAt: null,
+    serverVersion: 0,
+  });
+  await db.sessionItems.bulkPut(
+    sessionItems.map((it) => ({
+      id: it.id,
+      householdId: hid(),
+      sessionId,
+      itemId: it.itemId,
+      neededQty: it.neededQty,
+      estimatedUnitPriceCents: it.estimatedUnitPriceCents,
+      estimatedPriceStoreId: it.estimatedPriceStoreId,
+      checkedAt: null,
+      actualQty: null,
+      actualUnitPriceCents: null,
+      updatedAt: ts,
+      deletedAt: null,
+      serverVersion: 0,
+    })),
+  );
+  await enqueue({
+    method: 'POST',
+    path: '/shopping/sessions',
+    body: { id: sessionId, startedAt: ts, items: sessionItems },
     rowId: sessionId,
   });
   return sessionId;

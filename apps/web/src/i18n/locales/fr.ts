@@ -44,6 +44,17 @@ export default {
       copied: 'Copié !',
       language: 'Langue',
     },
+    restock: {
+      title: 'Réassort du mois',
+      subtitle: 'À acheter, selon votre stock',
+      nothing: 'Stock à jour ! Rien à réapprovisionner.',
+      noTargets: 'Définissez le recommandé/mois sur les articles pour générer la liste.',
+      toBuy: 'Acheter',
+      estimatedTotal: 'Total estimé',
+      startShopping: 'Commencer les courses',
+      doInventory: 'Faire l’inventaire',
+      invite: 'Inviter quelqu’un',
+    },
     nav: {
       home: 'Accueil',
       lists: 'Listes',
@@ -88,6 +99,8 @@ export default {
       noStores: 'Ajoutez d’abord un magasin.',
     },
     catalog: {
+      monthlyTarget: 'Recommandé par mois',
+      monthlyTargetHint: 'Combien vous achetez par mois (ex. : 10 kg de riz)',
       itemsTitle: 'Articles',
       searchItems: 'Rechercher un article…',
       noItems: 'Aucun article pour l’instant. Ajoutez le premier.',

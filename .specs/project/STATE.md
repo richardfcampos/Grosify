@@ -32,6 +32,8 @@
 
 | 2026-06-13 | Fase 6 (Polish+LGPD): rota /me (export JSON + excluir conta/casa cascade); tela Ajustes (idioma, export, excluir, sair); seed de 20 itens comuns pt-BR na tela vazia. **Fix de segurança**: Dexie vazava dados entre contas no mesmo browser — `initHousehold` limpa cache local quando muda de casa; logout também limpa | Fase 6. Pulei a 5 (billing) por precisar de credenciais Stripe |
 
+| 2026-06-13 | Reposição automática: `items.monthlyTarget` (quantidade recomendada/mês); HOME virou painel de reposição (lista o que falta = max(alvo−estoque,0), total estimado, "iniciar compra" cria sessão de reposição); inventário ganhou scanner (escanear código → quick-set de quantidade); convite movido pra Ajustes | Pedido do usuário: queixou que quantidades recomendadas estavam escondidas e faltava tela que gera lista de reposição |
+
 ## Limitações conhecidas (fase 6)
 - Logout com mutações pendentes na outbox perde os não-sincronizados (clearLocalData zera a fila). Avisar/forçar sync antes do logout no futuro.
 - Privacy policy é só endpoint de dados; falta o TEXTO da política (página estática) pra lançamento.

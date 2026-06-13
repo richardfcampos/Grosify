@@ -44,6 +44,17 @@ export default {
       copied: 'Copied!',
       language: 'Language',
     },
+    restock: {
+      title: 'Monthly restock',
+      subtitle: 'To buy, based on your stock',
+      nothing: 'Stock is good! Nothing to restock.',
+      noTargets: 'Set recommended/month on items to auto-generate the restock list.',
+      toBuy: 'Buy',
+      estimatedTotal: 'Estimated total',
+      startShopping: 'Start shopping',
+      doInventory: 'Do inventory',
+      invite: 'Invite someone',
+    },
     nav: {
       home: 'Home',
       lists: 'Lists',
@@ -88,6 +99,8 @@ export default {
       noStores: 'Add a store first.',
     },
     catalog: {
+      monthlyTarget: 'Recommended per month',
+      monthlyTargetHint: 'How much you buy monthly (e.g. 10 kg of rice)',
       itemsTitle: 'Items',
       searchItems: 'Search item…',
       noItems: 'No items yet. Add the first one.',

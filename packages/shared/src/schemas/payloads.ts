@@ -14,6 +14,7 @@ export const createItemPayload = z.object({
   category: itemSchema.shape.category.optional(),
   photoKey: itemSchema.shape.photoKey.optional(),
   unit: unitSchema.default('un'),
+  monthlyTarget: z.number().nonnegative().nullable().optional(),
   barcodes: z.array(z.object({ id: z.uuid(), barcode })).max(20).default([]),
 });
 export type CreateItemPayload = z.infer<typeof createItemPayload>;
@@ -23,6 +24,7 @@ export const updateItemPayload = z.object({
   category: itemSchema.shape.category.optional(),
   photoKey: itemSchema.shape.photoKey.optional(),
   unit: unitSchema.optional(),
+  monthlyTarget: z.number().nonnegative().nullable().optional(),
 });
 export type UpdateItemPayload = z.infer<typeof updateItemPayload>;
 

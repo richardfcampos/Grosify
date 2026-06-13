@@ -44,6 +44,17 @@ export default {
       copied: 'Copiato!',
       language: 'Lingua',
     },
+    restock: {
+      title: 'Rifornimento del mese',
+      subtitle: 'Da comprare, in base alle scorte',
+      nothing: 'Scorte a posto! Niente da rifornire.',
+      noTargets: 'Imposta il consigliato/mese sugli articoli per generare il rifornimento.',
+      toBuy: 'Comprare',
+      estimatedTotal: 'Totale stimato',
+      startShopping: 'Inizia spesa',
+      doInventory: 'Fai inventario',
+      invite: 'Invita qualcuno',
+    },
     nav: {
       home: 'Home',
       lists: 'Liste',
@@ -88,6 +99,8 @@ export default {
       noStores: 'Aggiungi prima un negozio.',
     },
     catalog: {
+      monthlyTarget: 'Consigliato al mese',
+      monthlyTargetHint: 'Quanto compri al mese (es.: 10 kg di riso)',
       itemsTitle: 'Articoli',
       searchItems: 'Cerca articolo…',
       noItems: 'Ancora nessun articolo. Aggiungi il primo.',
