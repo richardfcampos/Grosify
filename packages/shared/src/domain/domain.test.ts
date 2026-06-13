@@ -24,6 +24,7 @@ function record(partial: Partial<PriceRecord> & Pick<PriceRecord, 'storeId' | 'p
     source: 'manual',
     updatedAt: partial.recordedAt,
     deletedAt: null,
+    serverVersion: seq,
     ...partial,
   };
 }

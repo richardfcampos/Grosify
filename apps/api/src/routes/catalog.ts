@@ -75,6 +75,7 @@ export const catalogRoute = new Hono<HouseholdEnv>()
 
     try {
       const created = await db.transaction(async (tx) => {
+        // onConflictDoNothing torna o replay da outbox idempotente
         const [item] = await tx
           .insert(items)
           .values({
@@ -85,6 +86,7 @@ export const catalogRoute = new Hono<HouseholdEnv>()
             photoKey: payload.photoKey ?? null,
             unit: payload.unit,
           })
+          .onConflictDoNothing()
           .returning();
         const insertedBarcodes = payload.barcodes.length
           ? await tx
@@ -97,9 +99,10 @@ export const catalogRoute = new Hono<HouseholdEnv>()
                   barcode: b.barcode,
                 })),
               )
+              .onConflictDoNothing()
               .returning()
           : [];
-        return { ...item!, barcodes: insertedBarcodes };
+        return item ? { ...item, barcodes: insertedBarcodes } : null;
       });
       return c.json({ item: created }, 201);
     } catch (err) {
@@ -187,8 +190,9 @@ export const catalogRoute = new Hono<HouseholdEnv>()
         lat: p.lat ?? null,
         lng: p.lng ?? null,
       })
+      .onConflictDoNothing()
       .returning();
-    return c.json({ store }, 201);
+    return c.json({ store: store ?? null }, 201);
   })
 
   .patch('/stores/:id', zValidator('json', updateStorePayload), async (c) => {

@@ -135,6 +135,11 @@ export default {
       barcode_exists: 'That barcode already exists.',
       generic: 'Something went wrong, please try again',
     },
+    sync: {
+      offline: 'Offline',
+      pending_one: '{{count}} pending',
+      pending_other: '{{count}} pending',
+    },
     common: {
       loading: 'Loading…',
       cancel: 'Cancel',

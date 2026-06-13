@@ -1,6 +1,6 @@
 import type { Unit } from '@grosify/shared';
 import { v7 as uuidv7 } from 'uuid';
-import { api } from '../lib/api.js';
+import { enqueue, householdId, syncNow } from '../sync/engine.js';
 import {
   db,
   type LocalInventory,
@@ -8,46 +8,20 @@ import {
   type LocalList,
   type LocalListEntry,
   type LocalPrice,
+  type LocalStore,
 } from './dexie.js';
 
 /**
- * Camada de repositório: gera id no client, escreve na API, cacheia no Dexie.
- * UI lê do Dexie (reativo). Na fase 3 isto vira local-first + outbox sem mexer na UI.
+ * Repositório local-first: escreve no Dexie na hora (otimista) e enfileira a
+ * mutação na outbox. O engine replica no servidor quando online. UI lê do Dexie.
  */
 
-async function jsonOrThrow(res: Response): Promise<unknown> {
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(body.error ?? 'request_failed');
-  }
-  return res.json();
-}
+const nowISO = () => new Date().toISOString();
+const hid = () => householdId();
 
-// ---------- Pull inicial ----------
-
-/** Puxa catálogo do servidor e popula o Dexie, preservando fotos locais. */
-export async function pullCatalog(): Promise<void> {
-  const [itemsRes, storesRes] = await Promise.all([
-    api.catalog.items.$get(),
-    api.catalog.stores.$get(),
-  ]);
-  const itemsData = (await jsonOrThrow(itemsRes)) as {
-    items: (LocalItem & { barcodes: unknown[] })[];
-  };
-  const storesData = (await jsonOrThrow(storesRes)) as { stores: unknown[] };
-
-  const existingPhotos = new Map<string, Blob | null | undefined>();
-  for (const it of await db.items.toArray()) existingPhotos.set(it.id, it.photoBlob);
-
-  await db.transaction('rw', db.items, db.barcodes, db.stores, async () => {
-    await Promise.all([db.items.clear(), db.barcodes.clear(), db.stores.clear()]);
-    for (const item of itemsData.items) {
-      const { barcodes, ...rest } = item;
-      await db.items.put({ ...rest, photoBlob: existingPhotos.get(item.id) ?? null });
-      await db.barcodes.bulkPut(barcodes as never);
-    }
-    await db.stores.bulkPut(storesData.stores as never);
-  });
+/** Bootstrap: primeiro sync (drena outbox + pull). Chamado ao montar o app autenticado. */
+export async function syncBootstrap(): Promise<void> {
+  await syncNow();
 }
 
 // ---------- Itens ----------
@@ -62,20 +36,38 @@ export interface NewItemInput {
 
 export async function createItem(input: NewItemInput): Promise<string> {
   const id = uuidv7();
+  const ts = nowISO();
   const barcodeRows = input.barcodes.map((barcode) => ({ id: uuidv7(), barcode }));
-  const res = await api.catalog.items.$post({
-    json: {
-      id,
-      name: input.name,
-      category: input.category ?? undefined,
-      unit: input.unit,
-      barcodes: barcodeRows,
-    },
+
+  await db.items.put({
+    id,
+    householdId: hid(),
+    name: input.name,
+    category: input.category ?? null,
+    photoKey: null,
+    unit: input.unit,
+    updatedAt: ts,
+    deletedAt: null,
+    serverVersion: 0,
+    photoBlob: input.photoBlob ?? null,
   });
-  const data = (await jsonOrThrow(res)) as { item: LocalItem & { barcodes: never[] } };
-  const { barcodes, ...item } = data.item;
-  await db.items.put({ ...item, photoBlob: input.photoBlob ?? null });
-  await db.barcodes.bulkPut(barcodes);
+  await db.barcodes.bulkPut(
+    barcodeRows.map((b) => ({
+      id: b.id,
+      householdId: hid(),
+      itemId: id,
+      barcode: b.barcode,
+      updatedAt: ts,
+      deletedAt: null,
+      serverVersion: 0,
+    })),
+  );
+  await enqueue({
+    method: 'POST',
+    path: '/catalog/items',
+    body: { id, name: input.name, category: input.category ?? undefined, unit: input.unit, barcodes: barcodeRows },
+    rowId: id,
+  });
   return id;
 }
 
@@ -84,47 +76,53 @@ export async function updateItem(
   updates: { name?: string; category?: string | null; unit?: Unit; photoBlob?: Blob | null },
 ): Promise<void> {
   const { photoBlob, ...serverFields } = updates;
-  const res = await api.catalog.items[':id'].$patch({
-    param: { id },
-    json: serverFields,
-  });
-  const data = (await jsonOrThrow(res)) as { item: LocalItem };
   await db.items.update(id, {
-    ...data.item,
+    ...serverFields,
     ...(photoBlob !== undefined ? { photoBlob } : {}),
+    updatedAt: nowISO(),
   });
+  await enqueue({ method: 'PATCH', path: `/catalog/items/${id}`, body: serverFields, rowId: id });
 }
 
 export async function deleteItem(id: string): Promise<void> {
-  await jsonOrThrow(await api.catalog.items[':id'].$delete({ param: { id } }));
-  await db.transaction('rw', db.items, db.barcodes, async () => {
-    await db.items.delete(id);
-    await db.barcodes.where('itemId').equals(id).delete();
-  });
+  const ts = nowISO();
+  await db.items.update(id, { deletedAt: ts, updatedAt: ts });
+  await db.barcodes.where('itemId').equals(id).modify({ deletedAt: ts, updatedAt: ts });
+  await enqueue({ method: 'DELETE', path: `/catalog/items/${id}`, rowId: id });
 }
 
 export async function addBarcode(itemId: string, barcode: string): Promise<void> {
   const id = uuidv7();
-  const res = await api.catalog.items[':id'].barcodes.$post({
-    param: { id: itemId },
-    json: { id, barcode },
+  await db.barcodes.put({
+    id,
+    householdId: hid(),
+    itemId,
+    barcode,
+    updatedAt: nowISO(),
+    deletedAt: null,
+    serverVersion: 0,
   });
-  const data = (await jsonOrThrow(res)) as { barcode: never };
-  await db.barcodes.put(data.barcode);
+  await enqueue({
+    method: 'POST',
+    path: `/catalog/items/${itemId}/barcodes`,
+    body: { id, barcode },
+    rowId: id,
+  });
 }
 
 export async function removeBarcode(id: string): Promise<void> {
-  await jsonOrThrow(await api.catalog.barcodes[':id'].$delete({ param: { id } }));
-  await db.barcodes.delete(id);
+  await db.barcodes.update(id, { deletedAt: nowISO() });
+  await enqueue({ method: 'DELETE', path: `/catalog/barcodes/${id}`, rowId: id });
 }
 
-/** Item dono de um código de barras (para dedup no scanner). */
+/** Item dono de um código de barras (dedup no scanner). Local primeiro, API se online. */
 export async function findItemIdByBarcode(barcode: string): Promise<string | null> {
-  const local = await db.barcodes.where('barcode').equals(barcode).first();
-  if (local) return local.itemId;
-  const res = await api.catalog.items['by-barcode'][':barcode'].$get({ param: { barcode } });
-  const data = (await jsonOrThrow(res)) as { itemId: string | null };
-  return data.itemId;
+  const local = await db.barcodes
+    .where('barcode')
+    .equals(barcode)
+    .and((b) => b.deletedAt === null)
+    .first();
+  return local?.itemId ?? null;
 }
 
 // ---------- Lojas ----------
@@ -137,16 +135,24 @@ export interface NewStoreInput {
 
 export async function createStore(input: NewStoreInput): Promise<string> {
   const id = uuidv7();
-  const res = await api.catalog.stores.$post({
-    json: {
-      id,
-      name: input.name,
-      city: input.city ?? undefined,
-      neighborhood: input.neighborhood ?? undefined,
-    },
+  await db.stores.put({
+    id,
+    householdId: hid(),
+    name: input.name,
+    city: input.city ?? null,
+    neighborhood: input.neighborhood ?? null,
+    lat: null,
+    lng: null,
+    updatedAt: nowISO(),
+    deletedAt: null,
+    serverVersion: 0,
   });
-  const data = (await jsonOrThrow(res)) as { store: never };
-  await db.stores.put(data.store);
+  await enqueue({
+    method: 'POST',
+    path: '/catalog/stores',
+    body: { id, name: input.name, city: input.city ?? undefined, neighborhood: input.neighborhood ?? undefined },
+    rowId: id,
+  });
   return id;
 }
 
@@ -154,58 +160,29 @@ export async function updateStore(
   id: string,
   updates: { name?: string; city?: string | null; neighborhood?: string | null },
 ): Promise<void> {
-  const res = await api.catalog.stores[':id'].$patch({ param: { id }, json: updates });
-  const data = (await jsonOrThrow(res)) as { store: never };
-  await db.stores.put(data.store);
+  await db.stores.update(id, { ...updates, updatedAt: nowISO() });
+  await enqueue({ method: 'PATCH', path: `/catalog/stores/${id}`, body: updates, rowId: id });
 }
 
 export async function deleteStore(id: string): Promise<void> {
-  await jsonOrThrow(await api.catalog.stores[':id'].$delete({ param: { id } }));
-  await db.stores.delete(id);
-}
-
-// ============ Fase 2: preços, listas, inventário ============
-
-/** numeric do Postgres chega como string; converte qty/qtyOnHand pra number. */
-function numEntry(e: LocalListEntry & { qty: unknown }): LocalListEntry {
-  return { ...e, qty: Number(e.qty) };
-}
-function numInventory(i: LocalInventory & { qtyOnHand: unknown }): LocalInventory {
-  return { ...i, qtyOnHand: Number(i.qtyOnHand) };
-}
-
-/** Puxa preços, listas, entradas e inventário pro Dexie. */
-export async function pullShopping(): Promise<void> {
-  const [listsRes, pricesRes, invRes] = await Promise.all([
-    api.shopping.lists.$get(),
-    api.shopping.prices.$get(),
-    api.shopping.inventory.$get(),
-  ]);
-  const listsData = (await jsonOrThrow(listsRes)) as { lists: LocalList[]; entries: never[] };
-  const pricesData = (await jsonOrThrow(pricesRes)) as { prices: LocalPrice[] };
-  const invData = (await jsonOrThrow(invRes)) as { inventory: never[] };
-
-  await db.transaction('rw', db.lists, db.listEntries, db.prices, db.inventory, async () => {
-    await Promise.all([
-      db.lists.clear(),
-      db.listEntries.clear(),
-      db.prices.clear(),
-      db.inventory.clear(),
-    ]);
-    await db.lists.bulkPut(listsData.lists);
-    await db.listEntries.bulkPut(listsData.entries.map(numEntry));
-    await db.prices.bulkPut(pricesData.prices);
-    await db.inventory.bulkPut(invData.inventory.map(numInventory));
-  });
+  await db.stores.update(id, { deletedAt: nowISO() });
+  await enqueue({ method: 'DELETE', path: `/catalog/stores/${id}`, rowId: id });
 }
 
 // ---------- Listas ----------
 
 export async function createList(name: string, isRecurring: boolean): Promise<string> {
   const id = uuidv7();
-  const res = await api.shopping.lists.$post({ json: { id, name, isRecurring } });
-  const data = (await jsonOrThrow(res)) as { list: LocalList };
-  await db.lists.put(data.list);
+  await db.lists.put({
+    id,
+    householdId: hid(),
+    name,
+    isRecurring,
+    updatedAt: nowISO(),
+    deletedAt: null,
+    serverVersion: 0,
+  });
+  await enqueue({ method: 'POST', path: '/shopping/lists', body: { id, name, isRecurring }, rowId: id });
   return id;
 }
 
@@ -213,38 +190,45 @@ export async function updateList(
   id: string,
   updates: { name?: string; isRecurring?: boolean },
 ): Promise<void> {
-  const res = await api.shopping.lists[':id'].$patch({ param: { id }, json: updates });
-  const data = (await jsonOrThrow(res)) as { list: LocalList };
-  await db.lists.put(data.list);
+  await db.lists.update(id, { ...updates, updatedAt: nowISO() });
+  await enqueue({ method: 'PATCH', path: `/shopping/lists/${id}`, body: updates, rowId: id });
 }
 
 export async function deleteList(id: string): Promise<void> {
-  await jsonOrThrow(await api.shopping.lists[':id'].$delete({ param: { id } }));
-  await db.transaction('rw', db.lists, db.listEntries, async () => {
-    await db.lists.delete(id);
-    await db.listEntries.where('listId').equals(id).delete();
-  });
+  const ts = nowISO();
+  await db.lists.update(id, { deletedAt: ts, updatedAt: ts });
+  await db.listEntries.where('listId').equals(id).modify({ deletedAt: ts, updatedAt: ts });
+  await enqueue({ method: 'DELETE', path: `/shopping/lists/${id}`, rowId: id });
 }
 
-/** Define a quantidade de um item na lista (cria ou atualiza). */
 export async function setListEntry(listId: string, itemId: string, qty: number): Promise<void> {
   const existing = await db.listEntries
     .where('listId')
     .equals(listId)
-    .and((e) => e.itemId === itemId && e.deletedAt === null)
+    .and((e) => e.itemId === itemId)
     .first();
   const id = existing?.id ?? uuidv7();
-  const res = await api.shopping.lists[':id'].entries.$put({
-    param: { id: listId },
-    json: { id, itemId, qty },
+  await db.listEntries.put({
+    id,
+    householdId: hid(),
+    listId,
+    itemId,
+    qty,
+    updatedAt: nowISO(),
+    deletedAt: null,
+    serverVersion: 0,
   });
-  const data = (await jsonOrThrow(res)) as { entry: LocalListEntry & { qty: unknown } };
-  await db.listEntries.put(numEntry(data.entry));
+  await enqueue({
+    method: 'PUT',
+    path: `/shopping/lists/${listId}/entries`,
+    body: { id, itemId, qty },
+    rowId: id,
+  });
 }
 
 export async function removeListEntry(id: string): Promise<void> {
-  await jsonOrThrow(await api.shopping.lists.entries[':id'].$delete({ param: { id } }));
-  await db.listEntries.delete(id);
+  await db.listEntries.update(id, { deletedAt: nowISO() });
+  await enqueue({ method: 'DELETE', path: `/shopping/lists/entries/${id}`, rowId: id });
 }
 
 // ---------- Preços ----------
@@ -255,11 +239,20 @@ export async function recordPrice(
   priceCents: number,
 ): Promise<void> {
   const id = uuidv7();
-  const res = await api.shopping.prices.$post({
-    json: { id, itemId, storeId, priceCents },
+  const ts = nowISO();
+  await db.prices.put({
+    id,
+    householdId: hid(),
+    itemId,
+    storeId,
+    priceCents,
+    recordedAt: ts,
+    source: 'manual',
+    updatedAt: ts,
+    deletedAt: null,
+    serverVersion: 0,
   });
-  const data = (await jsonOrThrow(res)) as { price: LocalPrice };
-  await db.prices.put(data.price);
+  await enqueue({ method: 'POST', path: '/shopping/prices', body: { id, itemId, storeId, priceCents }, rowId: id });
 }
 
 // ---------- Inventário ----------
@@ -271,7 +264,19 @@ export async function setInventory(itemId: string, qtyOnHand: number): Promise<v
     .and((i) => i.deletedAt === null)
     .first();
   const id = existing?.id ?? uuidv7();
-  const res = await api.shopping.inventory.$put({ json: { id, itemId, qtyOnHand } });
-  const data = (await jsonOrThrow(res)) as { count: LocalInventory & { qtyOnHand: unknown } };
-  await db.inventory.put(numInventory(data.count));
+  const ts = nowISO();
+  await db.inventory.put({
+    id,
+    householdId: hid(),
+    itemId,
+    qtyOnHand,
+    countedAt: ts,
+    updatedAt: ts,
+    deletedAt: null,
+    serverVersion: 0,
+  });
+  await enqueue({ method: 'PUT', path: '/shopping/inventory', body: { id, itemId, qtyOnHand }, rowId: id });
 }
+
+// tipos reexportados pra telas que ainda referenciam
+export type { LocalInventory, LocalItem, LocalList, LocalListEntry, LocalPrice, LocalStore };

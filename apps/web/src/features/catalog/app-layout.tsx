@@ -1,7 +1,8 @@
 import { Link, Outlet, useLocation } from '@tanstack/react-router';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { pullCatalog, pullShopping } from '../../db/repositories.js';
+import { pendingCount, setHouseholdId, startSync } from '../../sync/engine.js';
 import { useSession } from '../../lib/auth-client.js';
 import { useMembership } from '../../lib/use-membership.js';
 import { Loading } from '../../pages/household-pages.js';
@@ -20,13 +21,25 @@ export function AppLayout() {
   const location = useLocation();
   const { data: session, isPending } = useSession();
   const membership = useMembership(!!session);
-  const [synced, setSynced] = useState(false);
+  const [online, setOnline] = useState(navigator.onLine);
+  const pending = useLiveQuery(() => pendingCount(), [], 0);
 
   useEffect(() => {
     if (membership.data) {
-      Promise.all([pullCatalog(), pullShopping()]).finally(() => setSynced(true));
+      setHouseholdId(membership.data.householdId);
+      startSync();
     }
   }, [membership.data]);
+
+  useEffect(() => {
+    const update = () => setOnline(navigator.onLine);
+    window.addEventListener('online', update);
+    window.addEventListener('offline', update);
+    return () => {
+      window.removeEventListener('online', update);
+      window.removeEventListener('offline', update);
+    };
+  }, []);
 
   if (isPending || (session && membership.isLoading)) return <Loading />;
   if (!session) return <Navigate to="/entrar" search={{ redirect: location.pathname }} />;
@@ -54,9 +67,9 @@ export function AppLayout() {
           );
         })}
       </nav>
-      {!synced && (
-        <span className="pointer-events-none fixed right-3 top-3 text-xs text-zinc-400">
-          {t('common.loading')}
+      {(!online || pending > 0) && (
+        <span className="pointer-events-none fixed right-3 top-3 rounded-full bg-zinc-900/90 px-2.5 py-1 text-xs font-medium text-white">
+          {!online ? t('sync.offline') : t('sync.pending', { count: pending })}
         </span>
       )}
     </div>

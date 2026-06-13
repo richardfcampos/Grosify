@@ -9,6 +9,8 @@ export const syncMetaSchema = z.object({
   householdId: z.uuid(),
   updatedAt: isoDate,
   deletedAt: isoDate.nullable(),
+  /** Cursor atribuído pelo servidor (trigger). 0 em linhas locais ainda não sincronizadas. */
+  serverVersion: z.number().int().nonnegative(),
 });
 export type SyncMeta = z.infer<typeof syncMetaSchema>;
 

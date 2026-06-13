@@ -26,6 +26,13 @@
 
 | 2026-06-13 | Fase 2 (Preços+Listas): tabelas price_records/shopping_lists/shopping_list_entries/inventory_counts + triggers; rotas com upsert (entry por lista+item, inventário por casa+item); telas listas múltiplas (recorrente/avulsa), detalhe com qty inline + total estimado, PrecoSheet (registrar/histórico/loja mais barata/alerta aumento), inventário com needed-qty; moeda da casa formatada por locale | Fase 2 do plano; domínio shared (cheapestStore/priceChange/neededQty/estimateTotal) reusado client+server |
 
+| 2026-06-13 | Fase 3 (Sync offline): outbox no Dexie (replay HTTP das rotas existentes, idempotentes via ON CONFLICT DO NOTHING); pull incremental `/sync/pull?cursor=N` com tombstones; engine com gatilhos online/focus/30s; repos viraram local-first (escrita otimista + enqueue); status UI offline/pendências | Fase 3. Desvios do plano original (honestos): (a) reuso rotas REST em vez de /sync/push genérico — menos código novo, transporte trocado; (b) sem tabela `clients` (idempotência via id+upsert); (c) LWW vira "last-sync-wins" (server seta updatedAt) — aceitável p/ casa 2-4 pessoas; (d) `packages/sync` adiado pro Expo (fase 7) — engine fica no web |
+
+## Limitações conhecidas (fase 3)
+- Sessão/membership exigem API online: navegação com page-load fresca offline cai no login. Uso real (já logado, fica offline mid-sessão via SPA nav) funciona — verificado. App shell offline via Workbox precache (build gera SW; testar em prod build).
+- Edição concorrente do MESMO item por 2 membros offline: last-sync-wins (sem per-field LWW). Raro em escala de casa.
+- Mutação rejeitada com resposta recebida (ex. item_limit) é removida da outbox mas a linha otimista local permanece — reconciliar no futuro.
+
 ## Bloqueios
 
 - Deploy (Railway/Neon/CF Pages/R2) precisa de contas/credenciais do usuário — build local primeiro, deploy quando usuário fornecer

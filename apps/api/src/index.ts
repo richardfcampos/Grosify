@@ -7,6 +7,7 @@ import { rateLimit } from './middleware/rate-limit.js';
 import { catalogRoute } from './routes/catalog.js';
 import { householdsRoute } from './routes/households.js';
 import { shoppingRoute } from './routes/shopping.js';
+import { syncRoute } from './routes/sync.js';
 
 const webOrigin = process.env.WEB_ORIGIN ?? 'http://localhost:5173';
 
@@ -26,7 +27,8 @@ const app = new Hono()
   .on(['GET', 'POST'], '/api/auth/*', (c) => auth.handler(c.req.raw))
   .route('/households', householdsRoute)
   .route('/catalog', catalogRoute)
-  .route('/shopping', shoppingRoute);
+  .route('/shopping', shoppingRoute)
+  .route('/sync', syncRoute);
 
 export type AppType = typeof app;
 

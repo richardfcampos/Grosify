@@ -40,8 +40,9 @@ export const shoppingRoute = new Hono<HouseholdEnv>()
     const [list] = await db
       .insert(shoppingLists)
       .values({ id: p.id, householdId: hid, name: p.name, isRecurring: p.isRecurring })
+      .onConflictDoNothing()
       .returning();
-    return c.json({ list }, 201);
+    return c.json({ list: list ?? null }, 201);
   })
 
   .patch('/lists/:id', zValidator('json', updateListPayload), async (c) => {
@@ -133,8 +134,9 @@ export const shoppingRoute = new Hono<HouseholdEnv>()
         recordedAt: p.recordedAt ? new Date(p.recordedAt) : new Date(),
         source: 'manual',
       })
+      .onConflictDoNothing()
       .returning();
-    return c.json({ price }, 201);
+    return c.json({ price: price ?? null }, 201);
   })
 
   // ---------- Inventário ----------
