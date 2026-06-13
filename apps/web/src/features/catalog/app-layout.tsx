@@ -2,7 +2,7 @@ import { Link, Outlet, useLocation } from '@tanstack/react-router';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { pendingCount, setHouseholdId, startSync } from '../../sync/engine.js';
+import { initHousehold, pendingCount, startSync } from '../../sync/engine.js';
 import { useSession } from '../../lib/auth-client.js';
 import { useMembership } from '../../lib/use-membership.js';
 import { Loading } from '../../pages/household-pages.js';
@@ -26,8 +26,7 @@ export function AppLayout() {
 
   useEffect(() => {
     if (membership.data) {
-      setHouseholdId(membership.data.householdId);
-      startSync();
+      void initHousehold(membership.data.householdId).then(startSync);
     }
   }, [membership.data]);
 

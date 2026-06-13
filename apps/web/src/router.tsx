@@ -1,6 +1,7 @@
 import { createRootRoute, createRoute, createRouter, Outlet } from '@tanstack/react-router';
 import { z } from 'zod';
 import { AppLayout } from './features/catalog/app-layout.js';
+import { AjustesPage } from './pages/ajustes-page.js';
 import { CadastroPage, EntrarPage } from './pages/auth-pages.js';
 import { DashboardPage } from './pages/dashboard-page.js';
 import { CasaPage, ConvitePage } from './pages/household-pages.js';
@@ -91,6 +92,11 @@ const compraRoute = createRoute({
   path: '/compra/$id',
   component: CompraPage,
 });
+const ajustesRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/ajustes',
+  component: AjustesPage,
+});
 
 const routeTree = rootRoute.addChildren([
   entrarRoute,
@@ -107,6 +113,7 @@ const routeTree = rootRoute.addChildren([
     listaDetailRoute,
     inventarioRoute,
     compraRoute,
+    ajustesRoute,
   ]),
 ]);
 

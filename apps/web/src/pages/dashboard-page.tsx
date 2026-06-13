@@ -1,18 +1,16 @@
 import { useMutation } from '@tanstack/react-query';
-import { Navigate, useNavigate } from '@tanstack/react-router';
+import { Link, Navigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { SUPPORTED_LANGUAGES } from '../i18n/index.js';
 import { api } from '../lib/api.js';
-import { signOut, useSession } from '../lib/auth-client.js';
+import { useSession } from '../lib/auth-client.js';
 import { useMembership } from '../lib/use-membership.js';
 import { Loading } from './household-pages.js';
 
 export function DashboardPage() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { data: session, isPending } = useSession();
   const membership = useMembership(!!session);
-  const navigate = useNavigate();
   const [inviteCode, setInviteCode] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -43,15 +41,9 @@ export function DashboardPage() {
             </p>
           </div>
         </div>
-        <button
-          onClick={async () => {
-            await signOut();
-            navigate({ to: '/entrar', search: { redirect: undefined } });
-          }}
-          className="text-sm font-medium text-zinc-500"
-        >
-          {t('auth.logout')}
-        </button>
+        <Link to="/ajustes" aria-label={t('settings.title')} className="text-2xl text-zinc-500">
+          ⚙
+        </Link>
       </header>
 
       <section className="rounded-2xl border border-dashed border-zinc-300 p-6 text-center text-zinc-500">
@@ -85,24 +77,6 @@ export function DashboardPage() {
             {invite.isPending ? t('dashboard.generating') : t('dashboard.generateInvite')}
           </button>
         )}
-      </section>
-
-      <section className="mt-auto flex items-center justify-between rounded-2xl border border-zinc-200 p-4">
-        <label htmlFor="lang" className="text-sm font-medium text-zinc-600">
-          {t('dashboard.language')}
-        </label>
-        <select
-          id="lang"
-          value={i18n.resolvedLanguage}
-          onChange={(e) => i18n.changeLanguage(e.target.value)}
-          className="min-h-11 rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm font-medium"
-        >
-          {SUPPORTED_LANGUAGES.map((lang) => (
-            <option key={lang.code} value={lang.code}>
-              {lang.label}
-            </option>
-          ))}
-        </select>
       </section>
     </main>
   );

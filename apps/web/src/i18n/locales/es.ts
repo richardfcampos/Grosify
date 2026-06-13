@@ -135,6 +135,18 @@ export default {
       barcode_exists: 'Ese código de barras ya existe.',
       generic: 'Algo salió mal, inténtalo de nuevo',
     },
+    settings: {
+      title: 'Ajustes',
+      account: 'Cuenta',
+      data: 'Tus datos',
+      exportData: 'Exportar mis datos',
+      exportHint: 'Descarga todo en JSON (privacidad).',
+      deleteAccount: 'Eliminar cuenta y datos',
+      deleteHint: 'Borra tu cuenta y todo el hogar. Irreversible.',
+      deleteConfirm: '¿Seguro? Esto borra TODO y no se puede deshacer.',
+      seedItems: 'Agregar artículos comunes',
+      seedHint: 'Empieza con artículos de mercado comunes.',
+    },
     shopping: {
       start: 'Iniciar compra',
       title: 'Modo compra',

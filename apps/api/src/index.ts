@@ -6,6 +6,7 @@ import { auth } from './auth.js';
 import { rateLimit } from './middleware/rate-limit.js';
 import { catalogRoute } from './routes/catalog.js';
 import { householdsRoute } from './routes/households.js';
+import { meRoute } from './routes/me.js';
 import { shoppingRoute } from './routes/shopping.js';
 import { syncRoute } from './routes/sync.js';
 
@@ -28,7 +29,8 @@ const app = new Hono()
   .route('/households', householdsRoute)
   .route('/catalog', catalogRoute)
   .route('/shopping', shoppingRoute)
-  .route('/sync', syncRoute);
+  .route('/sync', syncRoute)
+  .route('/me', meRoute);
 
 export type AppType = typeof app;
 

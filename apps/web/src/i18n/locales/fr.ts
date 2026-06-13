@@ -135,6 +135,18 @@ export default {
       barcode_exists: 'Ce code-barres existe déjà.',
       generic: 'Une erreur est survenue, réessayez',
     },
+    settings: {
+      title: 'Réglages',
+      account: 'Compte',
+      data: 'Vos données',
+      exportData: 'Exporter mes données',
+      exportHint: 'Télécharge tout en JSON (confidentialité).',
+      deleteAccount: 'Supprimer le compte et les données',
+      deleteHint: 'Efface votre compte et tout le foyer. Irréversible.',
+      deleteConfirm: 'Sûr ? Cela efface TOUT et est irréversible.',
+      seedItems: 'Ajouter des articles courants',
+      seedHint: 'Commencez avec des articles courants.',
+    },
     shopping: {
       start: 'Commencer les courses',
       title: 'Mode courses',

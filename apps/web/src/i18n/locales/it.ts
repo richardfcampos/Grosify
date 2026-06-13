@@ -135,6 +135,18 @@ export default {
       barcode_exists: 'Questo codice a barre esiste già.',
       generic: 'Qualcosa è andato storto, riprova',
     },
+    settings: {
+      title: 'Impostazioni',
+      account: 'Account',
+      data: 'I tuoi dati',
+      exportData: 'Esporta i miei dati',
+      exportHint: 'Scarica tutto in JSON (privacy).',
+      deleteAccount: 'Elimina account e dati',
+      deleteHint: 'Cancella il tuo account e tutta la casa. Irreversibile.',
+      deleteConfirm: 'Sei sicuro? Cancella TUTTO e non puoi annullare.',
+      seedItems: 'Aggiungi articoli comuni',
+      seedHint: 'Inizia con articoli di spesa comuni.',
+    },
     shopping: {
       start: 'Inizia spesa',
       title: 'Modalità spesa',

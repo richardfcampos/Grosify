@@ -135,6 +135,18 @@ export default {
       barcode_exists: 'That barcode already exists.',
       generic: 'Something went wrong, please try again',
     },
+    settings: {
+      title: 'Settings',
+      account: 'Account',
+      data: 'Your data',
+      exportData: 'Export my data',
+      exportHint: 'Download everything as JSON (privacy).',
+      deleteAccount: 'Delete account and data',
+      deleteHint: 'Erases your account and the whole household. Irreversible.',
+      deleteConfirm: 'Are you sure? This erases EVERYTHING and cannot be undone.',
+      seedItems: 'Add common items',
+      seedHint: 'Start with common grocery items.',
+    },
     shopping: {
       start: 'Start shopping',
       title: 'Shopping mode',

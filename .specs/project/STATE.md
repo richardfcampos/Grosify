@@ -30,6 +30,12 @@
 
 | 2026-06-13 | Fase 4 (Modo Compra — MVP): tabelas shopping_sessions/items + triggers; rotas criar sessão (snapshot needed-qty + estimativa), atualizar item/sessão; tela escura fullscreen (carimbo COMPRADO, total corrente vs estimado verde/vermelho, scan-pra-marcar, tem-mais-barato), resumo com economia; tudo offline-first | Fase 4, lançamento MVP. Bug corrigido: CORS não permitia PATCH (todos os updates falhavam no browser) |
 
+| 2026-06-13 | Fase 6 (Polish+LGPD): rota /me (export JSON + excluir conta/casa cascade); tela Ajustes (idioma, export, excluir, sair); seed de 20 itens comuns pt-BR na tela vazia. **Fix de segurança**: Dexie vazava dados entre contas no mesmo browser — `initHousehold` limpa cache local quando muda de casa; logout também limpa | Fase 6. Pulei a 5 (billing) por precisar de credenciais Stripe |
+
+## Limitações conhecidas (fase 6)
+- Logout com mutações pendentes na outbox perde os não-sincronizados (clearLocalData zera a fila). Avisar/forçar sync antes do logout no futuro.
+- Privacy policy é só endpoint de dados; falta o TEXTO da política (página estática) pra lançamento.
+
 ## Limitações conhecidas (fase 3)
 - Sessão/membership exigem API online: navegação com page-load fresca offline cai no login. Uso real (já logado, fica offline mid-sessão via SPA nav) funciona — verificado. App shell offline via Workbox precache (build gera SW; testar em prod build).
 - Edição concorrente do MESMO item por 2 membros offline: last-sync-wins (sem per-field LWW). Raro em escala de casa.

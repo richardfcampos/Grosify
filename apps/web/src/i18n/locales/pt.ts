@@ -135,6 +135,18 @@ export default {
       barcode_exists: 'Esse código de barras já existe.',
       generic: 'Algo deu errado, tente de novo',
     },
+    settings: {
+      title: 'Ajustes',
+      account: 'Conta',
+      data: 'Seus dados',
+      exportData: 'Exportar meus dados',
+      exportHint: 'Baixa tudo em JSON (LGPD).',
+      deleteAccount: 'Excluir conta e dados',
+      deleteHint: 'Apaga sua conta e toda a casa. Irreversível.',
+      deleteConfirm: 'Tem certeza? Isso apaga TUDO e não pode ser desfeito.',
+      seedItems: 'Adicionar itens comuns',
+      seedHint: 'Começa com itens de mercado comuns.',
+    },
     shopping: {
       start: 'Iniciar compra',
       title: 'Modo compra',

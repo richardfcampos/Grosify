@@ -9,15 +9,60 @@ import {
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3010';
 const CURSOR_KEY = 'syncCursor';
 
+const HOUSEHOLD_KEY = 'householdId';
+
 let currentHouseholdId = '';
 let syncing = false;
 let started = false;
 
-export function setHouseholdId(id: string): void {
-  currentHouseholdId = id;
-}
 export function householdId(): string {
   return currentHouseholdId;
+}
+
+/** Limpa todo o cache de domínio + outbox + cursor (troca de conta / logout). */
+export async function clearLocalData(): Promise<void> {
+  await db.transaction(
+    'rw',
+    [
+      db.items,
+      db.barcodes,
+      db.stores,
+      db.prices,
+      db.lists,
+      db.listEntries,
+      db.inventory,
+      db.sessions,
+      db.sessionItems,
+      db.outbox,
+      db.meta,
+    ],
+    async () => {
+      await Promise.all([
+        db.items.clear(),
+        db.barcodes.clear(),
+        db.stores.clear(),
+        db.prices.clear(),
+        db.lists.clear(),
+        db.listEntries.clear(),
+        db.inventory.clear(),
+        db.sessions.clear(),
+        db.sessionItems.clear(),
+        db.outbox.clear(),
+        db.meta.clear(),
+      ]);
+    },
+  );
+}
+
+/**
+ * Define a casa ativa. Se mudou de casa (login como outro usuário), zera o cache
+ * local antes — evita vazar dados de outra conta no mesmo navegador.
+ */
+export async function initHousehold(id: string): Promise<void> {
+  const prev = await db.meta.get(HOUSEHOLD_KEY);
+  if (prev?.value && prev.value !== id) await clearLocalData();
+  await db.meta.put({ key: HOUSEHOLD_KEY, value: id });
+  currentHouseholdId = id;
 }
 
 /** Enfileira uma mutação e tenta sincronizar (se online). */

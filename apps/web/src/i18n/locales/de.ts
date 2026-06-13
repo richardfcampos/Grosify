@@ -135,6 +135,18 @@ export default {
       barcode_exists: 'Dieser Barcode existiert bereits.',
       generic: 'Etwas ist schiefgelaufen, bitte erneut versuchen',
     },
+    settings: {
+      title: 'Einstellungen',
+      account: 'Konto',
+      data: 'Deine Daten',
+      exportData: 'Meine Daten exportieren',
+      exportHint: 'Alles als JSON herunterladen (Datenschutz).',
+      deleteAccount: 'Konto und Daten löschen',
+      deleteHint: 'Löscht dein Konto und den ganzen Haushalt. Unwiderruflich.',
+      deleteConfirm: 'Sicher? Das löscht ALLES und kann nicht rückgängig gemacht werden.',
+      seedItems: 'Häufige Artikel hinzufügen',
+      seedHint: 'Starte mit häufigen Einkaufsartikeln.',
+    },
     shopping: {
       start: 'Einkauf starten',
       title: 'Einkaufsmodus',

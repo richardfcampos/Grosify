@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { db, type LocalItem } from '../db/dexie.js';
+import { seedCommonItems } from '../features/catalog/seed-items.js';
 import { useObjectUrl } from '../lib/use-object-url.js';
 
 export function ItensPage() {
@@ -30,7 +31,17 @@ export function ItensPage() {
       />
 
       {filtered.length === 0 ? (
-        <p className="mt-8 text-center text-zinc-500">{t('catalog.noItems')}</p>
+        <div className="mt-8 flex flex-col items-center gap-4">
+          <p className="text-center text-zinc-500">{t('catalog.noItems')}</p>
+          {items.length === 0 && (
+            <button
+              onClick={() => seedCommonItems()}
+              className="rounded-xl border border-green-600 px-4 py-2.5 text-sm font-semibold text-green-700"
+            >
+              {t('settings.seedItems')}
+            </button>
+          )}
+        </div>
       ) : (
         <ul className="flex flex-col gap-2">
           {filtered.map((item) => (
