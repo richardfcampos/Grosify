@@ -8,6 +8,13 @@
       "when": 1781313568440,
       "tag": "0000_neat_scream",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1781315570440,
+      "tag": "0001_thin_absorbing_man",
+      "breakpoints": true
     }
   ]
 }

@@ -6,6 +6,7 @@ export interface Membership {
   role: 'owner' | 'member';
   name: string;
   plan: 'free' | 'pro';
+  currency: string;
 }
 
 export function useMembership(enabled: boolean) {

@@ -21,6 +21,7 @@ export default {
       createTitle: 'Create your household',
       createSubtitle: 'A household shares the list, pantry and prices with your family.',
       namePlaceholder: "Household name (e.g. Ana's Home)",
+      currency: 'Price currency',
       create: 'Create household',
       creating: 'Creating…',
       createFailed: 'Could not create the household',

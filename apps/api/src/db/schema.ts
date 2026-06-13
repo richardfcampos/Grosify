@@ -63,6 +63,8 @@ export const households = pgTable('households', {
   plan: text('plan', { enum: ['free', 'pro'] })
     .notNull()
     .default('free'),
+  /** ISO 4217 — moeda de todos os preços da casa. */
+  currency: text('currency').notNull().default('BRL'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 

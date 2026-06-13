@@ -54,11 +54,24 @@ export type PriceRecord = z.infer<typeof priceRecordSchema>;
 /** Quantidades: até 3 casas decimais (1.5 kg, 0.250 g). */
 const qty = z.number().nonnegative().multipleOf(0.001);
 
-export const recurringListEntrySchema = syncMetaSchema.extend({
-  itemId: z.uuid(),
-  defaultMonthlyQty: qty.refine((v) => v > 0, 'quantidade deve ser positiva'),
+/**
+ * Listas de compras nomeadas — "Compras do mês", "Churrasco", "Aniversário".
+ * isRecurring: lista entra no ciclo mensal (inventário desconta o que tem em casa).
+ * Não-recorrente: quantidade da entrada é o que comprar, direto.
+ */
+export const shoppingListSchema = syncMetaSchema.extend({
+  name: z.string().trim().min(1).max(100),
+  isRecurring: z.boolean(),
 });
-export type RecurringListEntry = z.infer<typeof recurringListEntrySchema>;
+export type ShoppingList = z.infer<typeof shoppingListSchema>;
+
+export const shoppingListEntrySchema = syncMetaSchema.extend({
+  listId: z.uuid(),
+  itemId: z.uuid(),
+  /** Recorrente: padrão mensal. Não-recorrente: quantidade planejada. */
+  qty: qty.refine((v) => v > 0, 'quantidade deve ser positiva'),
+});
+export type ShoppingListEntry = z.infer<typeof shoppingListEntrySchema>;
 
 export const inventoryCountSchema = syncMetaSchema.extend({
   itemId: z.uuid(),
@@ -70,6 +83,7 @@ export type InventoryCount = z.infer<typeof inventoryCountSchema>;
 export const SESSION_STATUSES = ['active', 'completed', 'abandoned'] as const;
 
 export const shoppingSessionSchema = syncMetaSchema.extend({
+  listId: z.uuid().nullable(),
   storeId: z.uuid().nullable(),
   status: z.enum(SESSION_STATUSES),
   startedAt: isoDate,
@@ -95,7 +109,8 @@ export const SYNC_TABLES = {
   item_barcodes: itemBarcodeSchema,
   stores: storeSchema,
   price_records: priceRecordSchema,
-  recurring_list_entries: recurringListEntrySchema,
+  shopping_lists: shoppingListSchema,
+  shopping_list_entries: shoppingListEntrySchema,
   inventory_counts: inventoryCountSchema,
   shopping_sessions: shoppingSessionSchema,
   shopping_session_items: shoppingSessionItemSchema,

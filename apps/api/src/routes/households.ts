@@ -1,4 +1,5 @@
 import { zValidator } from '@hono/zod-validator';
+import { isValidCurrency } from '@grosify/shared';
 import { and, eq, isNull } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { randomBytes } from 'node:crypto';
@@ -27,6 +28,7 @@ async function membershipOf(userId: string) {
       role: householdMembers.role,
       name: households.name,
       plan: households.plan,
+      currency: households.currency,
     })
     .from(householdMembers)
     .innerJoin(households, eq(households.id, householdMembers.householdId))
@@ -45,19 +47,33 @@ export const householdsRoute = new Hono<AuthEnv>()
 
   .post(
     '/',
-    zValidator('json', z.object({ name: z.string().trim().min(1).max(100) })),
+    zValidator(
+      'json',
+      z.object({
+        name: z.string().trim().min(1).max(100),
+        currency: z
+          .string()
+          .length(3)
+          .toUpperCase()
+          .refine(isValidCurrency, 'invalid_currency')
+          .default('BRL'),
+      }),
+    ),
     async (c) => {
       const userId = c.get('user').id;
       if (await membershipOf(userId)) {
         return c.json({ error: 'already_in_household' }, 409);
       }
-      const { name } = c.req.valid('json');
+      const { name, currency } = c.req.valid('json');
       const id = uuidv7();
       await db.transaction(async (tx) => {
-        await tx.insert(households).values({ id, name, createdBy: userId });
+        await tx.insert(households).values({ id, name, currency, createdBy: userId });
         await tx.insert(householdMembers).values({ householdId: id, userId, role: 'owner' });
       });
-      return c.json({ household: { id, name, plan: 'free' as const, role: 'owner' as const } }, 201);
+      return c.json(
+        { household: { id, name, currency, plan: 'free' as const, role: 'owner' as const } },
+        201,
+      );
     },
   )
 

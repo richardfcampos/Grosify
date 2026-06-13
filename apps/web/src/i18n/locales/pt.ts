@@ -21,6 +21,7 @@ export default {
       createTitle: 'Crie sua casa',
       createSubtitle: 'A casa reúne lista, estoque e preços compartilhados com sua família.',
       namePlaceholder: 'Nome da casa (ex.: Casa da Ana)',
+      currency: 'Moeda dos preços',
       create: 'Criar casa',
       creating: 'Criando…',
       createFailed: 'Não foi possível criar a casa',

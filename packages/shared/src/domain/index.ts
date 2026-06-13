@@ -101,12 +101,4 @@ export function estimateTotal(lines: EstimateLine[]): EstimateTotal {
   return { totalCents, pricedLines, missingPriceLines };
 }
 
-/** Formata centavos como moeda no locale dado: 1234 → "R$ 12,34". */
-export function formatCurrency(cents: number, locale = 'pt-BR', currency = 'BRL'): string {
-  return (cents / 100).toLocaleString(locale, { style: 'currency', currency });
-}
-
-/** Atalho pro caso comum: BRL em pt-BR. */
-export function formatBRL(cents: number): string {
-  return formatCurrency(cents);
-}
+export * from './currency.js';

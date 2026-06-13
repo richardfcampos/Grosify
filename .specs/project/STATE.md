@@ -27,6 +27,8 @@
 - Deploy (Railway/Neon/CF Pages/R2) precisa de contas/credenciais do usuário — build local primeiro, deploy quando usuário fornecer
 
 | 2026-06-12 | i18n com react-i18next: 6 idiomas (pt fallback, en, es, it, de, fr), detecção localStorage→navigator, seletor no dashboard; API retorna códigos de erro | Pedido do usuário; barato agora (5 telas), caro depois da fase 1 |
+| 2026-06-12 | Multi-moeda via Intl nativo (`Intl.supportedValuesOf('currency')` + `NumberFormat`), SEM lib externa; moeda por household (`households.currency`, ISO 4217); valores em unidades mínimas da moeda (JPY=0, BHD=3 casas) | Pedido do usuário; Intl cobre listagem+formatação+casas decimais de graça |
+| 2026-06-12 | Múltiplas listas de compras: `shopping_lists` (nome + `isRecurring`) + `shopping_list_entries`; substitui `recurring_list_entries`. Recorrente → ciclo inventário/needed-qty; avulsa (churrasco, festa) → qty direta. Sessão de compra referencia `listId` | Pedido do usuário (ex.: lista do mês, churrasco, aniversário) |
 
 ## TODOs / ideias adiadas
 
@@ -35,7 +37,7 @@
 - PostGIS / busca por proximidade (YAGNI por ora)
 - packages/ui compartilhado (só quando Expo existir)
 - Multi-foto por item
-- Multi-moeda (moeda por household) — MVP é BRL; revisitar se houver tração internacional
+- Conversão entre moedas (câmbio) — moeda é fixa por household; sem conversão por ora
 
 ## Preferências
 

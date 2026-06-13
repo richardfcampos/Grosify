@@ -21,6 +21,7 @@ export default {
       createTitle: 'Crea la tua casa',
       createSubtitle: 'La casa condivide lista, dispensa e prezzi con la tua famiglia.',
       namePlaceholder: 'Nome della casa (es.: Casa di Anna)',
+      currency: 'Valuta dei prezzi',
       create: 'Crea casa',
       creating: 'Creazione…',
       createFailed: 'Impossibile creare la casa',

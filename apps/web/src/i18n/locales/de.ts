@@ -21,6 +21,7 @@ export default {
       createTitle: 'Erstelle deinen Haushalt',
       createSubtitle: 'Der Haushalt teilt Liste, Vorrat und Preise mit deiner Familie.',
       namePlaceholder: 'Name des Haushalts (z. B. Annas Zuhause)',
+      currency: 'Währung der Preise',
       create: 'Haushalt erstellen',
       creating: 'Wird erstellt…',
       createFailed: 'Haushalt konnte nicht erstellt werden',

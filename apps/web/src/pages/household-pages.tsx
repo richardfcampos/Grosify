@@ -1,3 +1,4 @@
+import { defaultCurrencyForLanguage, listCurrencies } from '@grosify/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Navigate, useNavigate, useParams } from '@tanstack/react-router';
 import { useState, type FormEvent } from 'react';
@@ -10,15 +11,22 @@ const buttonClass =
   'w-full rounded-xl bg-green-600 px-4 py-3 text-base font-semibold text-white active:bg-green-700 disabled:opacity-50';
 
 export function CasaPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { data: session, isPending } = useSession();
   const membership = useMembership(!!session);
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
+  const [currency, setCurrency] = useState(() =>
+    defaultCurrencyForLanguage(i18n.resolvedLanguage ?? 'pt'),
+  );
+
+  const currencyNames = new Intl.DisplayNames([i18n.resolvedLanguage ?? 'pt'], {
+    type: 'currency',
+  });
 
   const create = useMutation({
     mutationFn: async (name: string) => {
-      const res = await api.households.$post({ json: { name } });
+      const res = await api.households.$post({ json: { name, currency } });
       if (!res.ok) throw new Error('createFailed');
       return res.json();
     },
@@ -49,6 +57,20 @@ export function CasaPage() {
           aria-label={t('household.namePlaceholder')}
           className="w-full rounded-xl border border-zinc-300 px-4 py-3 text-base outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100"
         />
+        <label className="flex flex-col gap-1 text-sm font-medium text-zinc-600">
+          {t('household.currency')}
+          <select
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value)}
+            className="min-h-12 w-full rounded-xl border border-zinc-300 bg-white px-3 py-3 text-base font-normal text-zinc-900"
+          >
+            {listCurrencies().map((code) => (
+              <option key={code} value={code}>
+                {code} — {currencyNames.of(code) ?? code}
+              </option>
+            ))}
+          </select>
+        </label>
         {error && <p className="text-sm text-red-600">{error}</p>}
         <button type="submit" disabled={create.isPending} className={buttonClass}>
           {create.isPending ? t('household.creating') : t('household.create')}

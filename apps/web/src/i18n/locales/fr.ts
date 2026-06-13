@@ -21,6 +21,7 @@ export default {
       createTitle: 'Créez votre foyer',
       createSubtitle: 'Le foyer partage la liste, le garde-manger et les prix avec votre famille.',
       namePlaceholder: 'Nom du foyer (ex. : Chez Ana)',
+      currency: 'Devise des prix',
       create: 'Créer le foyer',
       creating: 'Création…',
       createFailed: 'Impossible de créer le foyer',

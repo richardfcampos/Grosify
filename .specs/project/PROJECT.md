@@ -10,7 +10,7 @@ Famílias compram os mesmos itens todo mês, mas não sabem: quanto têm em casa
 
 ## Solução
 
-- **Lista recorrente** com quantidades mensais padrão por item
+- **Múltiplas listas de compras** ("Compras do mês", "Churrasco", "Aniversário"), cada uma recorrente ou avulsa; recorrentes têm quantidades mensais padrão por item
 - **Inventário pré-compra**: conta o que tem em casa → calcula o que falta
 - **Histórico de preços** por loja/data: loja mais barata, alerta de aumento
 - **Modo compra**: scanner de código de barras, registro de preço real, total corrente vs estimado, aviso "tem mais barato em X"

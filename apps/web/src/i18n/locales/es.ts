@@ -21,6 +21,7 @@ export default {
       createTitle: 'Crea tu hogar',
       createSubtitle: 'El hogar comparte la lista, la despensa y los precios con tu familia.',
       namePlaceholder: 'Nombre del hogar (ej.: Casa de Ana)',
+      currency: 'Moneda de los precios',
       create: 'Crear hogar',
       creating: 'Creando…',
       createFailed: 'No se pudo crear el hogar',
