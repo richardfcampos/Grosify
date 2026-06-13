@@ -1,5 +1,6 @@
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useState, type FormEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { signIn, signUp } from '../lib/auth-client.js';
 
 function AuthShell({ title, children }: { title: string; children: React.ReactNode }) {
@@ -20,6 +21,7 @@ const buttonClass =
   'w-full rounded-xl bg-green-600 px-4 py-3 text-base font-semibold text-white active:bg-green-700 disabled:opacity-50';
 
 export function EntrarPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const search = useSearch({ from: '/entrar' });
   const [error, setError] = useState<string | null>(null);
@@ -36,37 +38,43 @@ export function EntrarPage() {
     });
     setBusy(false);
     if (err) {
-      setError('E-mail ou senha incorretos');
+      setError(t('auth.invalidCredentials'));
       return;
     }
     navigate({ to: search.redirect ?? '/' });
   }
 
   return (
-    <AuthShell title="Entrar no Grosify">
+    <AuthShell title={t('auth.loginTitle')}>
       <form onSubmit={onSubmit} className="flex flex-col gap-3">
-        <input name="email" type="email" required placeholder="E-mail" className={inputClass} />
+        <input
+          name="email"
+          type="email"
+          required
+          placeholder={t('auth.email')}
+          className={inputClass}
+        />
         <input
           name="password"
           type="password"
           required
           minLength={8}
-          placeholder="Senha"
+          placeholder={t('auth.password')}
           className={inputClass}
         />
         {error && <p className="text-sm text-red-600">{error}</p>}
         <button type="submit" disabled={busy} className={buttonClass}>
-          {busy ? 'Entrando…' : 'Entrar'}
+          {busy ? t('auth.loggingIn') : t('auth.login')}
         </button>
       </form>
       <p className="text-center text-sm text-zinc-600">
-        Não tem conta?{' '}
+        {t('auth.noAccount')}{' '}
         <Link
           to="/cadastro"
           search={{ redirect: search.redirect }}
           className="font-semibold text-green-700"
         >
-          Criar conta
+          {t('auth.signup')}
         </Link>
       </p>
     </AuthShell>
@@ -74,6 +82,7 @@ export function EntrarPage() {
 }
 
 export function CadastroPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const search = useSearch({ from: '/cadastro' });
   const [error, setError] = useState<string | null>(null);
@@ -91,38 +100,44 @@ export function CadastroPage() {
     });
     setBusy(false);
     if (err) {
-      setError(err.message ?? 'Não foi possível criar a conta');
+      setError(err.message ?? t('auth.signupFailed'));
       return;
     }
     navigate({ to: search.redirect ?? '/' });
   }
 
   return (
-    <AuthShell title="Criar conta">
+    <AuthShell title={t('auth.signupTitle')}>
       <form onSubmit={onSubmit} className="flex flex-col gap-3">
-        <input name="name" required placeholder="Seu nome" className={inputClass} />
-        <input name="email" type="email" required placeholder="E-mail" className={inputClass} />
+        <input name="name" required placeholder={t('auth.name')} className={inputClass} />
+        <input
+          name="email"
+          type="email"
+          required
+          placeholder={t('auth.email')}
+          className={inputClass}
+        />
         <input
           name="password"
           type="password"
           required
           minLength={8}
-          placeholder="Senha (mínimo 8 caracteres)"
+          placeholder={t('auth.passwordHint')}
           className={inputClass}
         />
         {error && <p className="text-sm text-red-600">{error}</p>}
         <button type="submit" disabled={busy} className={buttonClass}>
-          {busy ? 'Criando…' : 'Criar conta'}
+          {busy ? t('auth.signingUp') : t('auth.signup')}
         </button>
       </form>
       <p className="text-center text-sm text-zinc-600">
-        Já tem conta?{' '}
+        {t('auth.hasAccount')}{' '}
         <Link
           to="/entrar"
           search={{ redirect: search.redirect }}
           className="font-semibold text-green-700"
         >
-          Entrar
+          {t('auth.login')}
         </Link>
       </p>
     </AuthShell>

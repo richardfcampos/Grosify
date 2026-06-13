@@ -13,7 +13,7 @@ export interface AuthEnv {
 export const requireSession = createMiddleware<AuthEnv>(async (c, next) => {
   const sessionData = await auth.api.getSession({ headers: c.req.raw.headers });
   if (!sessionData) {
-    return c.json({ error: 'não autenticado' }, 401);
+    return c.json({ error: 'not_authenticated' }, 401);
   }
   c.set('user', sessionData.user);
   c.set('session', sessionData.session);

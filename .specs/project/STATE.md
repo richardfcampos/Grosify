@@ -26,6 +26,8 @@
 
 - Deploy (Railway/Neon/CF Pages/R2) precisa de contas/credenciais do usuário — build local primeiro, deploy quando usuário fornecer
 
+| 2026-06-12 | i18n com react-i18next: 6 idiomas (pt fallback, en, es, it, de, fr), detecção localStorage→navigator, seletor no dashboard; API retorna códigos de erro | Pedido do usuário; barato agora (5 telas), caro depois da fase 1 |
+
 ## TODOs / ideias adiadas
 
 - SSE "poke" pra sync em tempo real (pós-MVP)
@@ -33,6 +35,7 @@
 - PostGIS / busca por proximidade (YAGNI por ora)
 - packages/ui compartilhado (só quando Expo existir)
 - Multi-foto por item
+- Multi-moeda (moeda por household) — MVP é BRL; revisitar se houver tração internacional
 
 ## Preferências
 

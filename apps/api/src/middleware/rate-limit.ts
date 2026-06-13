@@ -27,7 +27,7 @@ export function rateLimit(opts: { windowMs: number; max: number; keyFn?: (ip: st
     bucket.timestamps = bucket.timestamps.filter((t) => now - t < opts.windowMs);
 
     if (bucket.timestamps.length >= opts.max) {
-      return c.json({ error: 'muitas requisições, tente de novo em instantes' }, 429);
+      return c.json({ error: 'rate_limited' }, 429);
     }
     bucket.timestamps.push(now);
 

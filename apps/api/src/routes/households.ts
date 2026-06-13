@@ -49,7 +49,7 @@ export const householdsRoute = new Hono<AuthEnv>()
     async (c) => {
       const userId = c.get('user').id;
       if (await membershipOf(userId)) {
-        return c.json({ error: 'você já faz parte de uma casa' }, 409);
+        return c.json({ error: 'already_in_household' }, 409);
       }
       const { name } = c.req.valid('json');
       const id = uuidv7();
@@ -64,7 +64,7 @@ export const householdsRoute = new Hono<AuthEnv>()
   .post('/invites', rateLimit({ windowMs: 60_000, max: 5 }), async (c) => {
     const membership = await membershipOf(c.get('user').id);
     if (!membership) {
-      return c.json({ error: 'você ainda não tem uma casa' }, 403);
+      return c.json({ error: 'no_household' }, 403);
     }
     const code = inviteCode();
     await db.insert(householdInvites).values({
@@ -83,7 +83,7 @@ export const householdsRoute = new Hono<AuthEnv>()
     async (c) => {
       const userId = c.get('user').id;
       if (await membershipOf(userId)) {
-        return c.json({ error: 'você já faz parte de uma casa' }, 409);
+        return c.json({ error: 'already_in_household' }, 409);
       }
       const { code } = c.req.valid('json');
 
@@ -108,7 +108,7 @@ export const householdsRoute = new Hono<AuthEnv>()
       });
 
       if (!joined) {
-        return c.json({ error: 'convite inválido ou expirado' }, 404);
+        return c.json({ error: 'invalid_invite' }, 404);
       }
       const membership = await membershipOf(userId);
       return c.json({ membership }, 201);
