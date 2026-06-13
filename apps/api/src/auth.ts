@@ -20,8 +20,11 @@ export const auth = betterAuth({
   },
   trustedOrigins: [webOrigin],
   advanced: {
+    // Cross-site (web e API em domínios diferentes) exige SameSite=None;Secure.
+    // Em mesmo domínio (api.grosify.app + grosify.app) use Lax (mais seguro).
+    crossSubDomainCookies: { enabled: process.env.CROSS_SITE_COOKIES === 'true' },
     defaultCookieAttributes: {
-      sameSite: 'lax',
+      sameSite: process.env.CROSS_SITE_COOKIES === 'true' ? 'none' : 'lax',
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
     },
