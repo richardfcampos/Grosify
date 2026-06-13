@@ -148,6 +148,15 @@ export default {
       barcode_exists: 'Ce code-barres existe déjà.',
       generic: 'Une erreur est survenue, réessayez',
     },
+    billing: {
+      plan: 'Forfait',
+      freeName: 'Gratuit',
+      proName: 'Pro',
+      proPitch: 'Articles illimités, historique des prix complet, membres illimités.',
+      upgrade: 'Passer à Pro',
+      comingSoon: 'Bientôt — abonnement via Pix ou carte.',
+      current: 'Votre forfait : {{plan}}',
+    },
     settings: {
       privacy: 'Confidentialité',
       title: 'Réglages',

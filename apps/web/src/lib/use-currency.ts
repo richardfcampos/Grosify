@@ -10,6 +10,13 @@ export function useHouseholdCurrency(): string {
   return membership.data?.currency ?? 'BRL';
 }
 
+/** Plano da casa (free | pro). */
+export function useHouseholdPlan(): 'free' | 'pro' {
+  const { data: session } = useSession();
+  const membership = useMembership(!!session);
+  return membership.data?.plan ?? 'free';
+}
+
 /** Formatador de moeda da casa, no locale da UI. */
 export function useFormatMoney(): (minorUnits: number) => string {
   const { i18n } = useTranslation();

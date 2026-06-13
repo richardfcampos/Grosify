@@ -43,9 +43,12 @@
 - Edição concorrente do MESMO item por 2 membros offline: last-sync-wins (sem per-field LWW). Raro em escala de casa.
 - Mutação rejeitada com resposta recebida (ex. item_limit) é removida da outbox mas a linha otimista local permanece — reconciliar no futuro.
 
+| 2026-06-13 | Billing: provedor = **Mercado Pago** (verificado por web search — suporta cartão recorrente E Pix Automático, recorrente via Pix no ar desde jun/2025). Scaffold sem provedor pronto: filtro histórico 90d no free (client-side via historyCutoff), seção de plano + CTA "Seja Pro" (desabilitado até MP) em Ajustes | Usuário perguntou se MP aceita ambos — sim. Recomendado MP por cobrir Pix recorrente (melhor pro BR) |
+
 ## Bloqueios
 
-- Deploy (Railway/Neon/CF Pages/R2) precisa de contas/credenciais do usuário — build local primeiro, deploy quando usuário fornecer
+- **Deploy**: configs prontas (Dockerfile, _redirects, docs/deployment.md). Usuário vai executar seguindo a doc (criar Neon+Railway+CF Pages). Eu de plantão.
+- **Billing Mercado Pago**: integração (checkout/preapproval/webhooks) aguarda credenciais MP do usuário (access token + public key).
 
 | 2026-06-12 | i18n com react-i18next: 6 idiomas (pt fallback, en, es, it, de, fr), detecção localStorage→navigator, seletor no dashboard; API retorna códigos de erro | Pedido do usuário; barato agora (5 telas), caro depois da fase 1 |
 | 2026-06-12 | Multi-moeda via Intl nativo (`Intl.supportedValuesOf('currency')` + `NumberFormat`), SEM lib externa; moeda por household (`households.currency`, ISO 4217); valores em unidades mínimas da moeda (JPY=0, BHD=3 casas) | Pedido do usuário; Intl cobre listagem+formatação+casas decimais de graça |

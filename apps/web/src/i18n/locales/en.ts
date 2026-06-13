@@ -148,6 +148,15 @@ export default {
       barcode_exists: 'That barcode already exists.',
       generic: 'Something went wrong, please try again',
     },
+    billing: {
+      plan: 'Plan',
+      freeName: 'Free',
+      proName: 'Pro',
+      proPitch: 'Unlimited items, full price history, unlimited members.',
+      upgrade: 'Go Pro',
+      comingSoon: 'Coming soon — subscribe via Pix or card.',
+      current: 'Your plan: {{plan}}',
+    },
     settings: {
       privacy: 'Privacy policy',
       title: 'Settings',

@@ -1,10 +1,10 @@
-import { cheapestStore, parseToMinorUnits, priceChange } from '@grosify/shared';
+import { cheapestStore, historyCutoff, parseToMinorUnits, priceChange } from '@grosify/shared';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useMemo, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { db } from '../../db/dexie.js';
 import { recordPrice } from '../../db/repositories.js';
-import { useFormatMoney, useHouseholdCurrency } from '../../lib/use-currency.js';
+import { useFormatMoney, useHouseholdCurrency, useHouseholdPlan } from '../../lib/use-currency.js';
 
 interface Props {
   itemId: string;
@@ -17,14 +17,23 @@ export function PrecoSheet({ itemId, itemName, onClose }: Props) {
   const { t, i18n } = useTranslation();
   const fmt = useFormatMoney();
   const currency = useHouseholdCurrency();
+  const plan = useHouseholdPlan();
 
   const stores = useLiveQuery(() => db.stores.filter((s) => s.deletedAt === null).toArray(), [], []);
-  const prices = useLiveQuery(
+  const allPrices = useLiveQuery(
     () =>
       db.prices.where('itemId').equals(itemId).filter((p) => p.deletedAt === null).toArray(),
     [itemId],
     [],
   );
+
+  // Plano free: histórico limitado aos últimos 90 dias.
+  const prices = useMemo(() => {
+    const cutoff = historyCutoff(plan, new Date());
+    if (!cutoff) return allPrices;
+    const iso = cutoff.toISOString();
+    return allPrices.filter((p) => p.recordedAt >= iso);
+  }, [allPrices, plan]);
 
   const [storeId, setStoreId] = useState('');
   const [value, setValue] = useState('');

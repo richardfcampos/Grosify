@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { SUPPORTED_LANGUAGES } from '../i18n/index.js';
 import { api } from '../lib/api.js';
 import { signOut } from '../lib/auth-client.js';
+import { useHouseholdPlan } from '../lib/use-currency.js';
 import { clearLocalData } from '../sync/engine.js';
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3010';
@@ -12,6 +13,7 @@ const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3010';
 export function AjustesPage() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const plan = useHouseholdPlan();
   const [busy, setBusy] = useState(false);
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -76,6 +78,32 @@ export function AjustesPage() {
             </option>
           ))}
         </select>
+      </section>
+
+      <section className="flex flex-col gap-2 rounded-2xl border border-zinc-200 p-4">
+        <div className="flex items-center justify-between">
+          <span className="font-medium text-zinc-900">{t('billing.plan')}</span>
+          <span
+            className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+              plan === 'pro' ? 'bg-green-100 text-green-700' : 'bg-zinc-100 text-zinc-500'
+            }`}
+          >
+            {plan === 'pro' ? t('billing.proName') : t('billing.freeName')}
+          </span>
+        </div>
+        {plan === 'free' && (
+          <>
+            <p className="text-sm text-zinc-600">{t('billing.proPitch')}</p>
+            <button
+              disabled
+              title={t('billing.comingSoon')}
+              className="min-h-11 rounded-xl bg-green-600 px-4 text-sm font-semibold text-white opacity-60"
+            >
+              {t('billing.upgrade')}
+            </button>
+            <p className="text-xs text-zinc-400">{t('billing.comingSoon')}</p>
+          </>
+        )}
       </section>
 
       <section className="flex flex-col gap-2">

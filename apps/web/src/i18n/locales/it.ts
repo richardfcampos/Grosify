@@ -148,6 +148,15 @@ export default {
       barcode_exists: 'Questo codice a barre esiste già.',
       generic: 'Qualcosa è andato storto, riprova',
     },
+    billing: {
+      plan: 'Piano',
+      freeName: 'Gratuito',
+      proName: 'Pro',
+      proPitch: 'Articoli illimitati, storico prezzi completo, membri illimitati.',
+      upgrade: 'Passa a Pro',
+      comingSoon: 'Presto — abbonamento via Pix o carta.',
+      current: 'Il tuo piano: {{plan}}',
+    },
     settings: {
       privacy: 'Informativa privacy',
       title: 'Impostazioni',

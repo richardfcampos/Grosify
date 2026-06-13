@@ -148,6 +148,15 @@ export default {
       barcode_exists: 'Dieser Barcode existiert bereits.',
       generic: 'Etwas ist schiefgelaufen, bitte erneut versuchen',
     },
+    billing: {
+      plan: 'Tarif',
+      freeName: 'Gratis',
+      proName: 'Pro',
+      proPitch: 'Unbegrenzte Artikel, vollständiger Preisverlauf, unbegrenzte Mitglieder.',
+      upgrade: 'Pro werden',
+      comingSoon: 'Demnächst — Abo via Pix oder Karte.',
+      current: 'Dein Tarif: {{plan}}',
+    },
     settings: {
       privacy: 'Datenschutz',
       title: 'Einstellungen',
