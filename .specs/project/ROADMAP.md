@@ -4,7 +4,7 @@ Cada fase pequena, shippável, termina deployada.
 
 | # | Fase | Escopo | Status |
 |---|------|--------|--------|
-| 0 | Walking skeleton | Monorepo, Hono `/health` (Railway), PWA shell (CF Pages), Neon+Drizzle migration #1, Better Auth, households+convites `/convite/{code}`, CI | Em andamento |
+| 0 | Walking skeleton | Monorepo, Hono `/health` (Railway), PWA shell (CF Pages), Neon+Drizzle migration #1, Better Auth, households+convites `/convite/{code}`, CI | ✅ Código pronto e verificado local — falta só deploy (aguarda credenciais Railway/Neon/CF) |
 | 1 | Catálogo | CRUD itens (foto R2, múltiplos barcodes), lojas, scanner web (BarcodeDetector → ZXing → manual). Todo acesso a dados via repository layer sobre Dexie desde já | Pendente |
 | 2 | Preços + lista | Registro/histórico de preço, loja-mais-barata, alerta de aumento, lista recorrente, inventário, needed qty, total estimado. Alpha com família | Pendente |
 | 3 | Sync offline | Outbox, push/pull, LWW, bootstrap, Workbox precache, UI status sync. Antes do modo compra (mercado = ambiente offline) | Pendente |

@@ -12,6 +12,7 @@
 | 2026-06-12 | Freemium: FREE_MAX_ITEMS=30, FREE_HISTORY_DAYS=90 como constantes em código; histórico = filtro de leitura, não purge | YAGNI (sem tabela plans); dados desbloqueiam no upgrade |
 | 2026-06-12 | Dinheiro em centavos (integer); qty numeric(10,3); EAN como text | Sem float pra dinheiro; 1.5kg; zeros à esquerda |
 | 2026-06-12 | Fotos: 1 por item (photo_key em items), WebP 800px client-side, R2 privado presigned | YAGNI multi-foto |
+| 2026-06-12 | Design system "Mercado Inteligente" (DESIGN.md): Lexend+Anton+Plex Mono; verde #15803D/vermelho #DC2626/amarelo #FACC15 só em eventos de preço; modo compra sempre escuro; carimbo+recibo | Usuário aprovou com os 3 riscos; pesquisa mostrou categoria genérica pastel |
 
 ## Flags de incerteza (verificar na implementação)
 
