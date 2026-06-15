@@ -1,6 +1,7 @@
 export default {
   translation: {
     auth: {
+      networkError: 'Sin conexión con el servidor. Inténtalo de nuevo.',
       loginTitle: 'Entrar en Grosify',
       signupTitle: 'Crear cuenta',
       email: 'Correo electrónico',

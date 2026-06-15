@@ -38,16 +38,22 @@ export function EntrarPage() {
     setBusy(true);
     setError(null);
     const form = new FormData(e.currentTarget);
-    const { error: err } = await signIn.email({
-      email: String(form.get('email')),
-      password: String(form.get('password')),
-    });
-    setBusy(false);
-    if (err) {
-      setError(t('auth.invalidCredentials'));
-      return;
+    try {
+      const { error: err } = await signIn.email({
+        email: String(form.get('email')),
+        password: String(form.get('password')),
+      });
+      if (err) {
+        setError(t('auth.invalidCredentials'));
+        return;
+      }
+      navigate({ to: safeRedirect(search.redirect) });
+    } catch {
+      // erro de rede/servidor (CORS, API fora do ar) — não retorna {error}, lança
+      setError(t('auth.networkError'));
+    } finally {
+      setBusy(false);
     }
-    navigate({ to: safeRedirect(search.redirect) });
   }
 
   return (
@@ -99,17 +105,22 @@ export function CadastroPage() {
     setBusy(true);
     setError(null);
     const form = new FormData(e.currentTarget);
-    const { error: err } = await signUp.email({
-      name: String(form.get('name')),
-      email: String(form.get('email')),
-      password: String(form.get('password')),
-    });
-    setBusy(false);
-    if (err) {
-      setError(err.message ?? t('auth.signupFailed'));
-      return;
+    try {
+      const { error: err } = await signUp.email({
+        name: String(form.get('name')),
+        email: String(form.get('email')),
+        password: String(form.get('password')),
+      });
+      if (err) {
+        setError(err.message ?? t('auth.signupFailed'));
+        return;
+      }
+      navigate({ to: safeRedirect(search.redirect) });
+    } catch {
+      setError(t('auth.networkError'));
+    } finally {
+      setBusy(false);
     }
-    navigate({ to: safeRedirect(search.redirect) });
   }
 
   return (
