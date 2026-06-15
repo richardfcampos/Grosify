@@ -2,8 +2,7 @@ import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { db } from './db/index.js';
 import * as schema from './db/schema.js';
-
-const webOrigin = process.env.WEB_ORIGIN ?? 'http://localhost:5173';
+import { trustedOrigins } from './origins.js';
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
@@ -18,7 +17,7 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
   },
-  trustedOrigins: [webOrigin],
+  trustedOrigins,
   advanced: {
     // Cross-site (web e API em domínios diferentes) exige SameSite=None;Secure.
     // Em mesmo domínio (api.grosify.app + grosify.app) use Lax (mais seguro).

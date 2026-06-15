@@ -9,15 +9,14 @@ import { householdsRoute } from './routes/households.js';
 import { meRoute } from './routes/me.js';
 import { shoppingRoute } from './routes/shopping.js';
 import { syncRoute } from './routes/sync.js';
-
-const webOrigin = process.env.WEB_ORIGIN ?? 'http://localhost:5173';
+import { isAllowedOrigin } from './origins.js';
 
 const app = new Hono()
   .use(logger())
   .use(
     '*',
     cors({
-      origin: webOrigin,
+      origin: (origin) => (isAllowedOrigin(origin) ? origin : null),
       credentials: true,
       allowMethods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
       allowHeaders: ['Content-Type', 'Authorization'],
