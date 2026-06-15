@@ -18,15 +18,11 @@ export function isAllowedOrigin(origin: string | undefined): boolean {
   return false;
 }
 
-/** Lista pra Better Auth trustedOrigins (inclui variantes localhost em dev). */
+/**
+ * Lista pra Better Auth trustedOrigins. Em dev, wildcard de porta pra localhost/
+ * 127.0.0.1 (Vite pode subir em 5175+ se 5174 estiver ocupada). Better Auth suporta
+ * padrões com `*` via wildcardMatch.
+ */
 export const trustedOrigins = isDev
-  ? Array.from(
-      new Set([
-        ...configured,
-        'http://localhost:5174',
-        'http://localhost:5173',
-        'http://127.0.0.1:5174',
-        'http://127.0.0.1:5173',
-      ]),
-    )
+  ? Array.from(new Set([...configured, 'http://localhost:*', 'http://127.0.0.1:*']))
   : configured;
