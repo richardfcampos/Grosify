@@ -66,13 +66,26 @@ export function ListaDetailPage() {
         <button onClick={() => navigate({ to: '/listas' })} className="text-sm text-zinc-500">
           ← {t('common.back')}
         </button>
-        <span
-          className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-            list.isRecurring ? 'bg-green-100 text-green-700' : 'bg-zinc-100 text-zinc-500'
-          }`}
-        >
-          {list.isRecurring ? t('lists.recurringTag') : t('lists.oneTimeTag')}
-        </span>
+        <div className="flex items-center gap-2">
+          <span
+            className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+              list.isRecurring ? 'bg-green-100 text-green-700' : 'bg-zinc-100 text-zinc-500'
+            }`}
+          >
+            {list.isRecurring ? t('lists.recurringTag') : t('lists.oneTimeTag')}
+          </span>
+          <button
+            onClick={async () => {
+              if (!confirm(t('lists.deleteListConfirm', { name: list.name }))) return;
+              await deleteList(id);
+              navigate({ to: '/listas' });
+            }}
+            aria-label={t('lists.deleteList')}
+            className="p-1 text-base text-zinc-300 active:text-red-600"
+          >
+            🗑
+          </button>
+        </div>
       </header>
 
       <h1 className="text-2xl font-bold text-zinc-900">{list.name}</h1>
@@ -158,17 +171,6 @@ export function ListaDetailPage() {
         className="min-h-12 rounded-xl border border-green-600 px-4 py-3 text-sm font-semibold text-green-700"
       >
         {t('lists.addItem')}
-      </button>
-
-      <button
-        onClick={async () => {
-          if (!confirm(t('lists.deleteListConfirm', { name: list.name }))) return;
-          await deleteList(id);
-          navigate({ to: '/listas' });
-        }}
-        className="mt-2 min-h-11 text-sm font-medium text-red-600"
-      >
-        {t('lists.deleteList')}
       </button>
 
       {priceItem && (
