@@ -1,7 +1,7 @@
 import { cheapestStore, estimateTotal, type PriceRecord } from '@grosify/shared';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { db, type LocalItem } from '../db/dexie.js';
 import {
@@ -134,11 +134,15 @@ export function ListaDetailPage() {
                 <QtyInput
                   value={entry.qty}
                   unit={t(`catalog.units.${item.unit}`)}
+                  label={list.isRecurring ? t('lists.recommended') : t('lists.qty')}
                   onCommit={(qty) => setListEntry(id, entry.itemId, qty)}
                 />
                 <button
-                  onClick={() => removeListEntry(entry.id)}
-                  className="text-sm text-red-600"
+                  onClick={() => {
+                    if (confirm(t('lists.removeConfirm', { name: item.name })))
+                      removeListEntry(entry.id);
+                  }}
+                  className="ml-1 px-1 text-zinc-300"
                   aria-label={t('lists.remove')}
                 >
                   ✕
@@ -158,10 +162,11 @@ export function ListaDetailPage() {
 
       <button
         onClick={async () => {
+          if (!confirm(t('lists.deleteListConfirm', { name: list.name }))) return;
           await deleteList(id);
           navigate({ to: '/listas' });
         }}
-        className="min-h-11 text-sm font-medium text-red-600"
+        className="mt-2 min-h-11 text-sm font-medium text-red-600"
       >
         {t('lists.deleteList')}
       </button>
@@ -186,27 +191,44 @@ export function ListaDetailPage() {
 function QtyInput({
   value,
   unit,
+  label,
   onCommit,
 }: {
   value: number;
   unit: string;
+  label: string;
   onCommit: (qty: number) => void;
 }) {
   const [local, setLocal] = useState(String(value));
+  // mantém o input em sincronia quando o valor muda por fora (sync de outro device)
+  useEffect(() => setLocal(String(value)), [value]);
+
+  function commit() {
+    const n = Number(local.replace(',', '.'));
+    if (n > 0 && n !== value) onCommit(n);
+    else setLocal(String(value));
+  }
+
   return (
-    <div className="flex items-center gap-1">
-      <input
-        value={local}
-        onChange={(e) => setLocal(e.target.value.replace(/[^\d.,]/g, ''))}
-        onBlur={() => {
-          const n = Number(local.replace(',', '.'));
-          if (n > 0 && n !== value) onCommit(n);
-          else setLocal(String(value));
-        }}
-        inputMode="decimal"
-        className="w-14 rounded-lg border border-zinc-300 px-2 py-1.5 text-center text-base"
-      />
-      <span className="w-8 text-xs text-zinc-400">{unit}</span>
+    <div className="flex flex-col items-end gap-0.5">
+      <span className="text-[10px] uppercase tracking-wide text-zinc-400">{label}</span>
+      <div className="flex items-center gap-1">
+        <input
+          value={local}
+          onChange={(e) => setLocal(e.target.value.replace(/[^\d.,]/g, ''))}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            // Enter apenas confirma (blur) — nunca dispara outra ação na página
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              e.currentTarget.blur();
+            }
+          }}
+          inputMode="decimal"
+          className="w-16 rounded-lg border border-zinc-300 px-2 py-1.5 text-center text-base"
+        />
+        <span className="w-7 text-xs text-zinc-400">{unit}</span>
+      </div>
     </div>
   );
 }

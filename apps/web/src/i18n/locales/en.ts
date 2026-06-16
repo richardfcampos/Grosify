@@ -65,6 +65,9 @@ export default {
       stores: 'Stores',
     },
     lists: {
+      recommended: 'Recommended',
+      removeConfirm: 'Remove "{{name}}" from the list?',
+      deleteListConfirm: 'Delete the list "{{name}}" and all its items?',
       createItem: 'Create "{{name}}"',
       title: 'Lists',
       newList: 'New list',

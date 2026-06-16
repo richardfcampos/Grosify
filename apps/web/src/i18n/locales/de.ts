@@ -65,6 +65,9 @@ export default {
       stores: 'Läden',
     },
     lists: {
+      recommended: 'Empfohlen',
+      removeConfirm: '"{{name}}" aus der Liste entfernen?',
+      deleteListConfirm: 'Liste "{{name}}" und alle Artikel löschen?',
       createItem: '"{{name}}" erstellen',
       title: 'Listen',
       newList: 'Neue Liste',
