@@ -46,6 +46,8 @@ export default {
       language: 'Language',
     },
     restock: {
+      noLists: 'Create a recurring list to generate restock.',
+      missingCount: '{{count}} items missing',
       title: 'Monthly restock',
       subtitle: 'To buy, based on your stock',
       nothing: 'Stock is good! Nothing to restock.',
@@ -104,8 +106,6 @@ export default {
       searchPlace: 'Search place',
       searchPlaceHint: 'Type name, neighborhood, city',
       poweredBy: 'Addresses © OpenStreetMap',
-      monthlyTarget: 'Recommended per month',
-      monthlyTargetHint: 'How much you buy monthly (e.g. 10 kg of rice)',
       itemsTitle: 'Items',
       searchItems: 'Search item…',
       noItems: 'No items yet. Add the first one.',

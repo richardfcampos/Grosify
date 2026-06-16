@@ -46,6 +46,8 @@ export default {
       language: 'Idioma',
     },
     restock: {
+      noLists: 'Crie uma lista recorrente pra gerar a reposição.',
+      missingCount: '{{count}} itens faltando',
       title: 'Reposição do mês',
       subtitle: 'Falta comprar, segundo seu estoque',
       nothing: 'Estoque em dia! Nada a repor.',
@@ -104,8 +106,6 @@ export default {
       searchPlace: 'Buscar estabelecimento',
       searchPlaceHint: 'Digite nome, bairro, cidade',
       poweredBy: 'Endereços © OpenStreetMap',
-      monthlyTarget: 'Recomendado por mês',
-      monthlyTargetHint: 'Quanto você compra por mês (ex.: 10 kg de arroz)',
       itemsTitle: 'Itens',
       searchItems: 'Buscar item…',
       noItems: 'Nenhum item ainda. Adicione o primeiro.',

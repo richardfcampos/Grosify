@@ -27,7 +27,24 @@ export function InventarioPage() {
     [],
     [],
   );
+  const lists = useLiveQuery(
+    () => db.lists.filter((l) => l.deletedAt === null && l.isRecurring).toArray(),
+    [],
+    [],
+  );
+  const entries = useLiveQuery(
+    () => db.listEntries.filter((e) => e.deletedAt === null).toArray(),
+    [],
+    [],
+  );
   const onHandByItem = new Map(inventory.map((i) => [i.itemId, i.qtyOnHand]));
+  // soma das quantidades recomendadas (entradas de listas recorrentes) por item
+  const recommendedByItem = new Map<string, number>();
+  const recurringIds = new Set(lists.map((l) => l.id));
+  for (const e of entries) {
+    if (recurringIds.has(e.listId))
+      recommendedByItem.set(e.itemId, (recommendedByItem.get(e.itemId) ?? 0) + e.qty);
+  }
 
   async function onScanned(barcode: string) {
     const itemId = await findItemIdByBarcode(barcode);
@@ -56,6 +73,7 @@ export function InventarioPage() {
                 key={item.id}
                 item={item}
                 onHand={onHandByItem.get(item.id) ?? 0}
+                recommended={recommendedByItem.get(item.id)}
                 highlight={scanned?.id === item.id}
               />
             ))}
@@ -85,15 +103,16 @@ export function InventarioPage() {
 function InventoryRow({
   item,
   onHand,
+  recommended,
   highlight,
 }: {
   item: LocalItem;
   onHand: number;
+  recommended: number | undefined;
   highlight: boolean;
 }) {
   const { t } = useTranslation();
   const [local, setLocal] = useState(String(onHand));
-  const target = item.monthlyTarget;
   return (
     <li
       className={`flex items-center gap-3 rounded-2xl border p-3 ${
@@ -102,9 +121,9 @@ function InventoryRow({
     >
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium text-zinc-900">{item.name}</p>
-        {target != null && (
+        {recommended != null && (
           <p className="text-sm text-green-700">
-            {t('lists.needed')}: {neededQty(target, onHand)} {t(`catalog.units.${item.unit}`)}
+            {t('lists.needed')}: {neededQty(recommended, onHand)} {t(`catalog.units.${item.unit}`)}
           </p>
         )}
       </div>

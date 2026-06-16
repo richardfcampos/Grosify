@@ -46,6 +46,8 @@ export default {
       language: 'Langue',
     },
     restock: {
+      noLists: 'Créez une liste récurrente pour générer le réassort.',
+      missingCount: '{{count}} articles manquants',
       title: 'Réassort du mois',
       subtitle: 'À acheter, selon votre stock',
       nothing: 'Stock à jour ! Rien à réapprovisionner.',
@@ -104,8 +106,6 @@ export default {
       searchPlace: 'Rechercher un lieu',
       searchPlaceHint: 'Tapez nom, quartier, ville',
       poweredBy: 'Adresses © OpenStreetMap',
-      monthlyTarget: 'Recommandé par mois',
-      monthlyTargetHint: 'Combien vous achetez par mois (ex. : 10 kg de riz)',
       itemsTitle: 'Articles',
       searchItems: 'Rechercher un article…',
       noItems: 'Aucun article pour l’instant. Ajoutez le premier.',

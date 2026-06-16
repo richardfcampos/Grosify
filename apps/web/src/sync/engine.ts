@@ -148,11 +148,10 @@ async function pull(): Promise<void> {
     ],
     async () => {
       for (const row of changes.items ?? []) {
-        const r = row as unknown as LocalItem & { monthlyTarget: unknown };
+        const r = row as unknown as LocalItem;
         if (pendingIds.has(r.id)) continue;
-        r.monthlyTarget = r.monthlyTarget === null || r.monthlyTarget === undefined ? null : Number(r.monthlyTarget);
         const existing = await db.items.get(r.id);
-        await db.items.put({ ...(r as LocalItem), photoBlob: existing?.photoBlob ?? null });
+        await db.items.put({ ...r, photoBlob: existing?.photoBlob ?? null });
       }
       await applyTable(db.barcodes, changes.item_barcodes, pendingIds);
       await applyTable(db.stores, changes.stores, pendingIds);

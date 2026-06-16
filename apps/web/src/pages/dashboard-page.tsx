@@ -3,14 +3,17 @@ import { Link, Navigate, useNavigate } from '@tanstack/react-router';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { db, type LocalItem } from '../db/dexie.js';
-import { startReplenishmentSession } from '../db/repositories.js';
+import { db, type LocalList } from '../db/dexie.js';
+import { startShoppingSession } from '../db/repositories.js';
 import { useSession } from '../lib/auth-client.js';
 import { useFormatMoney } from '../lib/use-currency.js';
 import { useMembership } from '../lib/use-membership.js';
 import { Loading } from './household-pages.js';
 
-/** Home = painel de reposição: o que falta comprar (recomendado − estoque). */
+/**
+ * Home = reposição por lista recorrente: cada lista mostra o que falta comprar
+ * (qty recomendada da entrada − estoque) e total estimado.
+ */
 export function DashboardPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -18,10 +21,15 @@ export function DashboardPage() {
   const { data: session, isPending } = useSession();
   const membership = useMembership(!!session);
 
-  const items = useLiveQuery(
-    () => db.items.filter((i) => i.deletedAt === null).toArray(),
+  const lists = useLiveQuery(
+    () => db.lists.filter((l) => l.deletedAt === null && l.isRecurring).toArray(),
     [],
-    [] as LocalItem[],
+    [] as LocalList[],
+  );
+  const entries = useLiveQuery(
+    () => db.listEntries.filter((e) => e.deletedAt === null).toArray(),
+    [],
+    [],
   );
   const inventory = useLiveQuery(
     () => db.inventory.filter((i) => i.deletedAt === null).toArray(),
@@ -35,21 +43,29 @@ export function DashboardPage() {
   );
 
   const onHand = useMemo(() => new Map(inventory.map((i) => [i.itemId, i.qtyOnHand])), [inventory]);
-  const targeted = items.filter((i) => i.monthlyTarget != null);
-  const needed = useMemo(
+  const priceOf = useMemo(() => {
+    const m = new Map<string, number | null>();
+    return (itemId: string) => {
+      if (!m.has(itemId))
+        m.set(itemId, cheapestStore(prices.filter((p) => p.itemId === itemId))?.priceCents ?? null);
+      return m.get(itemId) ?? null;
+    };
+  }, [prices]);
+
+  // por lista recorrente: itens faltando (recomendado − estoque) + total estimado
+  const perList = useMemo(
     () =>
-      targeted
-        .map((item) => ({
-          item,
-          need: neededQty(item.monthlyTarget ?? 0, onHand.get(item.id) ?? 0),
-          price: cheapestStore(prices.filter((p) => p.itemId === item.id))?.priceCents ?? null,
-        }))
-        .filter((x) => x.need > 0),
-    [targeted, onHand, prices],
-  );
-  const total = useMemo(
-    () => estimateTotal(needed.map((n) => ({ qty: n.need, unitPriceCents: n.price }))).totalCents,
-    [needed],
+      lists.map((list) => {
+        const listEntries = entries.filter((e) => e.listId === list.id);
+        const needed = listEntries
+          .map((e) => ({ itemId: e.itemId, need: neededQty(e.qty, onHand.get(e.itemId) ?? 0) }))
+          .filter((x) => x.need > 0);
+        const total = estimateTotal(
+          needed.map((n) => ({ qty: n.need, unitPriceCents: priceOf(n.itemId) })),
+        ).totalCents;
+        return { list, missing: needed.length, total };
+      }),
+    [lists, entries, onHand, priceOf],
   );
 
   if (isPending || (session && membership.isLoading)) return <Loading />;
@@ -68,51 +84,46 @@ export function DashboardPage() {
         </Link>
       </header>
 
-      <section className="rounded-2xl bg-zinc-900 px-5 py-4 text-white">
-        <p className="text-xs uppercase tracking-wide text-zinc-400">{t('restock.title')}</p>
-        <p className="text-3xl font-bold">{fmt(total)}</p>
-        <p className="mt-1 text-xs text-zinc-400">{t('restock.subtitle')}</p>
-      </section>
-
-      <div className="flex gap-2">
-        <Link
-          to="/inventario"
-          className="flex-1 rounded-xl border border-green-600 px-4 py-2.5 text-center text-sm font-semibold text-green-700"
-        >
-          {t('restock.doInventory')}
-        </Link>
-        <button
-          onClick={async () => {
-            const sid = await startReplenishmentSession();
-            if (sid) navigate({ to: '/compra/$id', params: { id: sid } });
-          }}
-          disabled={needed.length === 0}
-          className="flex-1 rounded-xl bg-green-600 px-4 py-2.5 text-center text-sm font-bold text-white active:bg-green-700 disabled:opacity-40"
-        >
-          {t('restock.startShopping')}
-        </button>
+      <div>
+        <h2 className="text-xs uppercase tracking-wide text-zinc-500">{t('restock.title')}</h2>
+        <p className="text-sm text-zinc-500">{t('restock.subtitle')}</p>
       </div>
 
-      {targeted.length === 0 ? (
-        <p className="mt-4 text-center text-sm text-zinc-500">{t('restock.noTargets')}</p>
-      ) : needed.length === 0 ? (
-        <p className="mt-4 text-center text-zinc-500">{t('restock.nothing')}</p>
+      <Link
+        to="/inventario"
+        className="rounded-xl border border-green-600 px-4 py-2.5 text-center text-sm font-semibold text-green-700"
+      >
+        {t('restock.doInventory')}
+      </Link>
+
+      {lists.length === 0 ? (
+        <p className="mt-4 text-center text-sm text-zinc-500">{t('restock.noLists')}</p>
       ) : (
-        <ul className="flex flex-col gap-2">
-          {needed.map(({ item, need, price }) => (
-            <li
-              key={item.id}
-              className="flex items-center justify-between rounded-2xl border border-zinc-200 p-3"
-            >
-              <div className="min-w-0">
-                <p className="truncate font-medium text-zinc-900">{item.name}</p>
-                <p className="text-sm text-zinc-500">
-                  {price !== null ? fmt(Math.round(need * price)) : t('lists.missingPrices', { count: 1 })}
-                </p>
+        <ul className="flex flex-col gap-3">
+          {perList.map(({ list, missing, total }) => (
+            <li key={list.id} className="flex flex-col gap-3 rounded-2xl border border-zinc-200 p-4">
+              <div className="flex items-start justify-between">
+                <Link to="/listas/$id" params={{ id: list.id }} className="min-w-0">
+                  <p className="truncate font-semibold text-zinc-900">{list.name}</p>
+                  <p className="text-sm text-zinc-500">
+                    {missing > 0
+                      ? t('restock.missingCount', { count: missing })
+                      : t('restock.nothing')}
+                  </p>
+                </Link>
+                <span className="font-bold text-zinc-900">{fmt(total)}</span>
               </div>
-              <span className="font-mono text-sm font-semibold text-green-700">
-                {t('restock.toBuy')} {need} {t(`catalog.units.${item.unit}`)}
-              </span>
+              {missing > 0 && (
+                <button
+                  onClick={async () => {
+                    const sid = await startShoppingSession(list.id);
+                    navigate({ to: '/compra/$id', params: { id: sid } });
+                  }}
+                  className="min-h-11 rounded-xl bg-green-600 text-sm font-bold text-white active:bg-green-700"
+                >
+                  {t('restock.startShopping')}
+                </button>
+              )}
             </li>
           ))}
         </ul>

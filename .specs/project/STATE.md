@@ -47,6 +47,8 @@
 
 | 2026-06-13 | Autocomplete de loja via **Photon** (komoot/OpenStreetMap, grátis, sem chave): campo único busca estabelecimento por nome/bairro/cidade, preenche nome/cidade/bairro + lat/lng. Debounce 350ms, atribuição OSM. Campos seguem editáveis (POI pequeno pode faltar no OSM) | Pedido do usuário; Photon escolhido por ter autocomplete real (Nominatim não tem) e ser grátis sem chave |
 
+| 2026-06-16 | Recomendado é por (lista, item), NÃO por item: removido `items.monthlyTarget` (migração drop). A qty da entrada de lista recorrente (`shopping_list_entries.qty`) é a recomendação — duas listas podem ter o mesmo item com qtys diferentes. Home virou reposição POR lista recorrente (card: faltam X, total, iniciar compra via startShoppingSession). Inventário calcula needed pela soma das entradas de listas recorrentes. Removido startReplenishmentSession | Correção pedida pelo usuário: monthlyTarget no item era modelagem errada |
+
 ## Bloqueios
 
 - **Deploy**: configs prontas (Dockerfile, _redirects, docs/deployment.md). Usuário vai executar seguindo a doc (criar Neon+Railway+CF Pages). Eu de plantão.

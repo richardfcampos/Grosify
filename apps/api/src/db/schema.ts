@@ -138,8 +138,6 @@ export const items = pgTable(
     unit: text('unit', { enum: ['un', 'kg', 'g', 'l', 'ml'] })
       .notNull()
       .default('un'),
-    /** Quantidade recomendada por mês (alvo de estoque). Null = sem reposição automática. */
-    monthlyTarget: numeric('monthly_target', { precision: 10, scale: 3 }),
     ...syncColumns,
   },
   (t) => [

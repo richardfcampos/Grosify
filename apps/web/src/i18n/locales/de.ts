@@ -46,6 +46,8 @@ export default {
       language: 'Sprache',
     },
     restock: {
+      noLists: 'Erstelle eine wiederkehrende Liste, um die Liste zu erzeugen.',
+      missingCount: '{{count}} Artikel fehlen',
       title: 'Monatliches Auffüllen',
       subtitle: 'Zu kaufen, je nach Bestand',
       nothing: 'Bestand ist gut! Nichts aufzufüllen.',
@@ -104,8 +106,6 @@ export default {
       searchPlace: 'Ort suchen',
       searchPlaceHint: 'Name, Stadtteil, Stadt eingeben',
       poweredBy: 'Adressen © OpenStreetMap',
-      monthlyTarget: 'Empfohlen pro Monat',
-      monthlyTargetHint: 'Wie viel du monatlich kaufst (z. B. 10 kg Reis)',
       itemsTitle: 'Artikel',
       searchItems: 'Artikel suchen…',
       noItems: 'Noch keine Artikel. Füge den ersten hinzu.',

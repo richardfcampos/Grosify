@@ -46,6 +46,8 @@ export default {
       language: 'Lingua',
     },
     restock: {
+      noLists: 'Crea una lista ricorrente per generare il rifornimento.',
+      missingCount: '{{count}} articoli mancanti',
       title: 'Rifornimento del mese',
       subtitle: 'Da comprare, in base alle scorte',
       nothing: 'Scorte a posto! Niente da rifornire.',
@@ -104,8 +106,6 @@ export default {
       searchPlace: 'Cerca luogo',
       searchPlaceHint: 'Scrivi nome, quartiere, città',
       poweredBy: 'Indirizzi © OpenStreetMap',
-      monthlyTarget: 'Consigliato al mese',
-      monthlyTargetHint: 'Quanto compri al mese (es.: 10 kg di riso)',
       itemsTitle: 'Articoli',
       searchItems: 'Cerca articolo…',
       noItems: 'Ancora nessun articolo. Aggiungi il primo.',

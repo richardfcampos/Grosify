@@ -42,7 +42,6 @@ export function ItemFormPage() {
   const [name, setName] = useState('');
   const [category, setCategory] = useState('');
   const [unit, setUnit] = useState<Unit>('un');
-  const [monthlyTarget, setMonthlyTarget] = useState('');
   const [photoBlob, setPhotoBlob] = useState<Blob | null>(null);
   const [photoTouched, setPhotoTouched] = useState(false);
   // barcodes pendentes (modo criar) antes de existir o item
@@ -60,7 +59,6 @@ export function ItemFormPage() {
       setName(existing.name);
       setCategory(existing.category ?? '');
       setUnit(existing.unit);
-      setMonthlyTarget(existing.monthlyTarget != null ? String(existing.monthlyTarget) : '');
       setPhotoBlob(existing.photoBlob ?? null);
     }
   }, [editingId, existing]);
@@ -107,14 +105,12 @@ export function ItemFormPage() {
     e.preventDefault();
     setBusy(true);
     setError(null);
-    const target = monthlyTarget.trim() ? Number(monthlyTarget.replace(',', '.')) : null;
     try {
       if (editingId) {
         await updateItem(editingId, {
           name: name.trim(),
           category: category.trim() || null,
           unit,
-          monthlyTarget: target,
           ...(photoTouched ? { photoBlob } : {}),
         });
       } else {
@@ -122,7 +118,6 @@ export function ItemFormPage() {
           name: name.trim(),
           category: category.trim() || null,
           unit,
-          monthlyTarget: target,
           photoBlob,
           barcodes: pendingBarcodes,
         });
@@ -213,19 +208,6 @@ export function ItemFormPage() {
               </option>
             ))}
           </select>
-        </label>
-
-        <label className="flex flex-col gap-1">
-          <span className={labelClass}>
-            {t('catalog.monthlyTarget')} ({t(`catalog.units.${unit}`)})
-          </span>
-          <input
-            value={monthlyTarget}
-            onChange={(e) => setMonthlyTarget(e.target.value.replace(/[^\d.,]/g, ''))}
-            inputMode="decimal"
-            placeholder={t('catalog.monthlyTargetHint')}
-            className={inputClass}
-          />
         </label>
 
         <div className="flex flex-col gap-2">
