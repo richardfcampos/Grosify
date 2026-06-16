@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { db, type LocalItem } from '../db/dexie.js';
 import {
+  createItem,
   deleteList,
   removeListEntry,
   setListEntry,
@@ -150,8 +151,7 @@ export function ListaDetailPage() {
 
       <button
         onClick={() => setAdding(true)}
-        disabled={available.length === 0}
-        className="min-h-12 rounded-xl border border-green-600 px-4 py-3 text-sm font-semibold text-green-700 disabled:opacity-40"
+        className="min-h-12 rounded-xl border border-green-600 px-4 py-3 text-sm font-semibold text-green-700"
       >
         {t('lists.addItem')}
       </button>
@@ -221,16 +221,48 @@ function AddItemSheet({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
+  const [query, setQuery] = useState('');
+  const [creating, setCreating] = useState(false);
+
+  const q = query.trim().toLowerCase();
+  const filtered = [...items]
+    .filter((i) => i.name.toLowerCase().includes(q))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const exactExists = items.some((i) => i.name.trim().toLowerCase() === q);
+
+  async function onCreate() {
+    if (!query.trim() || creating) return;
+    setCreating(true);
+    const id = await createItem({ name: query.trim(), unit: 'un', barcodes: [] });
+    onPick(id);
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-end bg-black/40" onClick={onClose}>
       <div
         onClick={(e) => e.stopPropagation()}
-        className="mx-auto flex max-h-[70dvh] w-full max-w-md flex-col gap-1 overflow-y-auto rounded-t-3xl bg-white p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]"
+        className="mx-auto flex max-h-[80dvh] w-full max-w-md flex-col gap-2 rounded-t-3xl bg-white p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]"
       >
-        <h2 className="mb-2 text-lg font-bold text-zinc-900">{t('lists.selectItem')}</h2>
-        {[...items]
-          .sort((a, b) => a.name.localeCompare(b.name))
-          .map((item) => (
+        <h2 className="text-lg font-bold text-zinc-900">{t('lists.selectItem')}</h2>
+        <input
+          autoFocus
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={t('catalog.searchItems')}
+          className="min-h-12 rounded-xl border border-zinc-300 px-4 py-3 text-base outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100"
+        />
+
+        <div className="flex flex-col gap-1 overflow-y-auto">
+          {query.trim() && !exactExists && (
+            <button
+              onClick={onCreate}
+              disabled={creating}
+              className="rounded-xl bg-green-50 px-4 py-3 text-left text-base font-medium text-green-700 active:bg-green-100 disabled:opacity-50"
+            >
+              + {t('lists.createItem', { name: query.trim() })}
+            </button>
+          )}
+          {filtered.map((item) => (
             <button
               key={item.id}
               onClick={() => onPick(item.id)}
@@ -239,6 +271,7 @@ function AddItemSheet({
               {item.name}
             </button>
           ))}
+        </div>
       </div>
     </div>
   );

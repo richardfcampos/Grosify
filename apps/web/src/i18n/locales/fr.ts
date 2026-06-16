@@ -63,6 +63,7 @@ export default {
       stores: 'Magasins',
     },
     lists: {
+      createItem: 'Créer « {{name}} »',
       title: 'Listes',
       newList: 'Nouvelle liste',
       listName: 'Nom de la liste',
