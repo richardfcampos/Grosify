@@ -102,21 +102,25 @@ export function CheckItemSheet({ sessionItem, itemName, onClose }: Props) {
               ))}
             </select>
             <div className="flex gap-2">
-              <input
-                value={qty}
-                onChange={(e) => setQty(e.target.value.replace(/[^\d.,]/g, ''))}
-                inputMode="decimal"
-                placeholder={t('shopping.actualQty')}
-                className={`${inputClass} w-24`}
-              />
-              <input
-                value={value}
-                onChange={(e) => setValue(e.target.value)}
-                inputMode="decimal"
-                required
-                placeholder={t('shopping.actualPrice')}
-                className={`${inputClass} flex-1`}
-              />
+              <label className="flex w-24 flex-col gap-1">
+                <span className="text-xs text-stone-400">{t('shopping.actualQty')}</span>
+                <input
+                  value={qty}
+                  onChange={(e) => setQty(e.target.value.replace(/[^\d.,]/g, ''))}
+                  inputMode="decimal"
+                  className={inputClass}
+                />
+              </label>
+              <label className="flex flex-1 flex-col gap-1">
+                <span className="text-xs text-stone-400">{t('shopping.actualPrice')}</span>
+                <input
+                  value={value}
+                  onChange={(e) => setValue(e.target.value)}
+                  inputMode="decimal"
+                  required
+                  className={inputClass}
+                />
+              </label>
             </div>
             {warn && <p className="text-sm font-medium text-red-400">▲ {warn}</p>}
             <button

@@ -38,6 +38,17 @@ export function ItemFormPage() {
     [editingId],
     [],
   );
+  // categorias já usadas (dropdown de sugestões; digitar nova cria) — evita inconsistência
+  const categories = useLiveQuery(
+    async () => {
+      const all = await db.items.filter((i) => i.deletedAt === null).toArray();
+      return [...new Set(all.map((i) => i.category).filter((c): c is string => !!c))].sort((a, b) =>
+        a.localeCompare(b),
+      );
+    },
+    [],
+    [] as string[],
+  );
 
   const [name, setName] = useState('');
   const [category, setCategory] = useState('');
@@ -194,9 +205,15 @@ export function ItemFormPage() {
             value={category}
             onChange={(e) => setCategory(e.target.value)}
             placeholder={t('catalog.categoryHint')}
+            list="categories"
             maxLength={100}
             className={inputClass}
           />
+          <datalist id="categories">
+            {categories.map((c) => (
+              <option key={c} value={c} />
+            ))}
+          </datalist>
         </label>
 
         <label className="flex flex-col gap-1">
