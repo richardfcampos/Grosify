@@ -210,6 +210,7 @@ export default {
       pending_other: '{{count}} in sospeso',
     },
     common: {
+      confirm: 'Conferma',
       loading: 'Caricamento…',
       cancel: 'Annulla',
       add: 'Aggiungi',

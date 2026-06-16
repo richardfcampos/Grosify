@@ -210,6 +210,7 @@ export default {
       pending_other: '{{count}} en attente',
     },
     common: {
+      confirm: 'Confirmer',
       loading: 'Chargement…',
       cancel: 'Annuler',
       add: 'Ajouter',

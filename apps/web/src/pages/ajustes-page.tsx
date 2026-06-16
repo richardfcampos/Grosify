@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { SUPPORTED_LANGUAGES } from '../i18n/index.js';
 import { api } from '../lib/api.js';
 import { signOut } from '../lib/auth-client.js';
+import { useConfirm } from '../lib/confirm.js';
 import { useHouseholdPlan } from '../lib/use-currency.js';
 import { clearLocalData } from '../sync/engine.js';
 
@@ -14,6 +15,7 @@ export function AjustesPage() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const plan = useHouseholdPlan();
+  const confirm = useConfirm();
   const [busy, setBusy] = useState(false);
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -40,7 +42,13 @@ export function AjustesPage() {
   }
 
   async function onDelete() {
-    if (!confirm(t('settings.deleteConfirm'))) return;
+    const ok = await confirm({
+      title: t('settings.deleteAccount'),
+      message: t('settings.deleteConfirm'),
+      confirmLabel: t('common.delete'),
+      danger: true,
+    });
+    if (!ok) return;
     setBusy(true);
     const res = await fetch(`${API_URL}/me`, { method: 'DELETE', credentials: 'include' });
     if (res.ok) {

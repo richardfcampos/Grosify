@@ -13,6 +13,7 @@ import {
   updateItem,
 } from '../db/repositories.js';
 import { resizeToWebp } from '../lib/resize-image.js';
+import { useConfirm } from '../lib/confirm.js';
 import { useObjectUrl } from '../lib/use-object-url.js';
 import { ScannerModal } from '../features/scanner/scanner-modal.js';
 
@@ -23,6 +24,7 @@ const inputClass =
 export function ItemFormPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const confirm = useConfirm();
   const params = useParams({ strict: false }) as { id?: string };
   const editingId = params.id ?? null;
 
@@ -142,7 +144,14 @@ export function ItemFormPage() {
   }
 
   async function onDelete() {
-    if (!editingId || !confirm(t('catalog.deleteConfirm'))) return;
+    if (!editingId) return;
+    const ok = await confirm({
+      title: t('catalog.deleteItem'),
+      message: t('catalog.deleteConfirm'),
+      confirmLabel: t('common.delete'),
+      danger: true,
+    });
+    if (!ok) return;
     await deleteItem(editingId);
     navigate({ to: '/itens' });
   }

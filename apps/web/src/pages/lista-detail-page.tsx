@@ -12,6 +12,7 @@ import {
   startShoppingSession,
 } from '../db/repositories.js';
 import { PrecoSheet } from '../features/prices/preco-sheet.js';
+import { useConfirm } from '../lib/confirm.js';
 import { useFormatMoney } from '../lib/use-currency.js';
 
 /** Preço unitário estimado (loja mais barata) de um item, ou null. */
@@ -24,6 +25,7 @@ export function ListaDetailPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const fmt = useFormatMoney();
+  const confirm = useConfirm();
   const { id } = useParams({ from: '/app/listas/$id' });
 
   const list = useLiveQuery(() => db.lists.get(id), [id]);
@@ -76,7 +78,13 @@ export function ListaDetailPage() {
           </span>
           <button
             onClick={async () => {
-              if (!confirm(t('lists.deleteListConfirm', { name: list.name }))) return;
+              const ok = await confirm({
+                title: t('lists.deleteList'),
+                message: t('lists.deleteListConfirm', { name: list.name }),
+                confirmLabel: t('common.delete'),
+                danger: true,
+              });
+              if (!ok) return;
               await deleteList(id);
               navigate({ to: '/listas' });
             }}
@@ -151,9 +159,13 @@ export function ListaDetailPage() {
                   onCommit={(qty) => setListEntry(id, entry.itemId, qty)}
                 />
                 <button
-                  onClick={() => {
-                    if (confirm(t('lists.removeConfirm', { name: item.name })))
-                      removeListEntry(entry.id);
+                  onClick={async () => {
+                    const ok = await confirm({
+                      message: t('lists.removeConfirm', { name: item.name }),
+                      confirmLabel: t('common.delete'),
+                      danger: true,
+                    });
+                    if (ok) removeListEntry(entry.id);
                   }}
                   className="ml-1 px-1 text-zinc-300"
                   aria-label={t('lists.remove')}

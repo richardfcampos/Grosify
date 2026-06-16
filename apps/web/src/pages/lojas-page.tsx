@@ -3,6 +3,7 @@ import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { db, type LocalStore } from '../db/dexie.js';
 import { createStore, deleteStore, updateStore } from '../db/repositories.js';
+import { useConfirm } from '../lib/confirm.js';
 import { usePlacesSearch, type PlaceResult } from '../lib/use-places-search.js';
 
 const inputClass =
@@ -66,6 +67,7 @@ export function LojasPage() {
 
 function StoreSheet({ store, onClose }: { store: LocalStore | null; onClose: () => void }) {
   const { t } = useTranslation();
+  const confirm = useConfirm();
   const [name, setName] = useState(store?.name ?? '');
   const [city, setCity] = useState(store?.city ?? '');
   const [neighborhood, setNeighborhood] = useState(store?.neighborhood ?? '');
@@ -102,7 +104,14 @@ function StoreSheet({ store, onClose }: { store: LocalStore | null; onClose: () 
   }
 
   async function onDelete() {
-    if (store && confirm(t('catalog.deleteStore') + '?')) {
+    if (!store) return;
+    const ok = await confirm({
+      title: t('catalog.deleteStore'),
+      message: t('lists.removeConfirm', { name: store.name }),
+      confirmLabel: t('common.delete'),
+      danger: true,
+    });
+    if (ok) {
       await deleteStore(store.id);
       onClose();
     }
