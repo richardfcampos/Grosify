@@ -34,4 +34,11 @@ Ordem por dependência + custo/valor. Cada fase = um commit verificado (typechec
 - Sem referência a plano/finding em código/migração (nomes de domínio só).
 
 ## Status
-Fase 1: em andamento.
+Todas as 10 fases concluídas, verificadas (typecheck 4 pacotes + 37 testes + build) e pushadas.
+Migrações 0012–0017. Commits 7d0c3d5 → 3dc23cb.
+
+## Desvios honestos (decisão de engenharia)
+- Fase 8: "cron de auto-geração" virou cálculo **no client** (`isRecurrenceDue`) + badge "dia de comprar" — offline-friendly, sem infra de notificação (que ficou fora desta leva).
+- Fase 10: **PDF via `window.print()`** (sem lib) e **restore = merge local no Dexie** (seguro, nível de dispositivo; não reenvia ao servidor).
+- Fase 9: SSE poke é pub/sub **em memória** (single-instance); multi-instância exigiria broker.
+- Notificações push (item 4 da lista original) ficaram fora — usuário não pediu; alertas de orçamento são in-app.
