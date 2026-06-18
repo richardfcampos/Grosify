@@ -2,17 +2,20 @@ import { zValidator } from '@hono/zod-validator';
 import {
   addBarcodePayload,
   createBrandPayload,
+  createCategoryPayload,
   createItemPayload,
   createStorePayload,
   maxItems,
+  reorderCategoriesPayload,
   updateBrandPayload,
+  updateCategoryPayload,
   updateItemPayload,
   updateStorePayload,
 } from '@grosify/shared';
 import { and, count, eq, isNull } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { db } from '../db/index.js';
-import { itemBarcodes, itemBrands, items, stores } from '../db/schema.js';
+import { categories, itemBarcodes, itemBrands, items, stores } from '../db/schema.js';
 import { requireHousehold, type HouseholdEnv } from '../middleware/household.js';
 
 /** Erro de violação de unique (Postgres SQLSTATE 23505). Drizzle embrulha em `cause`. */
@@ -61,6 +64,80 @@ export const catalogRoute = new Hono<HouseholdEnv>()
       )
       .limit(1);
     return c.json({ itemId: rows[0]?.itemId ?? null, brandId: rows[0]?.brandId ?? null });
+  })
+
+  // ---------- Categorias ----------
+  .post('/categories', zValidator('json', createCategoryPayload), async (c) => {
+    const hid = c.get('householdId');
+    const p = c.req.valid('json');
+    const [category] = await db
+      .insert(categories)
+      .values({
+        id: p.id,
+        householdId: hid,
+        name: p.name,
+        icon: p.icon ?? null,
+        color: p.color ?? null,
+        sortOrder: p.sortOrder ?? 0,
+      })
+      .onConflictDoNothing()
+      .returning();
+    return c.json({ category: category ?? null }, 201);
+  })
+
+  .patch('/categories/:id', zValidator('json', updateCategoryPayload), async (c) => {
+    const hid = c.get('householdId');
+    const id = c.req.param('id');
+    const p = c.req.valid('json');
+    const category = await db.transaction(async (tx) => {
+      const [cat] = await tx
+        .update(categories)
+        .set({ ...p, updatedAt: new Date() })
+        .where(and(eq(categories.id, id), eq(categories.householdId, hid)))
+        .returning();
+      // propaga o novo nome para o cache desnormalizado dos itens
+      if (cat && p.name !== undefined) {
+        await tx
+          .update(items)
+          .set({ category: p.name, updatedAt: new Date() })
+          .where(and(eq(items.householdId, hid), eq(items.categoryId, id)));
+      }
+      return cat ?? null;
+    });
+    if (!category) return c.json({ error: 'not_found' }, 404);
+    return c.json({ category });
+  })
+
+  .post('/categories/reorder', zValidator('json', reorderCategoriesPayload), async (c) => {
+    const hid = c.get('householdId');
+    const { ids } = c.req.valid('json');
+    await db.transaction(async (tx) => {
+      for (let i = 0; i < ids.length; i++) {
+        await tx
+          .update(categories)
+          .set({ sortOrder: i, updatedAt: new Date() })
+          .where(and(eq(categories.id, ids[i]!), eq(categories.householdId, hid)));
+      }
+    });
+    return c.json({ ok: true });
+  })
+
+  .delete('/categories/:id', async (c) => {
+    const hid = c.get('householdId');
+    const id = c.req.param('id');
+    const now = new Date();
+    await db.transaction(async (tx) => {
+      await tx
+        .update(categories)
+        .set({ deletedAt: now, updatedAt: now })
+        .where(and(eq(categories.id, id), eq(categories.householdId, hid)));
+      // itens da categoria ficam sem categoria
+      await tx
+        .update(items)
+        .set({ categoryId: null, category: null, updatedAt: now })
+        .where(and(eq(items.householdId, hid), eq(items.categoryId, id)));
+    });
+    return c.json({ ok: true });
   })
 
   // ---------- Marcas ----------
@@ -151,6 +228,7 @@ export const catalogRoute = new Hono<HouseholdEnv>()
             householdId: hid,
             name: payload.name,
             category: payload.category ?? null,
+            categoryId: payload.categoryId ?? null,
             photoKey: payload.photoKey ?? null,
             notes: payload.notes ?? null,
             unit: payload.unit,

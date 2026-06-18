@@ -18,9 +18,21 @@ export const UNITS = ['un', 'kg', 'g', 'l', 'ml'] as const;
 export const unitSchema = z.enum(UNITS);
 export type Unit = z.infer<typeof unitSchema>;
 
+/** Categoria de itens (entidade com ícone/cor/ordem). */
+export const categorySchema = syncMetaSchema.extend({
+  name: z.string().trim().min(1).max(100),
+  icon: z.string().max(16).nullable(),
+  color: z.string().max(16).nullable(),
+  sortOrder: z.number().int(),
+  isHidden: z.boolean(),
+});
+export type Category = z.infer<typeof categorySchema>;
+
 export const itemSchema = syncMetaSchema.extend({
   name: z.string().trim().min(1).max(200),
+  /** Cache do nome da categoria (desnormalizado de categorySchema.name). */
   category: z.string().trim().min(1).max(100).nullable(),
+  categoryId: z.uuid().nullable(),
   photoKey: z.string().max(500).nullable(),
   /** Observações livres do item. */
   notes: z.string().trim().max(2000).nullable(),
@@ -134,6 +146,7 @@ export type ShoppingSessionItem = z.infer<typeof shoppingSessionItemSchema>;
 
 /** Registro de tabelas syncáveis — fonte única pro engine de sync e endpoints. */
 export const SYNC_TABLES = {
+  categories: categorySchema,
   items: itemSchema,
   item_brands: itemBrandSchema,
   item_barcodes: itemBarcodeSchema,

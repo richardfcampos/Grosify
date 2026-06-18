@@ -17,6 +17,7 @@ import { useObjectUrl } from '../lib/use-object-url.js';
 import { ScannerModal } from '../features/scanner/scanner-modal.js';
 import { BrandsSection } from '../features/brands/brands-section.js';
 import { BarcodeBrandChooser } from '../features/brands/barcode-brand-chooser.js';
+import { CategoryPicker } from '../features/catalog/category-picker.js';
 
 const labelClass = 'text-sm font-medium text-zinc-600';
 const inputClass =
@@ -49,20 +50,10 @@ export function ItemFormPage() {
     [editingId],
     [],
   );
-  // categorias já usadas (dropdown de sugestões; digitar nova cria) — evita inconsistência
-  const categories = useLiveQuery(
-    async () => {
-      const all = await db.items.filter((i) => i.deletedAt === null).toArray();
-      return [...new Set(all.map((i) => i.category).filter((c): c is string => !!c))].sort((a, b) =>
-        a.localeCompare(b),
-      );
-    },
-    [],
-    [] as string[],
-  );
 
   const [name, setName] = useState('');
-  const [category, setCategory] = useState('');
+  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [categoryName, setCategoryName] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
   const [unit, setUnit] = useState<Unit>('un');
   const [photoBlob, setPhotoBlob] = useState<Blob | null>(null);
@@ -82,7 +73,8 @@ export function ItemFormPage() {
     if (editingId && existing && hydratedFor.current !== editingId) {
       hydratedFor.current = editingId;
       setName(existing.name);
-      setCategory(existing.category ?? '');
+      setCategoryId(existing.categoryId ?? null);
+      setCategoryName(existing.category ?? null);
       setNotes(existing.notes ?? '');
       setUnit(existing.unit);
       setPhotoBlob(existing.photoBlob ?? null);
@@ -134,7 +126,8 @@ export function ItemFormPage() {
       if (editingId) {
         await updateItem(editingId, {
           name: name.trim(),
-          category: category.trim() || null,
+          category: categoryName,
+          categoryId,
           notes: notes.trim() || null,
           unit,
           ...(photoTouched ? { photoBlob } : {}),
@@ -142,7 +135,8 @@ export function ItemFormPage() {
       } else {
         await createItem({
           name: name.trim(),
-          category: category.trim() || null,
+          category: categoryName,
+          categoryId,
           notes: notes.trim() || null,
           unit,
           photoBlob,
@@ -224,19 +218,13 @@ export function ItemFormPage() {
 
         <label className="flex flex-col gap-1">
           <span className={labelClass}>{t('catalog.category')}</span>
-          <input
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            placeholder={t('catalog.categoryHint')}
-            list="categories"
-            maxLength={100}
-            className={inputClass}
+          <CategoryPicker
+            value={categoryId}
+            onChange={(c) => {
+              setCategoryId(c?.id ?? null);
+              setCategoryName(c?.name ?? null);
+            }}
           />
-          <datalist id="categories">
-            {categories.map((c) => (
-              <option key={c} value={c} />
-            ))}
-          </datalist>
         </label>
 
         <label className="flex flex-col gap-1">

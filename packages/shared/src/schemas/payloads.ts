@@ -22,11 +22,37 @@ export const updateBrandPayload = z.object({
 });
 export type UpdateBrandPayload = z.infer<typeof updateBrandPayload>;
 
+// ---------- Categorias ----------
+export const createCategoryPayload = z.object({
+  id: z.uuid(),
+  name: z.string().trim().min(1).max(100),
+  icon: z.string().max(16).nullable().optional(),
+  color: z.string().max(16).nullable().optional(),
+  sortOrder: z.number().int().optional(),
+});
+export type CreateCategoryPayload = z.infer<typeof createCategoryPayload>;
+
+export const updateCategoryPayload = z.object({
+  name: z.string().trim().min(1).max(100).optional(),
+  icon: z.string().max(16).nullable().optional(),
+  color: z.string().max(16).nullable().optional(),
+  sortOrder: z.number().int().optional(),
+  isHidden: z.boolean().optional(),
+});
+export type UpdateCategoryPayload = z.infer<typeof updateCategoryPayload>;
+
+/** Reordenação em lote: lista de ids na nova ordem. */
+export const reorderCategoriesPayload = z.object({
+  ids: z.array(z.uuid()).max(200),
+});
+export type ReorderCategoriesPayload = z.infer<typeof reorderCategoriesPayload>;
+
 /** Payload de criação de item (id gerado no client, com barcodes embutidos). */
 export const createItemPayload = z.object({
   id: z.uuid(),
   name: itemSchema.shape.name,
   category: itemSchema.shape.category.optional(),
+  categoryId: itemSchema.shape.categoryId.optional(),
   photoKey: itemSchema.shape.photoKey.optional(),
   notes: itemSchema.shape.notes.optional(),
   unit: unitSchema.default('un'),
@@ -40,6 +66,7 @@ export type CreateItemPayload = z.infer<typeof createItemPayload>;
 export const updateItemPayload = z.object({
   name: itemSchema.shape.name.optional(),
   category: itemSchema.shape.category.optional(),
+  categoryId: itemSchema.shape.categoryId.optional(),
   photoKey: itemSchema.shape.photoKey.optional(),
   notes: itemSchema.shape.notes.optional(),
   unit: unitSchema.optional(),

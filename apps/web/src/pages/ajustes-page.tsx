@@ -145,6 +145,14 @@ export function AjustesPage() {
         )}
       </section>
 
+      <Link
+        to="/categorias"
+        className="flex items-center justify-between rounded-xl border border-zinc-200 px-4 py-3"
+      >
+        <span className="font-medium text-zinc-900">{t('categories.title')}</span>
+        <span className="text-zinc-400">›</span>
+      </Link>
+
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
           {t('settings.data')}

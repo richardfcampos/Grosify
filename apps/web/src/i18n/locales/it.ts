@@ -145,6 +145,8 @@ export default {
       editItem: 'Modifica articolo',
       itemName: 'Nome articolo',
       category: 'Categoria',
+      noCategory: 'Senza categoria',
+      newCategory: 'Nuova categoria',
       categoryHint: 'es.: Cereali, Pulizia, Bevande',
       notes: 'Note',
       notesHint: 'es.: senza lattosio, comprare maturo',
@@ -247,6 +249,14 @@ export default {
       syncing: 'Sincronizzazione…',
       synced: 'Sincronizzato ✓',
       error: 'Errore di sincronizzazione',
+    },
+    categories: {
+      title: 'Categorie',
+      empty: 'Nessuna categoria ancora.',
+      newPlaceholder: 'Nuova categoria',
+      delete: 'Elimina categoria',
+      deleteConfirm: 'Eliminare la categoria "{{name}}"? Gli articoli restano senza categoria.',
+      hide: 'Nascondi',
     },
     prefs: {
       sortBy: 'Ordina:',

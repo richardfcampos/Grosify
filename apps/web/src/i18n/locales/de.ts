@@ -145,6 +145,8 @@ export default {
       editItem: 'Artikel bearbeiten',
       itemName: 'Artikelname',
       category: 'Kategorie',
+      noCategory: 'Keine Kategorie',
+      newCategory: 'Neue Kategorie',
       categoryHint: 'z. B. Getreide, Reinigung, Getränke',
       notes: 'Notizen',
       notesHint: 'z. B. laktosefrei, reif kaufen',
@@ -247,6 +249,14 @@ export default {
       syncing: 'Synchronisiere…',
       synced: 'Synchronisiert ✓',
       error: 'Sync-Fehler',
+    },
+    categories: {
+      title: 'Kategorien',
+      empty: 'Noch keine Kategorien.',
+      newPlaceholder: 'Neue Kategorie',
+      delete: 'Kategorie löschen',
+      deleteConfirm: 'Kategorie „{{name}}“ löschen? Artikel werden ohne Kategorie.',
+      hide: 'Ausblenden',
     },
     prefs: {
       sortBy: 'Sortieren:',

@@ -133,7 +133,10 @@ export const items = pgTable(
       .notNull()
       .references(() => households.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
+    /** Nome da categoria (cache desnormalizado de categories.name, evita join). */
     category: text('category'),
+    /** Categoria como entidade (fonte da verdade). */
+    categoryId: uuid('category_id').references(() => categories.id, { onDelete: 'set null' }),
     photoKey: text('photo_key'),
     /** Observações livres do item. */
     notes: text('notes'),
@@ -145,6 +148,27 @@ export const items = pgTable(
   (t) => [
     index('items_household_version_idx').on(t.householdId, t.serverVersion),
     index('items_household_idx').on(t.householdId),
+  ],
+);
+
+/** Categoria de itens (Grãos, Limpeza…). Entidade com ícone/cor/ordem. */
+export const categories = pgTable(
+  'categories',
+  {
+    id: uuid('id').primaryKey(),
+    householdId: uuid('household_id')
+      .notNull()
+      .references(() => households.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    icon: text('icon'),
+    color: text('color'),
+    sortOrder: integer('sort_order').notNull().default(0),
+    isHidden: boolean('is_hidden').notNull().default(false),
+    ...syncColumns,
+  },
+  (t) => [
+    index('categories_household_version_idx').on(t.householdId, t.serverVersion),
+    index('categories_household_idx').on(t.householdId),
   ],
 );
 

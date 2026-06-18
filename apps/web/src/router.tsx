@@ -2,6 +2,7 @@ import { createRootRoute, createRoute, createRouter, Outlet } from '@tanstack/re
 import { z } from 'zod';
 import { AppLayout } from './features/catalog/app-layout.js';
 import { AjustesPage } from './pages/ajustes-page.js';
+import { CategoriasPage } from './pages/categorias-page.js';
 import { CadastroPage, EntrarPage } from './pages/auth-pages.js';
 import { DashboardPage } from './pages/dashboard-page.js';
 import { CasaPage, ConvitePage } from './pages/household-pages.js';
@@ -103,6 +104,11 @@ const ajustesRoute = createRoute({
   path: '/ajustes',
   component: AjustesPage,
 });
+const categoriasRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/categorias',
+  component: CategoriasPage,
+});
 
 const routeTree = rootRoute.addChildren([
   entrarRoute,
@@ -121,6 +127,7 @@ const routeTree = rootRoute.addChildren([
     inventarioRoute,
     compraRoute,
     ajustesRoute,
+    categoriasRoute,
   ]),
 ]);
 

@@ -145,6 +145,8 @@ export default {
       editItem: 'Editar item',
       itemName: 'Nome do item',
       category: 'Categoria',
+      noCategory: 'Sem categoria',
+      newCategory: 'Nova categoria',
       categoryHint: 'ex.: Grãos, Limpeza, Bebidas',
       notes: 'Observações',
       notesHint: 'ex.: sem lactose, comprar maduro',
@@ -247,6 +249,14 @@ export default {
       syncing: 'Sincronizando…',
       synced: 'Sincronizado ✓',
       error: 'Erro ao sincronizar',
+    },
+    categories: {
+      title: 'Categorias',
+      empty: 'Nenhuma categoria ainda.',
+      newPlaceholder: 'Nova categoria',
+      delete: 'Excluir categoria',
+      deleteConfirm: 'Excluir a categoria "{{name}}"? Os itens ficam sem categoria.',
+      hide: 'Ocultar',
     },
     prefs: {
       sortBy: 'Ordenar:',

@@ -43,6 +43,7 @@ export async function clearLocalData(): Promise<void> {
     'rw',
     [
       db.items,
+      db.categories,
       db.barcodes,
       db.brands,
       db.stores,
@@ -58,6 +59,7 @@ export async function clearLocalData(): Promise<void> {
     async () => {
       await Promise.all([
         db.items.clear(),
+        db.categories.clear(),
         db.barcodes.clear(),
         db.brands.clear(),
         db.stores.clear(),
@@ -161,6 +163,7 @@ async function pull(): Promise<boolean> {
     'rw',
     [
       db.items,
+      db.categories,
       db.barcodes,
       db.brands,
       db.stores,
@@ -178,6 +181,7 @@ async function pull(): Promise<boolean> {
         const existing = await db.items.get(r.id);
         await db.items.put({ ...r, photoBlob: existing?.photoBlob ?? null });
       }
+      await applyTable(db.categories, changes.categories, pendingIds);
       await applyTable(db.barcodes, changes.item_barcodes, pendingIds);
       await applyTable(db.brands, changes.item_brands, pendingIds);
       await applyTable(db.stores, changes.stores, pendingIds);

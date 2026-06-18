@@ -2,6 +2,7 @@ import { and, eq, gt } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { db } from '../db/index.js';
 import {
+  categories,
   inventoryCounts,
   itemBarcodes,
   itemBrands,
@@ -17,6 +18,7 @@ import { requireHousehold, type HouseholdEnv } from '../middleware/household.js'
 
 /** Tabelas sync expostas no pull, nome (chave do client) → tabela drizzle. */
 const TABLES = {
+  categories,
   items,
   item_brands: itemBrands,
   item_barcodes: itemBarcodes,

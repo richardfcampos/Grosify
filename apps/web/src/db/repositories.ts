@@ -4,6 +4,7 @@ import { enqueue, householdId, syncNow } from '../sync/engine.js';
 import {
   db,
   type LocalBrand,
+  type LocalCategory,
   type LocalInventory,
   type LocalItem,
   type LocalList,
@@ -32,6 +33,7 @@ export async function syncBootstrap(): Promise<void> {
 export interface NewItemInput {
   name: string;
   category?: string | null;
+  categoryId?: string | null;
   notes?: string | null;
   unit: Unit;
   photoBlob?: Blob | null;
@@ -48,6 +50,7 @@ export async function createItem(input: NewItemInput): Promise<string> {
     householdId: hid(),
     name: input.name,
     category: input.category ?? null,
+    categoryId: input.categoryId ?? null,
     notes: input.notes ?? null,
     photoKey: null,
     unit: input.unit,
@@ -75,6 +78,7 @@ export async function createItem(input: NewItemInput): Promise<string> {
       id,
       name: input.name,
       category: input.category ?? undefined,
+      categoryId: input.categoryId ?? undefined,
       notes: input.notes ?? undefined,
       unit: input.unit,
       barcodes: barcodeRows,
@@ -89,6 +93,7 @@ export async function updateItem(
   updates: {
     name?: string;
     category?: string | null;
+    categoryId?: string | null;
     notes?: string | null;
     unit?: Unit;
     photoBlob?: Blob | null;
@@ -137,6 +142,68 @@ export async function addBarcode(
 export async function removeBarcode(id: string): Promise<void> {
   await db.barcodes.update(id, { deletedAt: nowISO() });
   await enqueue({ method: 'DELETE', path: `/catalog/barcodes/${id}`, rowId: id });
+}
+
+// ---------- Categorias ----------
+
+export async function createCategory(
+  name: string,
+  icon: string | null = null,
+  color: string | null = null,
+): Promise<string> {
+  const id = uuidv7();
+  const ts = nowISO();
+  const existing = await db.categories.where('householdId').equals(hid()).toArray();
+  const sortOrder = existing.reduce((m, c) => Math.max(m, c.sortOrder + 1), 0);
+  await db.categories.put({
+    id,
+    householdId: hid(),
+    name,
+    icon,
+    color,
+    sortOrder,
+    isHidden: false,
+    updatedAt: ts,
+    deletedAt: null,
+    serverVersion: 0,
+  });
+  await enqueue({
+    method: 'POST',
+    path: '/catalog/categories',
+    body: { id, name, icon, color, sortOrder },
+    rowId: id,
+  });
+  return id;
+}
+
+export async function updateCategory(
+  id: string,
+  updates: { name?: string; icon?: string | null; color?: string | null; isHidden?: boolean },
+): Promise<void> {
+  const ts = nowISO();
+  await db.categories.update(id, { ...updates, updatedAt: ts });
+  // propaga novo nome para o cache desnormalizado dos itens
+  if (updates.name !== undefined) {
+    await db.items.where('categoryId').equals(id).modify({ category: updates.name, updatedAt: ts });
+  }
+  await enqueue({ method: 'PATCH', path: `/catalog/categories/${id}`, body: updates, rowId: id });
+}
+
+export async function deleteCategory(id: string): Promise<void> {
+  const ts = nowISO();
+  await db.categories.update(id, { deletedAt: ts, updatedAt: ts });
+  await db.items.where('categoryId').equals(id).modify({ categoryId: null, category: null, updatedAt: ts });
+  await enqueue({ method: 'DELETE', path: `/catalog/categories/${id}`, rowId: id });
+}
+
+export async function reorderCategories(ids: string[]): Promise<void> {
+  const ts = nowISO();
+  await db.transaction('rw', db.categories, async () => {
+    for (let i = 0; i < ids.length; i++) {
+      await db.categories.update(ids[i]!, { sortOrder: i, updatedAt: ts });
+    }
+  });
+  await enqueue({ method: 'POST', path: '/catalog/categories/reorder', body: { ids }, rowId: ids[0] ?? '' });
 }
 
 // ---------- Marcas ----------
@@ -531,6 +598,7 @@ export async function completeSession(sessionId: string): Promise<void> {
 // tipos reexportados pra telas que ainda referenciam
 export type {
   LocalBrand,
+  LocalCategory,
   LocalInventory,
   LocalItem,
   LocalList,

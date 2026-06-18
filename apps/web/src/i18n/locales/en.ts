@@ -145,6 +145,8 @@ export default {
       editItem: 'Edit item',
       itemName: 'Item name',
       category: 'Category',
+      noCategory: 'No category',
+      newCategory: 'New category',
       categoryHint: 'e.g. Grains, Cleaning, Drinks',
       notes: 'Notes',
       notesHint: 'e.g. lactose-free, buy ripe',
@@ -247,6 +249,14 @@ export default {
       syncing: 'Syncing…',
       synced: 'Synced ✓',
       error: 'Sync error',
+    },
+    categories: {
+      title: 'Categories',
+      empty: 'No categories yet.',
+      newPlaceholder: 'New category',
+      delete: 'Delete category',
+      deleteConfirm: 'Delete category "{{name}}"? Items become uncategorized.',
+      hide: 'Hide',
     },
     prefs: {
       sortBy: 'Sort:',
