@@ -4,6 +4,7 @@ import { useMemo, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { db } from '../../db/dexie.js';
 import { recordPrice } from '../../db/repositories.js';
+import { BrandPicker } from '../brands/brand-picker.js';
 import { useFormatMoney, useHouseholdCurrency, useHouseholdPlan } from '../../lib/use-currency.js';
 
 interface Props {
@@ -35,19 +36,27 @@ export function PrecoSheet({ itemId, itemName, onClose }: Props) {
     return allPrices.filter((p) => p.recordedAt >= iso);
   }, [allPrices, plan]);
 
+  const brands = useLiveQuery(
+    () => db.brands.where('itemId').equals(itemId).filter((b) => b.deletedAt === null).toArray(),
+    [itemId],
+    [],
+  );
+
   const [storeId, setStoreId] = useState('');
+  const [brandId, setBrandId] = useState<string | null>(null);
   const [value, setValue] = useState('');
   const [busy, setBusy] = useState(false);
 
   const cheapest = useMemo(() => cheapestStore(prices), [prices]);
   const storeName = (id: string) => stores.find((s) => s.id === id)?.name ?? '—';
+  const brandName = (id: string | null) => (id ? brands.find((b) => b.id === id)?.name ?? null : null);
   const fmtDate = (iso: string) => new Date(iso).toLocaleDateString(i18n.resolvedLanguage);
 
   const alert = useMemo(() => {
     if (!storeId || !value) return null;
     try {
       const cents = parseToMinorUnits(value, currency);
-      const change = priceChange(cents, storeId, prices);
+      const change = priceChange(cents, storeId, brandId, prices);
       if (!change || change.deltaCents === 0) return null;
       const key = change.deltaCents > 0 ? 'prices.priceUp' : 'prices.priceDown';
       return {
@@ -61,13 +70,13 @@ export function PrecoSheet({ itemId, itemName, onClose }: Props) {
     } catch {
       return null;
     }
-  }, [storeId, value, prices, currency, fmt, t, i18n.resolvedLanguage]);
+  }, [storeId, value, brandId, prices, currency, fmt, t, i18n.resolvedLanguage]);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
     try {
-      await recordPrice(itemId, storeId, parseToMinorUnits(value, currency));
+      await recordPrice(itemId, storeId, parseToMinorUnits(value, currency), brandId);
       setValue('');
     } finally {
       setBusy(false);
@@ -94,7 +103,8 @@ export function PrecoSheet({ itemId, itemName, onClose }: Props) {
             {t('prices.cheapestAt', {
               price: fmt(cheapest.priceCents),
               store: storeName(cheapest.storeId),
-            })}{' '}
+            })}
+            {brandName(cheapest.brandId) ? ` · ${brandName(cheapest.brandId)}` : ''}{' '}
             <span className="text-green-600">{t('prices.seenOn', { date: fmtDate(cheapest.recordedAt) })}</span>
           </div>
         )}
@@ -118,6 +128,7 @@ export function PrecoSheet({ itemId, itemName, onClose }: Props) {
                 </option>
               ))}
             </select>
+            <BrandPicker itemId={itemId} value={brandId} onChange={setBrandId} />
             <input
               value={value}
               onChange={(e) => setValue(e.target.value)}
@@ -150,7 +161,8 @@ export function PrecoSheet({ itemId, itemName, onClose }: Props) {
               {history.map((p) => (
                 <li key={p.id} className="flex justify-between text-sm">
                   <span className="text-zinc-600">
-                    {storeName(p.storeId)} · {fmtDate(p.recordedAt)}
+                    {storeName(p.storeId)}
+                    {brandName(p.brandId) ? ` · ${brandName(p.brandId)}` : ''} · {fmtDate(p.recordedAt)}
                   </span>
                   <span className="font-mono font-medium text-zinc-900">{fmt(p.priceCents)}</span>
                 </li>

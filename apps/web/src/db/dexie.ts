@@ -2,6 +2,7 @@ import type {
   InventoryCount,
   Item,
   ItemBarcode,
+  ItemBrand,
   PriceRecord,
   ShoppingList,
   ShoppingListEntry,
@@ -16,6 +17,7 @@ export interface LocalItem extends Item {
   photoBlob?: Blob | null;
 }
 export type LocalBarcode = ItemBarcode;
+export type LocalBrand = ItemBrand;
 export type LocalStore = Store;
 export type LocalPrice = PriceRecord;
 export type LocalList = ShoppingList;
@@ -42,6 +44,7 @@ export interface MetaEntry {
 const db = new Dexie('grosify') as Dexie & {
   items: EntityTable<LocalItem, 'id'>;
   barcodes: EntityTable<LocalBarcode, 'id'>;
+  brands: EntityTable<LocalBrand, 'id'>;
   stores: EntityTable<LocalStore, 'id'>;
   prices: EntityTable<LocalPrice, 'id'>;
   lists: EntityTable<LocalList, 'id'>;
@@ -84,6 +87,21 @@ db.version(3).stores({
 db.version(4).stores({
   items: 'id, householdId, name, category, deletedAt',
   barcodes: 'id, householdId, itemId, barcode, deletedAt',
+  stores: 'id, householdId, name, deletedAt',
+  prices: 'id, householdId, itemId, storeId, deletedAt',
+  lists: 'id, householdId, deletedAt',
+  listEntries: 'id, householdId, listId, itemId, deletedAt',
+  inventory: 'id, householdId, itemId, deletedAt',
+  sessions: 'id, householdId, status, deletedAt',
+  sessionItems: 'id, householdId, sessionId, itemId, deletedAt',
+  outbox: '++seq, rowId',
+  meta: 'key',
+});
+
+db.version(5).stores({
+  items: 'id, householdId, name, category, deletedAt',
+  barcodes: 'id, householdId, itemId, barcode, deletedAt',
+  brands: 'id, householdId, itemId, deletedAt',
   stores: 'id, householdId, name, deletedAt',
   prices: 'id, householdId, itemId, storeId, deletedAt',
   lists: 'id, householdId, deletedAt',

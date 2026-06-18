@@ -13,27 +13,37 @@ function isLive(r: PriceRecord): boolean {
   return r.deletedAt === null;
 }
 
-/** Último preço registrado por loja para um conjunto de registros do MESMO item. */
-export function latestPriceByStore(records: PriceRecord[]): Map<string, PriceRecord> {
+/** Chave de comparação: preço é por (loja, marca). Marca null agrupa junto. */
+function storeBrandKey(storeId: string, brandId: string | null): string {
+  return `${storeId}|${brandId ?? ''}`;
+}
+
+/** Último preço por (loja, marca) — registros do MESMO item. */
+export function latestPriceByStoreBrand(records: PriceRecord[]): Map<string, PriceRecord> {
   const latest = new Map<string, PriceRecord>();
   for (const r of records) {
     if (!isLive(r)) continue;
-    const current = latest.get(r.storeId);
-    if (!current || r.recordedAt > current.recordedAt) latest.set(r.storeId, r);
+    const k = storeBrandKey(r.storeId, r.brandId);
+    const current = latest.get(k);
+    if (!current || r.recordedAt > current.recordedAt) latest.set(k, r);
   }
   return latest;
 }
 
 export interface CheapestStore {
   storeId: string;
+  brandId: string | null;
   priceCents: number;
   recordedAt: string;
 }
 
-/** Loja com menor último-preço para um item. Empate: registro mais recente vence. */
+/**
+ * Combinação loja+marca com menor último-preço para um item (cruza todas as marcas).
+ * Empate: registro mais recente vence.
+ */
 export function cheapestStore(records: PriceRecord[]): CheapestStore | null {
   let best: PriceRecord | null = null;
-  for (const r of latestPriceByStore(records).values()) {
+  for (const r of latestPriceByStoreBrand(records).values()) {
     if (
       !best ||
       r.priceCents < best.priceCents ||
@@ -43,7 +53,12 @@ export function cheapestStore(records: PriceRecord[]): CheapestStore | null {
     }
   }
   return best
-    ? { storeId: best.storeId, priceCents: best.priceCents, recordedAt: best.recordedAt }
+    ? {
+        storeId: best.storeId,
+        brandId: best.brandId,
+        priceCents: best.priceCents,
+        recordedAt: best.recordedAt,
+      }
     : null;
 }
 
@@ -55,15 +70,16 @@ export interface PriceChange {
 }
 
 /**
- * Compara preço novo com o último conhecido na MESMA loja.
- * Retorna null se não há histórico anterior na loja.
+ * Compara preço novo com o último conhecido na MESMA loja E MESMA marca.
+ * Retorna null se não há histórico anterior pra essa combinação.
  */
 export function priceChange(
   newPriceCents: number,
   storeId: string,
+  brandId: string | null,
   records: PriceRecord[],
 ): PriceChange | null {
-  const previous = latestPriceByStore(records).get(storeId);
+  const previous = latestPriceByStoreBrand(records).get(storeBrandKey(storeId, brandId));
   if (!previous) return null;
   const deltaCents = newPriceCents - previous.priceCents;
   return {

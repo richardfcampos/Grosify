@@ -4,7 +4,7 @@ import {
   cheapestStore,
   estimateTotal,
   formatBRL,
-  latestPriceByStore,
+  latestPriceByStoreBrand,
   neededQty,
   priceChange,
 } from './index.js';
@@ -13,6 +13,8 @@ const HOUSEHOLD = '0197a000-0000-7000-8000-000000000001';
 const ITEM = '0197a000-0000-7000-8000-000000000002';
 const STORE_A = '0197a000-0000-7000-8000-00000000000a';
 const STORE_B = '0197a000-0000-7000-8000-00000000000b';
+const BRAND_X = '0197a000-0000-7000-8000-0000000000c1';
+const BRAND_Y = '0197a000-0000-7000-8000-0000000000c2';
 
 let seq = 0;
 
@@ -21,6 +23,7 @@ function record(partial: Partial<PriceRecord> & Pick<PriceRecord, 'storeId' | 'p
     id: `0197a000-0000-7000-8000-${String(++seq).padStart(12, '0')}`,
     householdId: HOUSEHOLD,
     itemId: ITEM,
+    brandId: null,
     source: 'manual',
     updatedAt: partial.recordedAt,
     deletedAt: null,
@@ -48,10 +51,10 @@ describe('latestPriceByStore / cheapestStore', () => {
     record({ storeId: STORE_B, priceCents: 1100, recordedAt: '2026-02-01T10:00:00.000Z' }),
   ];
 
-  it('pega o último preço de cada loja', () => {
-    const latest = latestPriceByStore(records);
-    expect(latest.get(STORE_A)?.priceCents).toBe(1200);
-    expect(latest.get(STORE_B)?.priceCents).toBe(1100);
+  it('pega o último preço de cada loja (marca null)', () => {
+    const latest = latestPriceByStoreBrand(records);
+    expect(latest.get(`${STORE_A}|`)?.priceCents).toBe(1200);
+    expect(latest.get(`${STORE_B}|`)?.priceCents).toBe(1100);
   });
 
   it('loja mais barata usa último preço, não menor histórico', () => {
@@ -83,7 +86,7 @@ describe('priceChange', () => {
   ];
 
   it('detecta aumento com percentual', () => {
-    const change = priceChange(1250, STORE_A, records);
+    const change = priceChange(1250, STORE_A, null, records);
     expect(change).toEqual({
       previousPriceCents: 1000,
       previousRecordedAt: '2026-01-01T10:00:00.000Z',
@@ -93,11 +96,34 @@ describe('priceChange', () => {
   });
 
   it('detecta queda', () => {
-    expect(priceChange(900, STORE_A, records)?.deltaCents).toBe(-100);
+    expect(priceChange(900, STORE_A, null, records)?.deltaCents).toBe(-100);
   });
 
   it('null sem histórico na loja', () => {
-    expect(priceChange(1000, STORE_B, records)).toBeNull();
+    expect(priceChange(1000, STORE_B, null, records)).toBeNull();
+  });
+
+  it('compara por marca: aumento só conta na mesma marca', () => {
+    const recs = [
+      record({ storeId: STORE_A, brandId: BRAND_X, priceCents: 1000, recordedAt: '2026-01-01T10:00:00.000Z' }),
+    ];
+    expect(priceChange(1200, STORE_A, BRAND_X, recs)?.deltaCents).toBe(200);
+    // marca diferente na mesma loja → sem histórico
+    expect(priceChange(1200, STORE_A, BRAND_Y, recs)).toBeNull();
+  });
+});
+
+describe('cheapestStore por marca', () => {
+  it('cruza marcas e retorna a marca+loja mais barata', () => {
+    const recs = [
+      record({ storeId: STORE_A, brandId: BRAND_X, priceCents: 1000, recordedAt: '2026-01-01T10:00:00.000Z' }),
+      record({ storeId: STORE_A, brandId: BRAND_Y, priceCents: 800, recordedAt: '2026-01-02T10:00:00.000Z' }),
+      record({ storeId: STORE_B, brandId: BRAND_X, priceCents: 900, recordedAt: '2026-01-03T10:00:00.000Z' }),
+    ];
+    const c = cheapestStore(recs);
+    expect(c?.priceCents).toBe(800);
+    expect(c?.brandId).toBe(BRAND_Y);
+    expect(c?.storeId).toBe(STORE_A);
   });
 });
 

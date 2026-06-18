@@ -5,10 +5,9 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { db } from '../db/dexie.js';
 import {
-  addBarcode,
   createItem,
   deleteItem,
-  findItemIdByBarcode,
+  resolveBarcode,
   removeBarcode,
   updateItem,
 } from '../db/repositories.js';
@@ -16,6 +15,8 @@ import { resizeToWebp } from '../lib/resize-image.js';
 import { useConfirm } from '../lib/confirm.js';
 import { useObjectUrl } from '../lib/use-object-url.js';
 import { ScannerModal } from '../features/scanner/scanner-modal.js';
+import { BrandsSection } from '../features/brands/brands-section.js';
+import { BarcodeBrandChooser } from '../features/brands/barcode-brand-chooser.js';
 
 const labelClass = 'text-sm font-medium text-zinc-600';
 const inputClass =
@@ -40,6 +41,14 @@ export function ItemFormPage() {
     [editingId],
     [],
   );
+  const brandsForItem = useLiveQuery(
+    () =>
+      editingId
+        ? db.brands.where('itemId').equals(editingId).filter((b) => b.deletedAt === null).toArray()
+        : [],
+    [editingId],
+    [],
+  );
   // categorias já usadas (dropdown de sugestões; digitar nova cria) — evita inconsistência
   const categories = useLiveQuery(
     async () => {
@@ -59,6 +68,8 @@ export function ItemFormPage() {
   const [photoTouched, setPhotoTouched] = useState(false);
   // barcodes pendentes (modo criar) antes de existir o item
   const [pendingBarcodes, setPendingBarcodes] = useState<string[]>([]);
+  // código escaneado aguardando escolha de marca (modo edição)
+  const [pendingCode, setPendingCode] = useState<string | null>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -78,6 +89,8 @@ export function ItemFormPage() {
 
   const photoUrl = useObjectUrl(photoBlob);
   const barcodes = editingId ? existingBarcodes.map((b) => b.barcode) : pendingBarcodes;
+  const brandNameById = new Map(brandsForItem.map((b) => [b.id, b.name]));
+  const brandByCode = new Map(existingBarcodes.map((b) => [b.barcode, b.brandId]));
 
   async function onPhotoPick(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -90,16 +103,13 @@ export function ItemFormPage() {
   async function onScanned(code: string) {
     if (barcodes.includes(code)) return;
     if (editingId) {
-      try {
-        const owner = await findItemIdByBarcode(code);
-        if (owner && owner !== editingId) {
-          setError(t('catalog.duplicateBarcode'));
-          return;
-        }
-        await addBarcode(editingId, code);
-      } catch {
+      const owner = (await resolveBarcode(code))?.itemId ?? null;
+      if (owner && owner !== editingId) {
         setError(t('catalog.duplicateBarcode'));
+        return;
       }
+      // escolhe a marca desse código antes de salvar
+      setPendingCode(code);
     } else {
       setPendingBarcodes((prev) => [...prev, code]);
     }
@@ -242,21 +252,29 @@ export function ItemFormPage() {
             <p className="text-sm text-zinc-400">{t('catalog.noBarcodes')}</p>
           ) : (
             <ul className="flex flex-col gap-1.5">
-              {barcodes.map((code) => (
-                <li
-                  key={code}
-                  className="flex items-center justify-between rounded-xl bg-zinc-100 px-3 py-2"
-                >
-                  <span className="font-mono text-sm">{code}</span>
-                  <button
-                    type="button"
-                    onClick={() => onRemoveBarcode(code)}
-                    className="text-sm text-red-600"
+              {barcodes.map((code) => {
+                const brandId = brandByCode.get(code);
+                return (
+                  <li
+                    key={code}
+                    className="flex items-center justify-between rounded-xl bg-zinc-100 px-3 py-2"
                   >
-                    {t('common.delete')}
-                  </button>
-                </li>
-              ))}
+                    <span className="min-w-0 truncate">
+                      <span className="font-mono text-sm">{code}</span>
+                      {brandId && (
+                        <span className="ml-2 text-xs text-zinc-500">{brandNameById.get(brandId)}</span>
+                      )}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => onRemoveBarcode(code)}
+                      className="shrink-0 text-sm text-red-600"
+                    >
+                      {t('common.delete')}
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           )}
           <button
@@ -267,6 +285,8 @@ export function ItemFormPage() {
             {t('catalog.scan')}
           </button>
         </div>
+
+        {editingId && <BrandsSection itemId={editingId} />}
 
         {error && <p className="text-sm text-red-600">{error}</p>}
 
@@ -287,6 +307,13 @@ export function ItemFormPage() {
 
       {scannerOpen && (
         <ScannerModal onDetect={onScanned} onClose={() => setScannerOpen(false)} />
+      )}
+      {pendingCode && editingId && (
+        <BarcodeBrandChooser
+          itemId={editingId}
+          code={pendingCode}
+          onDone={() => setPendingCode(null)}
+        />
       )}
     </main>
   );

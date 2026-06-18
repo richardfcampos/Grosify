@@ -4,8 +4,9 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { db, type LocalItem } from '../db/dexie.js';
-import { findItemIdByBarcode, setInventory } from '../db/repositories.js';
+import { resolveBarcode, setInventory } from '../db/repositories.js';
 import { ScannerModal } from '../features/scanner/scanner-modal.js';
+import { UnknownBarcodeSheet } from '../features/brands/unknown-barcode-sheet.js';
 
 /**
  * Inventário: conta o que tem em casa (digitando ou escaneando o código).
@@ -16,6 +17,7 @@ export function InventarioPage() {
   const navigate = useNavigate();
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scanned, setScanned] = useState<LocalItem | null>(null);
+  const [unknownCode, setUnknownCode] = useState<string | null>(null);
 
   const items = useLiveQuery(
     () => db.items.filter((i) => i.deletedAt === null).toArray(),
@@ -47,7 +49,11 @@ export function InventarioPage() {
   }
 
   async function onScanned(barcode: string) {
-    const itemId = await findItemIdByBarcode(barcode);
+    const itemId = (await resolveBarcode(barcode))?.itemId ?? null;
+    if (!itemId) {
+      setUnknownCode(barcode);
+      return;
+    }
     const item = items.find((i) => i.id === itemId);
     if (item) setScanned(item);
   }
@@ -89,6 +95,17 @@ export function InventarioPage() {
       </button>
 
       {scannerOpen && <ScannerModal onDetect={onScanned} onClose={() => setScannerOpen(false)} />}
+      {unknownCode && (
+        <UnknownBarcodeSheet
+          code={unknownCode}
+          onResolved={async (itemId) => {
+            setUnknownCode(null);
+            const item = await db.items.get(itemId);
+            if (item) setScanned(item);
+          }}
+          onClose={() => setUnknownCode(null)}
+        />
+      )}
       {scanned && (
         <QuickSetSheet
           item={scanned}

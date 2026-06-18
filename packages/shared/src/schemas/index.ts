@@ -26,8 +26,17 @@ export const itemSchema = syncMetaSchema.extend({
 });
 export type Item = z.infer<typeof itemSchema>;
 
+/** Marca de um item (opcional). */
+export const itemBrandSchema = syncMetaSchema.extend({
+  itemId: z.uuid(),
+  name: z.string().trim().min(1).max(100),
+});
+export type ItemBrand = z.infer<typeof itemBrandSchema>;
+
 export const itemBarcodeSchema = syncMetaSchema.extend({
   itemId: z.uuid(),
+  /** Marca à qual o código pertence (opcional). */
+  brandId: z.uuid().nullable(),
   /** EAN-8/EAN-13 como texto — preserva zeros à esquerda. */
   barcode: z.string().regex(/^\d{8,14}$/),
 });
@@ -46,6 +55,7 @@ export const PRICE_SOURCES = ['manual', 'shopping'] as const;
 
 export const priceRecordSchema = syncMetaSchema.extend({
   itemId: z.uuid(),
+  brandId: z.uuid().nullable(),
   storeId: z.uuid(),
   priceCents: z.number().int().positive(),
   recordedAt: isoDate,
@@ -96,6 +106,8 @@ export type ShoppingSession = z.infer<typeof shoppingSessionSchema>;
 export const shoppingSessionItemSchema = syncMetaSchema.extend({
   sessionId: z.uuid(),
   itemId: z.uuid(),
+  /** Marca comprada (escolhida na compra). */
+  actualBrandId: z.uuid().nullable(),
   neededQty: qty,
   estimatedUnitPriceCents: z.number().int().positive().nullable(),
   estimatedPriceStoreId: z.uuid().nullable(),
@@ -108,6 +120,7 @@ export type ShoppingSessionItem = z.infer<typeof shoppingSessionItemSchema>;
 /** Registro de tabelas syncáveis — fonte única pro engine de sync e endpoints. */
 export const SYNC_TABLES = {
   items: itemSchema,
+  item_brands: itemBrandSchema,
   item_barcodes: itemBarcodeSchema,
   stores: storeSchema,
   price_records: priceRecordSchema,

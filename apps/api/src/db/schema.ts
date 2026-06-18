@@ -146,6 +146,26 @@ export const items = pgTable(
   ],
 );
 
+/** Marca de um item (Camil, Kicaldo…). Opcional — item pode ter 0+ marcas. */
+export const itemBrands = pgTable(
+  'item_brands',
+  {
+    id: uuid('id').primaryKey(),
+    householdId: uuid('household_id')
+      .notNull()
+      .references(() => households.id, { onDelete: 'cascade' }),
+    itemId: uuid('item_id')
+      .notNull()
+      .references(() => items.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    ...syncColumns,
+  },
+  (t) => [
+    index('item_brands_household_version_idx').on(t.householdId, t.serverVersion),
+    index('item_brands_item_idx').on(t.itemId),
+  ],
+);
+
 export const itemBarcodes = pgTable(
   'item_barcodes',
   {
@@ -156,6 +176,8 @@ export const itemBarcodes = pgTable(
     itemId: uuid('item_id')
       .notNull()
       .references(() => items.id, { onDelete: 'cascade' }),
+    /** Marca à qual o código pertence (opcional). */
+    brandId: uuid('brand_id').references(() => itemBrands.id, { onDelete: 'set null' }),
     barcode: text('barcode').notNull(),
     ...syncColumns,
   },
@@ -196,6 +218,7 @@ export const priceRecords = pgTable(
     itemId: uuid('item_id')
       .notNull()
       .references(() => items.id, { onDelete: 'cascade' }),
+    brandId: uuid('brand_id').references(() => itemBrands.id, { onDelete: 'set null' }),
     storeId: uuid('store_id')
       .notNull()
       .references(() => stores.id, { onDelete: 'cascade' }),
@@ -305,6 +328,8 @@ export const shoppingSessionItems = pgTable(
     itemId: uuid('item_id')
       .notNull()
       .references(() => items.id, { onDelete: 'cascade' }),
+    /** Marca efetivamente comprada (escolhida na compra). */
+    actualBrandId: uuid('actual_brand_id').references(() => itemBrands.id, { onDelete: 'set null' }),
     neededQty: numeric('needed_qty', { precision: 10, scale: 3 }).notNull(),
     estimatedUnitPriceCents: integer('estimated_unit_price_cents'),
     estimatedPriceStoreId: uuid('estimated_price_store_id'),

@@ -4,8 +4,9 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { db, type LocalItem, type LocalSessionItem } from '../db/dexie.js';
-import { completeSession, findItemIdByBarcode, uncheckSessionItem } from '../db/repositories.js';
+import { completeSession, resolveBarcode, uncheckSessionItem } from '../db/repositories.js';
 import { CheckItemSheet } from '../features/shopping/check-item-sheet.js';
+import { UnknownBarcodeSheet } from '../features/brands/unknown-barcode-sheet.js';
 import { ScannerModal } from '../features/scanner/scanner-modal.js';
 import { useFormatMoney } from '../lib/use-currency.js';
 
@@ -28,6 +29,8 @@ export function CompraPage() {
   );
 
   const [active, setActive] = useState<LocalSessionItem | null>(null);
+  const [scannedBrandId, setScannedBrandId] = useState<string | null>(null);
+  const [unknownCode, setUnknownCode] = useState<string | null>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
   const itemById = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
 
@@ -53,10 +56,20 @@ export function CompraPage() {
   const checkedCount = sessionItems.filter((si) => si.checkedAt).length;
 
   async function onScanned(barcode: string) {
-    const itemId = await findItemIdByBarcode(barcode);
-    if (!itemId) return;
+    const resolved = await resolveBarcode(barcode);
+    if (!resolved) {
+      setUnknownCode(barcode);
+      return;
+    }
+    openForItem(resolved.itemId, resolved.brandId);
+  }
+
+  function openForItem(itemId: string, brandId: string | null) {
     const si = sessionItems.find((s) => s.itemId === itemId);
-    if (si) setActive(si);
+    if (si) {
+      setScannedBrandId(brandId);
+      setActive(si);
+    }
   }
 
   if (!session) return null;
@@ -157,10 +170,24 @@ export function CompraPage() {
         <CheckItemSheet
           sessionItem={active}
           itemName={itemById.get(active.itemId)?.name ?? ''}
-          onClose={() => setActive(null)}
+          initialBrandId={scannedBrandId}
+          onClose={() => {
+            setActive(null);
+            setScannedBrandId(null);
+          }}
         />
       )}
       {scannerOpen && <ScannerModal onDetect={onScanned} onClose={() => setScannerOpen(false)} />}
+      {unknownCode && (
+        <UnknownBarcodeSheet
+          code={unknownCode}
+          onResolved={(itemId, brandId) => {
+            setUnknownCode(null);
+            openForItem(itemId, brandId);
+          }}
+          onClose={() => setUnknownCode(null)}
+        />
+      )}
     </div>
   );
 }

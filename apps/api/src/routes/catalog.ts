@@ -1,6 +1,7 @@
 import { zValidator } from '@hono/zod-validator';
 import {
   addBarcodePayload,
+  createBrandPayload,
   createItemPayload,
   createStorePayload,
   maxItems,
@@ -10,7 +11,7 @@ import {
 import { and, count, eq, isNull } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { db } from '../db/index.js';
-import { itemBarcodes, items, stores } from '../db/schema.js';
+import { itemBarcodes, itemBrands, items, stores } from '../db/schema.js';
 import { requireHousehold, type HouseholdEnv } from '../middleware/household.js';
 
 /** Erro de violação de unique (Postgres SQLSTATE 23505). Drizzle embrulha em `cause`. */
@@ -48,7 +49,7 @@ export const catalogRoute = new Hono<HouseholdEnv>()
   .get('/items/by-barcode/:barcode', async (c) => {
     const hid = c.get('householdId');
     const rows = await db
-      .select({ itemId: itemBarcodes.itemId })
+      .select({ itemId: itemBarcodes.itemId, brandId: itemBarcodes.brandId })
       .from(itemBarcodes)
       .where(
         and(
@@ -58,7 +59,29 @@ export const catalogRoute = new Hono<HouseholdEnv>()
         ),
       )
       .limit(1);
-    return c.json({ itemId: rows[0]?.itemId ?? null });
+    return c.json({ itemId: rows[0]?.itemId ?? null, brandId: rows[0]?.brandId ?? null });
+  })
+
+  // ---------- Marcas ----------
+  .post('/brands', zValidator('json', createBrandPayload), async (c) => {
+    const hid = c.get('householdId');
+    const p = c.req.valid('json');
+    const [brand] = await db
+      .insert(itemBrands)
+      .values({ id: p.id, householdId: hid, itemId: p.itemId, name: p.name })
+      .onConflictDoNothing()
+      .returning();
+    return c.json({ brand: brand ?? null }, 201);
+  })
+
+  .delete('/brands/:id', async (c) => {
+    const hid = c.get('householdId');
+    const now = new Date();
+    await db
+      .update(itemBrands)
+      .set({ deletedAt: now, updatedAt: now })
+      .where(and(eq(itemBrands.id, c.req.param('id')), eq(itemBrands.householdId, hid)));
+    return c.json({ ok: true });
   })
 
   .post('/items', zValidator('json', createItemPayload), async (c) => {
@@ -96,6 +119,7 @@ export const catalogRoute = new Hono<HouseholdEnv>()
                   id: b.id,
                   householdId: hid,
                   itemId: payload.id,
+                  brandId: b.brandId ?? null,
                   barcode: b.barcode,
                 })),
               )
@@ -143,11 +167,11 @@ export const catalogRoute = new Hono<HouseholdEnv>()
   // ---------- Códigos de barras ----------
   .post('/items/:id/barcodes', zValidator('json', addBarcodePayload), async (c) => {
     const hid = c.get('householdId');
-    const { id, barcode } = c.req.valid('json');
+    const { id, barcode, brandId } = c.req.valid('json');
     try {
       const [row] = await db
         .insert(itemBarcodes)
-        .values({ id, householdId: hid, itemId: c.req.param('id'), barcode })
+        .values({ id, householdId: hid, itemId: c.req.param('id'), brandId: brandId ?? null, barcode })
         .returning();
       return c.json({ barcode: row }, 201);
     } catch (err) {

@@ -3,6 +3,7 @@ import { v7 as uuidv7 } from 'uuid';
 import { enqueue, householdId, syncNow } from '../sync/engine.js';
 import {
   db,
+  type LocalBrand,
   type LocalInventory,
   type LocalItem,
   type LocalList,
@@ -58,6 +59,7 @@ export async function createItem(input: NewItemInput): Promise<string> {
       id: b.id,
       householdId: hid(),
       itemId: id,
+      brandId: null,
       barcode: b.barcode,
       updatedAt: ts,
       deletedAt: null,
@@ -99,12 +101,17 @@ export async function deleteItem(id: string): Promise<void> {
   await enqueue({ method: 'DELETE', path: `/catalog/items/${id}`, rowId: id });
 }
 
-export async function addBarcode(itemId: string, barcode: string): Promise<void> {
+export async function addBarcode(
+  itemId: string,
+  barcode: string,
+  brandId: string | null = null,
+): Promise<void> {
   const id = uuidv7();
   await db.barcodes.put({
     id,
     householdId: hid(),
     itemId,
+    brandId,
     barcode,
     updatedAt: nowISO(),
     deletedAt: null,
@@ -113,7 +120,7 @@ export async function addBarcode(itemId: string, barcode: string): Promise<void>
   await enqueue({
     method: 'POST',
     path: `/catalog/items/${itemId}/barcodes`,
-    body: { id, barcode },
+    body: { id, barcode, brandId },
     rowId: id,
   });
 }
@@ -123,14 +130,38 @@ export async function removeBarcode(id: string): Promise<void> {
   await enqueue({ method: 'DELETE', path: `/catalog/barcodes/${id}`, rowId: id });
 }
 
-/** Item dono de um código de barras (dedup no scanner). Local primeiro, API se online. */
-export async function findItemIdByBarcode(barcode: string): Promise<string | null> {
+// ---------- Marcas ----------
+
+export async function createBrand(itemId: string, name: string): Promise<string> {
+  const id = uuidv7();
+  await db.brands.put({
+    id,
+    householdId: hid(),
+    itemId,
+    name,
+    updatedAt: nowISO(),
+    deletedAt: null,
+    serverVersion: 0,
+  });
+  await enqueue({ method: 'POST', path: '/catalog/brands', body: { id, itemId, name }, rowId: id });
+  return id;
+}
+
+export async function deleteBrand(id: string): Promise<void> {
+  await db.brands.update(id, { deletedAt: nowISO() });
+  await enqueue({ method: 'DELETE', path: `/catalog/brands/${id}`, rowId: id });
+}
+
+/** Resolve um código de barras → item + marca (dedup no scanner). Local-only. */
+export async function resolveBarcode(
+  barcode: string,
+): Promise<{ itemId: string; brandId: string | null } | null> {
   const local = await db.barcodes
     .where('barcode')
     .equals(barcode)
     .and((b) => b.deletedAt === null)
     .first();
-  return local?.itemId ?? null;
+  return local ? { itemId: local.itemId, brandId: local.brandId ?? null } : null;
 }
 
 // ---------- Lojas ----------
@@ -254,6 +285,7 @@ export async function recordPrice(
   itemId: string,
   storeId: string,
   priceCents: number,
+  brandId: string | null = null,
 ): Promise<void> {
   const id = uuidv7();
   const ts = nowISO();
@@ -261,6 +293,7 @@ export async function recordPrice(
     id,
     householdId: hid(),
     itemId,
+    brandId,
     storeId,
     priceCents,
     recordedAt: ts,
@@ -269,7 +302,12 @@ export async function recordPrice(
     deletedAt: null,
     serverVersion: 0,
   });
-  await enqueue({ method: 'POST', path: '/shopping/prices', body: { id, itemId, storeId, priceCents }, rowId: id });
+  await enqueue({
+    method: 'POST',
+    path: '/shopping/prices',
+    body: { id, itemId, brandId, storeId, priceCents },
+    rowId: id,
+  });
 }
 
 // ---------- Inventário ----------
@@ -348,6 +386,7 @@ export async function startShoppingSession(listId: string): Promise<string> {
       estimatedUnitPriceCents: it.estimatedUnitPriceCents,
       estimatedPriceStoreId: it.estimatedPriceStoreId,
       checkedAt: null,
+      actualBrandId: null,
       actualQty: null,
       actualUnitPriceCents: null,
       updatedAt: ts,
@@ -364,18 +403,20 @@ export async function startShoppingSession(listId: string): Promise<string> {
   return sessionId;
 }
 
-/** Marca item da sessão como comprado: registra preço real + atualiza o item. */
+/** Marca item da sessão como comprado: registra preço real (da marca) + atualiza o item. */
 export async function checkSessionItem(
   sessionItemId: string,
   itemId: string,
   storeId: string,
   actualQty: number,
   actualUnitPriceCents: number,
+  brandId: string | null = null,
 ): Promise<void> {
-  await recordPrice(itemId, storeId, actualUnitPriceCents);
+  await recordPrice(itemId, storeId, actualUnitPriceCents, brandId);
   const ts = nowISO();
   await db.sessionItems.update(sessionItemId, {
     checkedAt: ts,
+    actualBrandId: brandId,
     actualQty,
     actualUnitPriceCents,
     updatedAt: ts,
@@ -383,7 +424,7 @@ export async function checkSessionItem(
   await enqueue({
     method: 'PATCH',
     path: `/shopping/sessions/items/${sessionItemId}`,
-    body: { checkedAt: ts, actualQty, actualUnitPriceCents },
+    body: { checkedAt: ts, actualBrandId: brandId, actualQty, actualUnitPriceCents },
     rowId: sessionItemId,
   });
 }
@@ -391,6 +432,7 @@ export async function checkSessionItem(
 export async function uncheckSessionItem(sessionItemId: string): Promise<void> {
   await db.sessionItems.update(sessionItemId, {
     checkedAt: null,
+    actualBrandId: null,
     actualQty: null,
     actualUnitPriceCents: null,
     updatedAt: nowISO(),
@@ -398,7 +440,7 @@ export async function uncheckSessionItem(sessionItemId: string): Promise<void> {
   await enqueue({
     method: 'PATCH',
     path: `/shopping/sessions/items/${sessionItemId}`,
-    body: { checkedAt: null, actualQty: null, actualUnitPriceCents: null },
+    body: { checkedAt: null, actualBrandId: null, actualQty: null, actualUnitPriceCents: null },
     rowId: sessionItemId,
   });
 }
@@ -416,6 +458,7 @@ export async function completeSession(sessionId: string): Promise<void> {
 
 // tipos reexportados pra telas que ainda referenciam
 export type {
+  LocalBrand,
   LocalInventory,
   LocalItem,
   LocalList,

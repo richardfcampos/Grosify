@@ -7,6 +7,14 @@ const isoDate = z.iso.datetime({ offset: true });
 
 const barcode = z.string().regex(/^\d{8,14}$/, 'barcode_invalid');
 
+// ---------- Marcas ----------
+export const createBrandPayload = z.object({
+  id: z.uuid(),
+  itemId: z.uuid(),
+  name: z.string().trim().min(1).max(100),
+});
+export type CreateBrandPayload = z.infer<typeof createBrandPayload>;
+
 /** Payload de criação de item (id gerado no client, com barcodes embutidos). */
 export const createItemPayload = z.object({
   id: z.uuid(),
@@ -14,7 +22,10 @@ export const createItemPayload = z.object({
   category: itemSchema.shape.category.optional(),
   photoKey: itemSchema.shape.photoKey.optional(),
   unit: unitSchema.default('un'),
-  barcodes: z.array(z.object({ id: z.uuid(), barcode })).max(20).default([]),
+  barcodes: z
+    .array(z.object({ id: z.uuid(), barcode, brandId: z.uuid().nullable().optional() }))
+    .max(20)
+    .default([]),
 });
 export type CreateItemPayload = z.infer<typeof createItemPayload>;
 
@@ -26,7 +37,11 @@ export const updateItemPayload = z.object({
 });
 export type UpdateItemPayload = z.infer<typeof updateItemPayload>;
 
-export const addBarcodePayload = z.object({ id: z.uuid(), barcode });
+export const addBarcodePayload = z.object({
+  id: z.uuid(),
+  barcode,
+  brandId: z.uuid().nullable().optional(),
+});
 export type AddBarcodePayload = z.infer<typeof addBarcodePayload>;
 
 export const createStorePayload = z.object({
@@ -53,6 +68,7 @@ export type UpdateStorePayload = z.infer<typeof updateStorePayload>;
 export const createPricePayload = z.object({
   id: z.uuid(),
   itemId: z.uuid(),
+  brandId: z.uuid().nullable().optional(),
   storeId: z.uuid(),
   priceCents: z.number().int().positive(),
   recordedAt: isoDate.optional(),
@@ -122,6 +138,7 @@ export type UpdateSessionPayload = z.infer<typeof updateSessionPayload>;
 
 export const updateSessionItemPayload = z.object({
   checkedAt: isoDate.nullable().optional(),
+  actualBrandId: z.uuid().nullable().optional(),
   actualQty: qty.nullable().optional(),
   actualUnitPriceCents: z.number().int().positive().nullable().optional(),
 });

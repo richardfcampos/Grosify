@@ -4,6 +4,7 @@ import { db } from '../db/index.js';
 import {
   inventoryCounts,
   itemBarcodes,
+  itemBrands,
   items,
   priceRecords,
   shoppingListEntries,
@@ -17,6 +18,7 @@ import { requireHousehold, type HouseholdEnv } from '../middleware/household.js'
 /** Tabelas sync expostas no pull, nome (chave do client) → tabela drizzle. */
 const TABLES = {
   items,
+  item_brands: itemBrands,
   item_barcodes: itemBarcodes,
   stores,
   price_records: priceRecords,

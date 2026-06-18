@@ -4,21 +4,29 @@ import { useMemo, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { db, type LocalSessionItem } from '../../db/dexie.js';
 import { checkSessionItem } from '../../db/repositories.js';
+import { BrandPicker } from '../brands/brand-picker.js';
 import { useFormatMoney, useHouseholdCurrency } from '../../lib/use-currency.js';
 
 interface Props {
   sessionItem: LocalSessionItem;
   itemName: string;
+  /** Marca já resolvida pelo código de barras escaneado (pré-seleciona). */
+  initialBrandId?: string | null;
   onClose: () => void;
 }
 
-/** Folha escura pra marcar item comprado: loja, qtd, preço pago, com avisos. */
-export function CheckItemSheet({ sessionItem, itemName, onClose }: Props) {
+/** Folha escura pra marcar item comprado: loja, marca, qtd, preço pago, com avisos. */
+export function CheckItemSheet({ sessionItem, itemName, initialBrandId, onClose }: Props) {
   const { t, i18n } = useTranslation();
   const fmt = useFormatMoney();
   const currency = useHouseholdCurrency();
 
   const stores = useLiveQuery(() => db.stores.filter((s) => s.deletedAt === null).toArray(), [], []);
+  const brands = useLiveQuery(
+    () => db.brands.where('itemId').equals(sessionItem.itemId).filter((b) => b.deletedAt === null).toArray(),
+    [sessionItem.itemId],
+    [],
+  );
   const prices = useLiveQuery(
     () =>
       db.prices
@@ -31,25 +39,27 @@ export function CheckItemSheet({ sessionItem, itemName, onClose }: Props) {
   );
 
   const [storeId, setStoreId] = useState(sessionItem.estimatedPriceStoreId ?? '');
+  const [brandId, setBrandId] = useState<string | null>(initialBrandId ?? sessionItem.actualBrandId ?? null);
   const [qty, setQty] = useState(String(sessionItem.neededQty || 1));
   const [value, setValue] = useState('');
   const [busy, setBusy] = useState(false);
 
   const cheapest = useMemo(() => cheapestStore(prices), [prices]);
   const storeName = (id: string) => stores.find((s) => s.id === id)?.name ?? '—';
+  const brandName = (id: string | null) => (id ? brands.find((b) => b.id === id)?.name ?? null : null);
   const fmtDate = (iso: string) => new Date(iso).toLocaleDateString(i18n.resolvedLanguage);
 
   const warn = useMemo(() => {
     if (!storeId || !value) return null;
     try {
-      const change = priceChange(parseToMinorUnits(value, currency), storeId, prices);
+      const change = priceChange(parseToMinorUnits(value, currency), storeId, brandId, prices);
       return change && change.deltaCents > 0
         ? t('shopping.priceUpWarn') + ` (+${fmt(change.deltaCents)})`
         : null;
     } catch {
       return null;
     }
-  }, [storeId, value, prices, currency, fmt, t]);
+  }, [storeId, value, brandId, prices, currency, fmt, t]);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -61,6 +71,7 @@ export function CheckItemSheet({ sessionItem, itemName, onClose }: Props) {
         storeId,
         Number(qty.replace(',', '.')),
         parseToMinorUnits(value, currency),
+        brandId,
       );
       onClose();
     } finally {
@@ -82,7 +93,8 @@ export function CheckItemSheet({ sessionItem, itemName, onClose }: Props) {
 
         {cheapest && cheapest.storeId !== storeId && (
           <div className="rounded-xl bg-yellow-400 px-4 py-2.5 text-sm font-semibold text-stone-900">
-            {t('shopping.cheaperElsewhere', { store: storeName(cheapest.storeId) })}: {fmt(cheapest.priceCents)}{' '}
+            {t('shopping.cheaperElsewhere', { store: storeName(cheapest.storeId) })}: {fmt(cheapest.priceCents)}
+            {brandName(cheapest.brandId) ? ` · ${brandName(cheapest.brandId)}` : ''}{' '}
             <span className="font-normal">({fmtDate(cheapest.recordedAt)})</span>
           </div>
         )}
@@ -101,6 +113,10 @@ export function CheckItemSheet({ sessionItem, itemName, onClose }: Props) {
                 </option>
               ))}
             </select>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-stone-400">{t('brands.label')}</span>
+              <BrandPicker itemId={sessionItem.itemId} value={brandId} onChange={setBrandId} dark />
+            </label>
             <div className="flex gap-2">
               <label className="flex w-24 flex-col gap-1">
                 <span className="text-xs text-stone-400">{t('shopping.actualQty')}</span>

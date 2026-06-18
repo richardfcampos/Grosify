@@ -134,6 +134,7 @@ export const shoppingRoute = new Hono<HouseholdEnv>()
         id: p.id,
         householdId: hid,
         itemId: p.itemId,
+        brandId: p.brandId ?? null,
         storeId: p.storeId,
         priceCents: p.priceCents,
         recordedAt: p.recordedAt ? new Date(p.recordedAt) : new Date(),
@@ -254,6 +255,7 @@ export const shoppingRoute = new Hono<HouseholdEnv>()
         ...(p.checkedAt !== undefined
           ? { checkedAt: p.checkedAt ? new Date(p.checkedAt) : null }
           : {}),
+        ...(p.actualBrandId !== undefined ? { actualBrandId: p.actualBrandId } : {}),
         ...(p.actualQty !== undefined
           ? { actualQty: p.actualQty === null ? null : String(p.actualQty) }
           : {}),
