@@ -214,6 +214,8 @@ export default {
       actualQty: 'Quantity',
       priceUpWarn: 'Up since last purchase',
       cheaperElsewhere: 'Cheaper at {{store}}',
+      activeStore: 'Shopping store',
+      selectActiveStore: 'Choose this trip’s store',
       bought: 'BOUGHT',
       finish: 'Finish shopping',
       summary: 'Shopping summary',

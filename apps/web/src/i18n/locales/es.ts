@@ -214,6 +214,8 @@ export default {
       actualQty: 'Cantidad',
       priceUpWarn: 'Subió desde la última compra',
       cheaperElsewhere: 'Más barato en {{store}}',
+      activeStore: 'Tienda de la compra',
+      selectActiveStore: 'Elige la tienda de esta compra',
       bought: 'COMPRADO',
       finish: 'Finalizar compra',
       summary: 'Resumen de la compra',

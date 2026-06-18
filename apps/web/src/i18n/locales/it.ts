@@ -214,6 +214,8 @@ export default {
       actualQty: 'Quantità',
       priceUpWarn: 'Salito dall’ultimo acquisto',
       cheaperElsewhere: 'Più economico da {{store}}',
+      activeStore: 'Negozio della spesa',
+      selectActiveStore: 'Scegli il negozio di questa spesa',
       bought: 'COMPRATO',
       finish: 'Concludi spesa',
       summary: 'Riepilogo spesa',

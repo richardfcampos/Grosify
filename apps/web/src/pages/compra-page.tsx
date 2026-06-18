@@ -4,7 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { db, type LocalItem, type LocalSessionItem } from '../db/dexie.js';
-import { completeSession, resolveBarcode, uncheckSessionItem } from '../db/repositories.js';
+import { completeSession, resolveBarcode, setSessionStore, uncheckSessionItem } from '../db/repositories.js';
 import { CheckItemSheet } from '../features/shopping/check-item-sheet.js';
 import { UnknownBarcodeSheet } from '../features/brands/unknown-barcode-sheet.js';
 import { ScannerModal } from '../features/scanner/scanner-modal.js';
@@ -26,6 +26,11 @@ export function CompraPage() {
     () => db.items.filter((i) => i.deletedAt === null).toArray(),
     [],
     [] as LocalItem[],
+  );
+  const stores = useLiveQuery(
+    () => db.stores.filter((s) => s.deletedAt === null).toArray(),
+    [],
+    [],
   );
 
   const [active, setActive] = useState<LocalSessionItem | null>(null);
@@ -74,6 +79,9 @@ export function CompraPage() {
 
   if (!session) return null;
 
+  // loja ativa da sessão; sem ela, se só há 1 loja cadastrada, usa essa
+  const activeStoreId = session.storeId ?? (stores.length === 1 ? stores[0]?.id ?? null : null);
+
   if (session.status === 'completed') {
     return (
       <Summary
@@ -111,6 +119,23 @@ export function CompraPage() {
           )}
           </div>
         </div>
+        {stores.length > 0 && (
+          <select
+            value={activeStoreId ?? ''}
+            onChange={(e) => setSessionStore(id, e.target.value)}
+            className="mt-3 min-h-11 w-full rounded-xl border border-stone-700 bg-stone-800 px-3 py-2 text-sm text-stone-50 outline-none focus:border-yellow-400"
+            aria-label={t('shopping.activeStore')}
+          >
+            <option value="" disabled>
+              {t('shopping.selectActiveStore')}
+            </option>
+            {stores.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        )}
       </header>
 
       <main className="px-5 py-4 pb-32">
@@ -171,6 +196,8 @@ export function CompraPage() {
           sessionItem={active}
           itemName={itemById.get(active.itemId)?.name ?? ''}
           initialBrandId={scannedBrandId}
+          initialStoreId={activeStoreId}
+          onStoreConfirmed={(storeId) => setSessionStore(id, storeId)}
           onClose={() => {
             setActive(null);
             setScannedBrandId(null);

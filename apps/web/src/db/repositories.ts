@@ -445,6 +445,12 @@ export async function uncheckSessionItem(sessionItemId: string): Promise<void> {
   });
 }
 
+/** Define a loja ativa da sessão de compra (gruda como padrão dos próximos itens). */
+export async function setSessionStore(sessionId: string, storeId: string): Promise<void> {
+  await db.sessions.update(sessionId, { storeId, updatedAt: nowISO() });
+  await enqueue({ method: 'PATCH', path: `/shopping/sessions/${sessionId}`, body: { storeId }, rowId: sessionId });
+}
+
 export async function completeSession(sessionId: string): Promise<void> {
   const ts = nowISO();
   await db.sessions.update(sessionId, { status: 'completed', completedAt: ts, updatedAt: ts });

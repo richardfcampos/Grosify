@@ -12,11 +12,22 @@ interface Props {
   itemName: string;
   /** Marca já resolvida pelo código de barras escaneado (pré-seleciona). */
   initialBrandId?: string | null;
+  /** Loja ativa da sessão (pré-preenche; evita re-selecionar a cada item). */
+  initialStoreId?: string | null;
+  /** Avisa a loja escolhida ao confirmar (gruda como ativa para os próximos). */
+  onStoreConfirmed?: (storeId: string) => void;
   onClose: () => void;
 }
 
 /** Folha escura pra marcar item comprado: loja, marca, qtd, preço pago, com avisos. */
-export function CheckItemSheet({ sessionItem, itemName, initialBrandId, onClose }: Props) {
+export function CheckItemSheet({
+  sessionItem,
+  itemName,
+  initialBrandId,
+  initialStoreId,
+  onStoreConfirmed,
+  onClose,
+}: Props) {
   const { t, i18n } = useTranslation();
   const fmt = useFormatMoney();
   const currency = useHouseholdCurrency();
@@ -38,7 +49,7 @@ export function CheckItemSheet({ sessionItem, itemName, initialBrandId, onClose 
     [] as PriceRecord[],
   );
 
-  const [storeId, setStoreId] = useState(sessionItem.estimatedPriceStoreId ?? '');
+  const [storeId, setStoreId] = useState(initialStoreId ?? sessionItem.estimatedPriceStoreId ?? '');
   const [brandId, setBrandId] = useState<string | null>(initialBrandId ?? sessionItem.actualBrandId ?? null);
   const [qty, setQty] = useState(String(sessionItem.neededQty || 1));
   const [value, setValue] = useState('');
@@ -73,6 +84,7 @@ export function CheckItemSheet({ sessionItem, itemName, initialBrandId, onClose 
         parseToMinorUnits(value, currency),
         brandId,
       );
+      if (storeId && storeId !== initialStoreId) onStoreConfirmed?.(storeId);
       onClose();
     } finally {
       setBusy(false);
