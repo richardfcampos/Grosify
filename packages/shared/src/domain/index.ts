@@ -123,6 +123,20 @@ export function averagePrice(records: PriceRecord[], sinceISO: string): number |
 /** Limite de variação (%) a partir do qual um aumento/queda vira alerta. */
 export const PRICE_ALERT_THRESHOLD_PCT = 10;
 
+export interface BudgetStatus {
+  ratio: number;
+  pct: number;
+  level: 'ok' | 'warn' | 'over';
+}
+
+/** Situação do gasto vs orçamento: warn a partir de 80%, over a partir de 100%. */
+export function budgetStatus(spentCents: number, budgetCents: number | null): BudgetStatus | null {
+  if (!budgetCents || budgetCents <= 0) return null;
+  const ratio = spentCents / budgetCents;
+  const level = ratio >= 1 ? 'over' : ratio >= 0.8 ? 'warn' : 'ok';
+  return { ratio, pct: Math.round(ratio * 100), level };
+}
+
 export interface EstimateLine {
   qty: number;
   unitPriceCents: number | null;

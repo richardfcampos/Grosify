@@ -122,6 +122,7 @@ export const createPricePayload = z.object({
   storeId: z.uuid(),
   priceCents: z.number().int().positive(),
   recordedAt: isoDate.optional(),
+  rating: z.number().int().min(1).max(5).nullable().optional(),
 });
 export type CreatePricePayload = z.infer<typeof createPricePayload>;
 
@@ -130,10 +131,13 @@ export type CreatePricePayload = z.infer<typeof createPricePayload>;
 const recurrence = z.enum(['weekly', 'biweekly', 'monthly']);
 const recurrenceDay = z.number().int().min(0).max(28);
 
+const budgetCents = z.number().int().nonnegative();
+
 export const createListPayload = z.object({
   id: z.uuid(),
   name: z.string().trim().min(1).max(100),
   isRecurring: z.boolean().default(false),
+  budgetCents: budgetCents.nullable().optional(),
   icon: z.string().max(16).nullable().optional(),
   color: z.string().max(16).nullable().optional(),
   recurrence: recurrence.nullable().optional(),
@@ -144,6 +148,7 @@ export type CreateListPayload = z.infer<typeof createListPayload>;
 export const updateListPayload = z.object({
   name: z.string().trim().min(1).max(100).optional(),
   isRecurring: z.boolean().optional(),
+  budgetCents: budgetCents.nullable().optional(),
   icon: z.string().max(16).nullable().optional(),
   color: z.string().max(16).nullable().optional(),
   recurrence: recurrence.nullable().optional(),
@@ -194,6 +199,7 @@ export const updateSessionPayload = z.object({
   status: z.enum(['active', 'completed', 'abandoned']).optional(),
   storeId: z.uuid().nullable().optional(),
   completedAt: isoDate.nullable().optional(),
+  receiptKey: z.string().max(500).nullable().optional(),
 });
 export type UpdateSessionPayload = z.infer<typeof updateSessionPayload>;
 

@@ -258,6 +258,8 @@ export const priceRecords = pgTable(
     source: text('source', { enum: ['manual', 'shopping'] })
       .notNull()
       .default('manual'),
+    /** Avaliação de qualidade (1-5), opcional. */
+    rating: integer('rating'),
     ...syncColumns,
   },
   (t) => [
@@ -275,6 +277,8 @@ export const shoppingLists = pgTable(
       .references(() => households.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
     isRecurring: boolean('is_recurring').notNull().default(false),
+    /** Orçamento mensal da lista em unidades mínimas da moeda. */
+    budgetCents: integer('budget_cents'),
     /** Emoji da lista (ex.: 🛒, 🔥). */
     icon: text('icon'),
     /** Cor de destaque (hex, ex.: #15803D). */
@@ -374,6 +378,8 @@ export const shoppingSessions = pgTable(
       .default('active'),
     startedAt: timestamp('started_at', { withTimezone: true }).notNull(),
     completedAt: timestamp('completed_at', { withTimezone: true }),
+    /** Foto do recibo (chave R2; blob local até upload). */
+    receiptKey: text('receipt_key'),
     ...syncColumns,
   },
   (t) => [index('shopping_sessions_household_version_idx').on(t.householdId, t.serverVersion)],

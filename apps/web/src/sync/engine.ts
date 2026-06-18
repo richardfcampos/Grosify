@@ -3,6 +3,7 @@ import {
   type LocalInventory,
   type LocalItem,
   type LocalListEntry,
+  type LocalSession,
   type OutboxEntry,
 } from '../db/dexie.js';
 
@@ -209,7 +210,12 @@ async function pull(): Promise<boolean> {
         pendingIds,
       );
       await applyTable(db.movements, (changes.stock_movements ?? []).map(numMovement), pendingIds);
-      await applyTable(db.sessions, changes.shopping_sessions, pendingIds);
+      for (const row of changes.shopping_sessions ?? []) {
+        const r = row as unknown as LocalSession;
+        if (pendingIds.has(r.id)) continue;
+        const existing = await db.sessions.get(r.id);
+        await db.sessions.put({ ...r, receiptBlob: existing?.receiptBlob ?? null });
+      }
       await applyTable(
         db.sessionItems,
         (changes.shopping_session_items ?? []).map((i) => numSessionItem(i)),

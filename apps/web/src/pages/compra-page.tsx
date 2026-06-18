@@ -1,19 +1,22 @@
-import { estimateTotal } from '@grosify/shared';
+import { budgetStatus, estimateTotal } from '@grosify/shared';
 import { useNavigate, useParams } from '@tanstack/react-router';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useMemo, useRef, useState, type ReactNode, type TouchEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { db, type LocalItem, type LocalSessionItem } from '../db/dexie.js';
+import { db, type LocalItem, type LocalSession, type LocalSessionItem } from '../db/dexie.js';
 import {
   addSessionItem,
   completeSession,
   resolveBarcode,
+  setSessionReceipt,
   setSessionStore,
   uncheckSessionItem,
 } from '../db/repositories.js';
 import { CheckItemSheet } from '../features/shopping/check-item-sheet.js';
 import { UnknownBarcodeSheet } from '../features/brands/unknown-barcode-sheet.js';
 import { ScannerModal } from '../features/scanner/scanner-modal.js';
+import { resizeToWebp } from '../lib/resize-image.js';
+import { useObjectUrl } from '../lib/use-object-url.js';
 import { useFormatMoney } from '../lib/use-currency.js';
 
 export function CompraPage() {
@@ -23,6 +26,10 @@ export function CompraPage() {
   const { id } = useParams({ from: '/app/compra/$id' });
 
   const session = useLiveQuery(() => db.sessions.get(id), [id]);
+  const list = useLiveQuery(
+    () => (session?.listId ? db.lists.get(session.listId) : undefined),
+    [session?.listId],
+  );
   const sessionItems = useLiveQuery(
     () => db.sessionItems.where('sessionId').equals(id).filter((i) => i.deletedAt === null).toArray(),
     [id],
@@ -67,6 +74,7 @@ export function CompraPage() {
   );
   const over = current > estimated;
   const checkedCount = sessionItems.filter((si) => si.checkedAt).length;
+  const budget = budgetStatus(current, list?.budgetCents ?? null);
 
   // agrupa por categoria (nome desnormalizado); sem categoria vai por último
   const groups = useMemo(() => {
@@ -108,6 +116,7 @@ export function CompraPage() {
   if (session.status === 'completed') {
     return (
       <Summary
+        session={session}
         sessionItems={sessionItems}
         itemById={itemById}
         estimated={estimated}
@@ -170,6 +179,25 @@ export function CompraPage() {
             {hideBought ? t('shopping.showBought') : t('shopping.hideBought')}
           </button>
         </div>
+        {budget && list?.budgetCents != null && (
+          <div className="mt-2">
+            <div className="flex justify-between text-xs text-stone-400">
+              <span>{t('shopping.budget')}</span>
+              <span style={{ color: budget.level === 'over' ? '#F87171' : budget.level === 'warn' ? '#FACC15' : '#9CA3AF' }}>
+                {fmt(current)} / {fmt(list.budgetCents)} · {budget.pct}%
+              </span>
+            </div>
+            <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-stone-800">
+              <div
+                className="h-full rounded-full"
+                style={{
+                  width: `${Math.min(budget.pct, 100)}%`,
+                  backgroundColor: budget.level === 'over' ? '#F87171' : budget.level === 'warn' ? '#FACC15' : '#4ADE80',
+                }}
+              />
+            </div>
+          </div>
+        )}
       </header>
 
       <main className="px-5 py-4 pb-32">
@@ -369,11 +397,13 @@ function QuickAddSheet({
 }
 
 function Summary({
+  session,
   sessionItems,
   itemById,
   estimated,
   current,
 }: {
+  session: LocalSession;
   sessionItems: LocalSessionItem[];
   itemById: Map<string, LocalItem>;
   estimated: number;
@@ -384,6 +414,14 @@ function Summary({
   const fmt = useFormatMoney();
   const saved = estimated - current;
   const boughtItems = sessionItems.filter((si) => si.checkedAt);
+  const receiptUrl = useObjectUrl(session.receiptBlob ?? null);
+
+  async function onReceiptPick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const webp = await resizeToWebp(file);
+    await setSessionReceipt(session.id, webp);
+  }
 
   function receiptText(): string {
     const lines = [`🛒 Grosify — ${t('shopping.receiptTag')}`];
@@ -424,9 +462,21 @@ function Summary({
           ? t('shopping.savedVsEstimate', { amount: fmt(saved) })
           : t('shopping.overEstimate', { amount: fmt(-saved) })}
       </p>
+      <label className="mt-2 flex cursor-pointer flex-col items-center gap-2">
+        {receiptUrl ? (
+          <img src={receiptUrl} alt="" className="h-24 w-24 rounded-xl object-cover" />
+        ) : (
+          <span className="flex h-24 w-24 items-center justify-center rounded-xl border-2 border-dashed border-stone-700 text-3xl text-stone-500">
+            🧾
+          </span>
+        )}
+        <span className="text-sm text-stone-400">{t('shopping.attachReceipt')}</span>
+        <input type="file" accept="image/*" capture="environment" onChange={onReceiptPick} className="hidden" />
+      </label>
+
       <button
         onClick={onShare}
-        className="mt-4 min-h-12 w-full rounded-xl bg-green-600 px-8 font-bold text-white"
+        className="mt-2 min-h-12 w-full rounded-xl bg-green-600 px-8 font-bold text-white"
       >
         {t('shopping.share')}
       </button>

@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { db, type LocalSessionItem } from '../../db/dexie.js';
 import { checkSessionItem } from '../../db/repositories.js';
 import { BrandPicker } from '../brands/brand-picker.js';
+import { StarRating } from '../prices/star-rating.js';
 import { useFormatMoney, useHouseholdCurrency } from '../../lib/use-currency.js';
 
 interface Props {
@@ -59,6 +60,7 @@ export function CheckItemSheet({
   const [brandId, setBrandId] = useState<string | null>(initialBrandId ?? sessionItem.actualBrandId ?? null);
   const [qty, setQty] = useState(String(sessionItem.neededQty || 1));
   const [value, setValue] = useState('');
+  const [rating, setRating] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
 
   const cheapest = useMemo(() => cheapestStore(prices), [prices]);
@@ -89,6 +91,7 @@ export function CheckItemSheet({
         Number(qty.replace(',', '.')),
         parseToMinorUnits(value, currency),
         brandId,
+        rating,
       );
       if (storeId && storeId !== initialStoreId) onStoreConfirmed?.(storeId);
       onClose();
@@ -157,6 +160,10 @@ export function CheckItemSheet({
               </label>
             </div>
             {warn && <p className="text-sm font-medium text-red-400">▲ {warn}</p>}
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-stone-400">{t('prices.rating')}</span>
+              <StarRating value={rating} onChange={setRating} dark />
+            </div>
             <button
               type="submit"
               disabled={busy || !storeId || !value}

@@ -27,7 +27,10 @@ export type LocalList = ShoppingList;
 export type LocalListEntry = ShoppingListEntry;
 export type LocalInventory = InventoryCount;
 export type LocalMovement = StockMovement;
-export type LocalSession = ShoppingSession;
+/** Sessão local: + foto do recibo como blob (offline, antes do upload R2). */
+export interface LocalSession extends ShoppingSession {
+  receiptBlob?: Blob | null;
+}
 export type LocalSessionItem = ShoppingSessionItem;
 
 /** Mutação pendente na outbox: replay HTTP quando online. */

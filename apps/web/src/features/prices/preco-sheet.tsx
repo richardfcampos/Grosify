@@ -11,9 +11,11 @@ import {
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useMemo, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { db } from '../../db/dexie.js';
 import { recordPrice } from '../../db/repositories.js';
 import { BrandPicker } from '../brands/brand-picker.js';
+import { StarRating } from './star-rating.js';
 import { useFormatMoney, useHouseholdCurrency, useHouseholdPlan } from '../../lib/use-currency.js';
 
 interface Props {
@@ -62,6 +64,7 @@ export function PrecoSheet({ itemId, itemName, onClose }: Props) {
   const [storeId, setStoreId] = useState('');
   const [brandId, setBrandId] = useState<string | null>(null);
   const [value, setValue] = useState('');
+  const [rating, setRating] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
 
   const cheapest = useMemo(() => cheapestStore(prices), [prices]);
@@ -100,14 +103,19 @@ export function PrecoSheet({ itemId, itemName, onClose }: Props) {
     e.preventDefault();
     setBusy(true);
     try {
-      await recordPrice(itemId, storeId, parseToMinorUnits(value, currency), brandId);
+      await recordPrice(itemId, storeId, parseToMinorUnits(value, currency), brandId, rating);
       setValue('');
+      setRating(null);
     } finally {
       setBusy(false);
     }
   }
 
   const history = [...prices].sort((a, b) => b.recordedAt.localeCompare(a.recordedAt)).slice(0, 8);
+  // série pro gráfico (ordem cronológica)
+  const chart = [...prices]
+    .sort((a, b) => a.recordedAt.localeCompare(b.recordedAt))
+    .map((p) => ({ t: fmtDate(p.recordedAt), price: p.priceCents }));
 
   return (
     <div className="fixed inset-0 z-50 flex items-end bg-black/40" onClick={onClose}>
@@ -172,6 +180,10 @@ export function PrecoSheet({ itemId, itemName, onClose }: Props) {
             {avg3m != null && (
               <p className="text-xs text-zinc-500">{t('prices.avg3m', { price: fmt(avg3m) })}</p>
             )}
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-zinc-500">{t('prices.rating')}</span>
+              <StarRating value={rating} onChange={setRating} />
+            </div>
             <button
               type="submit"
               disabled={busy || !storeId || !value}
@@ -180,6 +192,19 @@ export function PrecoSheet({ itemId, itemName, onClose }: Props) {
               {busy ? t('common.saving') : t('prices.record')}
             </button>
           </form>
+        )}
+
+        {chart.length >= 2 && (
+          <div className="h-36 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chart} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+                <XAxis dataKey="t" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+                <YAxis tick={{ fontSize: 10 }} width={48} tickFormatter={(v) => fmt(Number(v))} />
+                <Tooltip formatter={(v) => fmt(Number(v))} />
+                <Line type="monotone" dataKey="price" stroke="#15803D" strokeWidth={2} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         )}
 
         <div className="flex flex-col gap-1.5">
@@ -194,7 +219,10 @@ export function PrecoSheet({ itemId, itemName, onClose }: Props) {
                     {storeName(p.storeId)}
                     {brandName(p.brandId) ? ` · ${brandName(p.brandId)}` : ''} · {fmtDate(p.recordedAt)}
                   </span>
-                  <span className="font-mono font-medium text-zinc-900">{fmt(p.priceCents)}</span>
+                  <span className="font-mono font-medium text-zinc-900">
+                    {fmt(p.priceCents)}
+                    {p.rating ? <span className="ml-1 text-amber-500">{'★'.repeat(p.rating)}</span> : null}
+                  </span>
                 </li>
               ))}
             </ul>

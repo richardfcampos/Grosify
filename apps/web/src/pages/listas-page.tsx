@@ -1,10 +1,11 @@
-import { RECURRENCES, type Recurrence } from '@grosify/shared';
+import { parseToMinorUnits, RECURRENCES, type Recurrence } from '@grosify/shared';
 import { Link } from '@tanstack/react-router';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { db, type LocalList } from '../db/dexie.js';
 import { createList } from '../db/repositories.js';
+import { useHouseholdCurrency } from '../lib/use-currency.js';
 
 const LIST_ICONS = ['🛒', '🔥', '🎉', '🥩', '🧺', '🍎', '🧽', '🎂', '🍷', '🐶'];
 const LIST_COLORS = ['#15803D', '#DC2626', '#CA8A04', '#2563EB', '#7C3AED', '#0D9488', '#DB2777'];
@@ -82,9 +83,11 @@ export function ListasPage() {
 
 function NewListSheet({ onClose }: { onClose: () => void }) {
   const { t, i18n } = useTranslation();
+  const currency = useHouseholdCurrency();
   const [name, setName] = useState('');
   const [icon, setIcon] = useState<string | null>(null);
   const [color, setColor] = useState<string | null>(null);
+  const [budget, setBudget] = useState('');
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurrence, setRecurrence] = useState<Recurrence>('monthly');
   const [recurrenceDay, setRecurrenceDay] = useState(1);
@@ -99,9 +102,16 @@ function NewListSheet({ onClose }: { onClose: () => void }) {
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
+    let budgetCents: number | null = null;
+    try {
+      budgetCents = budget.trim() ? parseToMinorUnits(budget, currency) : null;
+    } catch {
+      budgetCents = null;
+    }
     await createList({
       name: name.trim(),
       isRecurring,
+      budgetCents,
       icon,
       color,
       recurrence: isRecurring ? recurrence : null,
@@ -142,6 +152,17 @@ function NewListSheet({ onClose }: { onClose: () => void }) {
             </button>
           ))}
         </div>
+
+        <label className="flex flex-col gap-1">
+          <span className="text-sm font-medium text-zinc-600">{t('lists.budget')}</span>
+          <input
+            value={budget}
+            onChange={(e) => setBudget(e.target.value.replace(/[^\d.,]/g, ''))}
+            inputMode="decimal"
+            placeholder={t('lists.budgetHint')}
+            className="min-h-12 w-full rounded-xl border border-zinc-300 px-4 py-3 text-base"
+          />
+        </label>
 
         <span className="text-sm font-medium text-zinc-600">{t('lists.color')}</span>
         <div className="flex flex-wrap gap-2">

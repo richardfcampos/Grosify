@@ -77,6 +77,8 @@ export const priceRecordSchema = syncMetaSchema.extend({
   priceCents: z.number().int().positive(),
   recordedAt: isoDate,
   source: z.enum(PRICE_SOURCES),
+  /** Avaliação de qualidade (1-5), opcional. */
+  rating: z.number().int().min(1).max(5).nullable(),
 });
 export type PriceRecord = z.infer<typeof priceRecordSchema>;
 
@@ -95,6 +97,8 @@ export type Recurrence = z.infer<typeof recurrenceSchema>;
 export const shoppingListSchema = syncMetaSchema.extend({
   name: z.string().trim().min(1).max(100),
   isRecurring: z.boolean(),
+  /** Orçamento mensal em unidades mínimas da moeda. */
+  budgetCents: z.number().int().nonnegative().nullable(),
   /** Emoji da lista. */
   icon: z.string().max(16).nullable(),
   /** Cor de destaque (hex). */
@@ -144,6 +148,8 @@ export const shoppingSessionSchema = syncMetaSchema.extend({
   status: z.enum(SESSION_STATUSES),
   startedAt: isoDate,
   completedAt: isoDate.nullable(),
+  /** Foto do recibo (chave R2). */
+  receiptKey: z.string().max(500).nullable(),
 });
 export type ShoppingSession = z.infer<typeof shoppingSessionSchema>;
 

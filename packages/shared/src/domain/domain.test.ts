@@ -3,6 +3,7 @@ import type { PriceRecord } from '../schemas/index.js';
 import {
   averagePrice,
   baseUnitFor,
+  budgetStatus,
   cheapestStore,
   convertUnit,
   estimateTotal,
@@ -28,6 +29,7 @@ function record(partial: Partial<PriceRecord> & Pick<PriceRecord, 'storeId' | 'p
     itemId: ITEM,
     brandId: null,
     source: 'manual',
+    rating: null,
     updatedAt: partial.recordedAt,
     deletedAt: null,
     serverVersion: seq,
@@ -70,6 +72,20 @@ describe('convertUnit / baseUnitFor', () => {
     expect(baseUnitFor('ml')).toBe('l');
     expect(baseUnitFor('un')).toBeNull();
     expect(baseUnitFor('kg')).toBeNull();
+  });
+});
+
+describe('budgetStatus', () => {
+  it('null sem orçamento', () => {
+    expect(budgetStatus(100, null)).toBeNull();
+    expect(budgetStatus(100, 0)).toBeNull();
+  });
+  it('ok abaixo de 80%, warn em 80-99%, over em 100%+', () => {
+    expect(budgetStatus(50, 100)?.level).toBe('ok');
+    expect(budgetStatus(80, 100)?.level).toBe('warn');
+    expect(budgetStatus(99, 100)?.level).toBe('warn');
+    expect(budgetStatus(100, 100)?.level).toBe('over');
+    expect(budgetStatus(120, 100)?.pct).toBe(120);
   });
 });
 

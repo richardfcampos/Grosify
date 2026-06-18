@@ -52,6 +52,7 @@ export const shoppingRoute = new Hono<HouseholdEnv>()
         householdId: hid,
         name: p.name,
         isRecurring: p.isRecurring,
+        budgetCents: p.budgetCents ?? null,
         icon: p.icon ?? null,
         color: p.color ?? null,
         recurrence: p.recurrence ?? null,
@@ -151,6 +152,7 @@ export const shoppingRoute = new Hono<HouseholdEnv>()
         priceCents: p.priceCents,
         recordedAt: p.recordedAt ? new Date(p.recordedAt) : new Date(),
         source: 'manual',
+        rating: p.rating ?? null,
       })
       .onConflictDoNothing()
       .returning();
@@ -290,6 +292,7 @@ export const shoppingRoute = new Hono<HouseholdEnv>()
         ...(p.completedAt !== undefined
           ? { completedAt: p.completedAt ? new Date(p.completedAt) : null }
           : {}),
+        ...(p.receiptKey !== undefined ? { receiptKey: p.receiptKey } : {}),
         updatedAt: new Date(),
       })
       .where(and(eq(shoppingSessions.id, c.req.param('id')), eq(shoppingSessions.householdId, hid)))

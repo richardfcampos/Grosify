@@ -337,6 +337,7 @@ export async function deleteStore(id: string): Promise<void> {
 export interface NewListInput {
   name: string;
   isRecurring: boolean;
+  budgetCents?: number | null;
   icon?: string | null;
   color?: string | null;
   recurrence?: Recurrence | null;
@@ -349,6 +350,7 @@ export async function createList(input: NewListInput): Promise<string> {
     id,
     name: input.name,
     isRecurring: input.isRecurring,
+    budgetCents: input.budgetCents ?? null,
     icon: input.icon ?? null,
     color: input.color ?? null,
     recurrence: input.recurrence ?? null,
@@ -370,6 +372,7 @@ export async function updateList(
   updates: {
     name?: string;
     isRecurring?: boolean;
+    budgetCents?: number | null;
     icon?: string | null;
     color?: string | null;
     recurrence?: Recurrence | null;
@@ -424,6 +427,7 @@ export async function recordPrice(
   storeId: string,
   priceCents: number,
   brandId: string | null = null,
+  rating: number | null = null,
 ): Promise<void> {
   const id = uuidv7();
   const ts = nowISO();
@@ -436,6 +440,7 @@ export async function recordPrice(
     priceCents,
     recordedAt: ts,
     source: 'manual',
+    rating,
     updatedAt: ts,
     deletedAt: null,
     serverVersion: 0,
@@ -443,7 +448,7 @@ export async function recordPrice(
   await enqueue({
     method: 'POST',
     path: '/shopping/prices',
-    body: { id, itemId, brandId, storeId, priceCents },
+    body: { id, itemId, brandId, storeId, priceCents, rating },
     rowId: id,
   });
 }
@@ -576,6 +581,7 @@ export async function startShoppingSession(listId: string): Promise<string> {
     status: 'active',
     startedAt: ts,
     completedAt: null,
+    receiptKey: null,
     updatedAt: ts,
     deletedAt: null,
     serverVersion: 0,
@@ -615,8 +621,9 @@ export async function checkSessionItem(
   actualQty: number,
   actualUnitPriceCents: number,
   brandId: string | null = null,
+  rating: number | null = null,
 ): Promise<void> {
-  await recordPrice(itemId, storeId, actualUnitPriceCents, brandId);
+  await recordPrice(itemId, storeId, actualUnitPriceCents, brandId, rating);
   const ts = nowISO();
   await db.sessionItems.update(sessionItemId, {
     checkedAt: ts,
@@ -690,6 +697,11 @@ export async function addSessionItem(sessionId: string, itemId: string): Promise
     rowId: id,
   });
   return id;
+}
+
+/** Anexa a foto do recibo à sessão (blob local; upload R2 fica pra depois). */
+export async function setSessionReceipt(sessionId: string, blob: Blob): Promise<void> {
+  await db.sessions.update(sessionId, { receiptBlob: blob, updatedAt: nowISO() });
 }
 
 export async function completeSession(sessionId: string): Promise<void> {
