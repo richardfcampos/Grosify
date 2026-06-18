@@ -2,6 +2,7 @@ import { zValidator } from '@hono/zod-validator';
 import {
   addSessionItemPayload,
   createListPayload,
+  createMovementPayload,
   createPricePayload,
   createSessionPayload,
   setInventoryPayload,
@@ -20,6 +21,7 @@ import {
   shoppingLists,
   shoppingSessionItems,
   shoppingSessions,
+  stockMovements,
 } from '../db/schema.js';
 import { requireHousehold, type HouseholdEnv } from '../middleware/household.js';
 
@@ -184,6 +186,26 @@ export const shoppingRoute = new Hono<HouseholdEnv>()
       })
       .returning();
     return c.json({ count }, 201);
+  })
+
+  .post('/movements', zValidator('json', createMovementPayload), async (c) => {
+    const hid = c.get('householdId');
+    const p = c.req.valid('json');
+    const [movement] = await db
+      .insert(stockMovements)
+      .values({
+        id: p.id,
+        householdId: hid,
+        itemId: p.itemId,
+        type: p.type,
+        qty: String(p.qty),
+        balanceAfter: String(p.balanceAfter),
+        reason: p.reason ?? null,
+        movedAt: p.movedAt ? new Date(p.movedAt) : new Date(),
+      })
+      .onConflictDoNothing()
+      .returning();
+    return c.json({ movement: movement ?? null }, 201);
   })
 
   // ---------- Sessões de compra ----------

@@ -140,6 +140,8 @@ export const items = pgTable(
     photoKey: text('photo_key'),
     /** Observações livres do item. */
     notes: text('notes'),
+    /** Estoque mínimo: abaixo disso o item entra em "acabando". */
+    minStock: numeric('min_stock', { precision: 10, scale: 3 }),
     unit: text('unit', { enum: ['un', 'kg', 'g', 'l', 'ml'] })
       .notNull()
       .default('un'),
@@ -329,6 +331,32 @@ export const inventoryCounts = pgTable(
   (t) => [
     index('inventory_counts_household_version_idx').on(t.householdId, t.serverVersion),
     unique('inventory_counts_household_item_uq').on(t.householdId, t.itemId),
+  ],
+);
+
+/** Movimento de estoque (ledger): compra (+), consumo (−), ajuste, contagem. */
+export const stockMovements = pgTable(
+  'stock_movements',
+  {
+    id: uuid('id').primaryKey(),
+    householdId: uuid('household_id')
+      .notNull()
+      .references(() => households.id, { onDelete: 'cascade' }),
+    itemId: uuid('item_id')
+      .notNull()
+      .references(() => items.id, { onDelete: 'cascade' }),
+    type: text('type', { enum: ['purchase', 'consumption', 'adjustment', 'count'] }).notNull(),
+    /** Variação aplicada (positiva ou negativa). */
+    qty: numeric('qty', { precision: 10, scale: 3 }).notNull(),
+    /** Saldo do item após o movimento. */
+    balanceAfter: numeric('balance_after', { precision: 10, scale: 3 }).notNull(),
+    reason: text('reason'),
+    movedAt: timestamp('moved_at', { withTimezone: true }).notNull(),
+    ...syncColumns,
+  },
+  (t) => [
+    index('stock_movements_household_version_idx').on(t.householdId, t.serverVersion),
+    index('stock_movements_item_idx').on(t.itemId),
   ],
 );
 

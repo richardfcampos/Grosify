@@ -12,6 +12,7 @@ import {
   shoppingLists,
   shoppingSessionItems,
   shoppingSessions,
+  stockMovements,
   stores,
 } from '../db/schema.js';
 import { requireHousehold, type HouseholdEnv } from '../middleware/household.js';
@@ -27,6 +28,7 @@ const TABLES = {
   shopping_lists: shoppingLists,
   shopping_list_entries: shoppingListEntries,
   inventory_counts: inventoryCounts,
+  stock_movements: stockMovements,
   shopping_sessions: shoppingSessions,
   shopping_session_items: shoppingSessionItems,
 } as const;

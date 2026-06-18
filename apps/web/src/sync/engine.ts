@@ -51,6 +51,7 @@ export async function clearLocalData(): Promise<void> {
       db.lists,
       db.listEntries,
       db.inventory,
+      db.movements,
       db.sessions,
       db.sessionItems,
       db.outbox,
@@ -67,6 +68,7 @@ export async function clearLocalData(): Promise<void> {
         db.lists.clear(),
         db.listEntries.clear(),
         db.inventory.clear(),
+        db.movements.clear(),
         db.sessions.clear(),
         db.sessionItems.clear(),
         db.outbox.clear(),
@@ -133,6 +135,14 @@ function num<T extends { qty?: unknown; qtyOnHand?: unknown }>(row: T): T {
   return row;
 }
 
+/** Converte numeric (string) → number em qty/balanceAfter do movimento de estoque. */
+function numMovement(row: unknown): unknown {
+  const r = row as { qty: unknown; balanceAfter: unknown };
+  r.qty = Number(r.qty);
+  r.balanceAfter = Number(r.balanceAfter);
+  return r;
+}
+
 /** Converte numeric (string) → number nos campos de quantidade do item de sessão. */
 function numSessionItem(row: unknown): unknown {
   const r = row as { neededQty: unknown; actualQty: unknown };
@@ -171,6 +181,7 @@ async function pull(): Promise<boolean> {
       db.lists,
       db.listEntries,
       db.inventory,
+      db.movements,
       db.sessions,
       db.sessionItems,
     ],
@@ -197,6 +208,7 @@ async function pull(): Promise<boolean> {
         (changes.inventory_counts ?? []).map((i) => num(i as LocalInventory)),
         pendingIds,
       );
+      await applyTable(db.movements, (changes.stock_movements ?? []).map(numMovement), pendingIds);
       await applyTable(db.sessions, changes.shopping_sessions, pendingIds);
       await applyTable(
         db.sessionItems,

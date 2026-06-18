@@ -55,6 +55,7 @@ export const createItemPayload = z.object({
   categoryId: itemSchema.shape.categoryId.optional(),
   photoKey: itemSchema.shape.photoKey.optional(),
   notes: itemSchema.shape.notes.optional(),
+  minStock: itemSchema.shape.minStock.optional(),
   unit: unitSchema.default('un'),
   barcodes: z
     .array(z.object({ id: z.uuid(), barcode, brandId: z.uuid().nullable().optional() }))
@@ -69,9 +70,22 @@ export const updateItemPayload = z.object({
   categoryId: itemSchema.shape.categoryId.optional(),
   photoKey: itemSchema.shape.photoKey.optional(),
   notes: itemSchema.shape.notes.optional(),
+  minStock: itemSchema.shape.minStock.optional(),
   unit: unitSchema.optional(),
 });
 export type UpdateItemPayload = z.infer<typeof updateItemPayload>;
+
+// ---------- Movimentos de estoque ----------
+export const createMovementPayload = z.object({
+  id: z.uuid(),
+  itemId: z.uuid(),
+  type: z.enum(['purchase', 'consumption', 'adjustment', 'count']),
+  qty: z.number().multipleOf(0.001),
+  balanceAfter: z.number().nonnegative().multipleOf(0.001),
+  reason: z.string().trim().max(200).nullable().optional(),
+  movedAt: isoDate.optional(),
+});
+export type CreateMovementPayload = z.infer<typeof createMovementPayload>;
 
 export const addBarcodePayload = z.object({
   id: z.uuid(),

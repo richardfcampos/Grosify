@@ -231,6 +231,7 @@ export const catalogRoute = new Hono<HouseholdEnv>()
             categoryId: payload.categoryId ?? null,
             photoKey: payload.photoKey ?? null,
             notes: payload.notes ?? null,
+            minStock: payload.minStock != null ? String(payload.minStock) : null,
             unit: payload.unit,
           })
           .onConflictDoNothing()
@@ -261,10 +262,14 @@ export const catalogRoute = new Hono<HouseholdEnv>()
 
   .patch('/items/:id', zValidator('json', updateItemPayload), async (c) => {
     const hid = c.get('householdId');
-    const updates = c.req.valid('json');
+    const { minStock, ...rest } = c.req.valid('json');
     const [item] = await db
       .update(items)
-      .set({ ...updates, updatedAt: new Date() })
+      .set({
+        ...rest,
+        ...(minStock !== undefined ? { minStock: minStock != null ? String(minStock) : null } : {}),
+        updatedAt: new Date(),
+      })
       .where(and(eq(items.id, c.req.param('id')), eq(items.householdId, hid)))
       .returning();
     if (!item) return c.json({ error: 'not_found' }, 404);

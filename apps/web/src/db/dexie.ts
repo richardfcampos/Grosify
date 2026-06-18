@@ -9,6 +9,7 @@ import type {
   ShoppingListEntry,
   ShoppingSession,
   ShoppingSessionItem,
+  StockMovement,
   Store,
 } from '@grosify/shared';
 import Dexie, { type EntityTable } from 'dexie';
@@ -25,6 +26,7 @@ export type LocalPrice = PriceRecord;
 export type LocalList = ShoppingList;
 export type LocalListEntry = ShoppingListEntry;
 export type LocalInventory = InventoryCount;
+export type LocalMovement = StockMovement;
 export type LocalSession = ShoppingSession;
 export type LocalSessionItem = ShoppingSessionItem;
 
@@ -53,6 +55,7 @@ const db = new Dexie('grosify') as Dexie & {
   lists: EntityTable<LocalList, 'id'>;
   listEntries: EntityTable<LocalListEntry, 'id'>;
   inventory: EntityTable<LocalInventory, 'id'>;
+  movements: EntityTable<LocalMovement, 'id'>;
   sessions: EntityTable<LocalSession, 'id'>;
   sessionItems: EntityTable<LocalSessionItem, 'id'>;
   outbox: EntityTable<OutboxEntry, 'seq'>;
@@ -126,6 +129,23 @@ db.version(6).stores({
   lists: 'id, householdId, deletedAt',
   listEntries: 'id, householdId, listId, itemId, deletedAt',
   inventory: 'id, householdId, itemId, deletedAt',
+  sessions: 'id, householdId, status, deletedAt',
+  sessionItems: 'id, householdId, sessionId, itemId, deletedAt',
+  outbox: '++seq, rowId',
+  meta: 'key',
+});
+
+db.version(7).stores({
+  items: 'id, householdId, name, category, categoryId, deletedAt',
+  categories: 'id, householdId, sortOrder, deletedAt',
+  barcodes: 'id, householdId, itemId, barcode, deletedAt',
+  brands: 'id, householdId, itemId, deletedAt',
+  stores: 'id, householdId, name, deletedAt',
+  prices: 'id, householdId, itemId, storeId, deletedAt',
+  lists: 'id, householdId, deletedAt',
+  listEntries: 'id, householdId, listId, itemId, deletedAt',
+  inventory: 'id, householdId, itemId, deletedAt',
+  movements: 'id, householdId, itemId, deletedAt',
   sessions: 'id, householdId, status, deletedAt',
   sessionItems: 'id, householdId, sessionId, itemId, deletedAt',
   outbox: '++seq, rowId',

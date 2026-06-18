@@ -55,6 +55,7 @@ export function ItemFormPage() {
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [categoryName, setCategoryName] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
+  const [minStock, setMinStock] = useState('');
   const [unit, setUnit] = useState<Unit>('un');
   const [photoBlob, setPhotoBlob] = useState<Blob | null>(null);
   const [photoTouched, setPhotoTouched] = useState(false);
@@ -76,6 +77,7 @@ export function ItemFormPage() {
       setCategoryId(existing.categoryId ?? null);
       setCategoryName(existing.category ?? null);
       setNotes(existing.notes ?? '');
+      setMinStock(existing.minStock != null ? String(existing.minStock) : '');
       setUnit(existing.unit);
       setPhotoBlob(existing.photoBlob ?? null);
     }
@@ -122,6 +124,7 @@ export function ItemFormPage() {
     e.preventDefault();
     setBusy(true);
     setError(null);
+    const ms = minStock.trim() ? Number(minStock.replace(',', '.')) : null;
     try {
       if (editingId) {
         await updateItem(editingId, {
@@ -129,6 +132,7 @@ export function ItemFormPage() {
           category: categoryName,
           categoryId,
           notes: notes.trim() || null,
+          minStock: ms,
           unit,
           ...(photoTouched ? { photoBlob } : {}),
         });
@@ -138,6 +142,7 @@ export function ItemFormPage() {
           category: categoryName,
           categoryId,
           notes: notes.trim() || null,
+          minStock: ms,
           unit,
           photoBlob,
           barcodes: pendingBarcodes,
@@ -248,6 +253,17 @@ export function ItemFormPage() {
               </option>
             ))}
           </select>
+        </label>
+
+        <label className="flex flex-col gap-1">
+          <span className={labelClass}>{t('catalog.minStock')}</span>
+          <input
+            value={minStock}
+            onChange={(e) => setMinStock(e.target.value.replace(/[^\d.,]/g, ''))}
+            inputMode="decimal"
+            placeholder={t('catalog.minStockHint')}
+            className={inputClass}
+          />
         </label>
 
         <div className="flex flex-col gap-2">

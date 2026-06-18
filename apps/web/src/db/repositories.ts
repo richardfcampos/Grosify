@@ -6,6 +6,7 @@ import {
   type LocalBrand,
   type LocalCategory,
   type LocalInventory,
+  type LocalMovement,
   type LocalItem,
   type LocalList,
   type LocalListEntry,
@@ -35,6 +36,7 @@ export interface NewItemInput {
   category?: string | null;
   categoryId?: string | null;
   notes?: string | null;
+  minStock?: number | null;
   unit: Unit;
   photoBlob?: Blob | null;
   barcodes: string[];
@@ -52,6 +54,7 @@ export async function createItem(input: NewItemInput): Promise<string> {
     category: input.category ?? null,
     categoryId: input.categoryId ?? null,
     notes: input.notes ?? null,
+    minStock: input.minStock ?? null,
     photoKey: null,
     unit: input.unit,
     updatedAt: ts,
@@ -80,6 +83,7 @@ export async function createItem(input: NewItemInput): Promise<string> {
       category: input.category ?? undefined,
       categoryId: input.categoryId ?? undefined,
       notes: input.notes ?? undefined,
+      minStock: input.minStock ?? undefined,
       unit: input.unit,
       barcodes: barcodeRows,
     },
@@ -95,6 +99,7 @@ export async function updateItem(
     category?: string | null;
     categoryId?: string | null;
     notes?: string | null;
+    minStock?: number | null;
     unit?: Unit;
     photoBlob?: Blob | null;
   },
@@ -443,27 +448,93 @@ export async function recordPrice(
   });
 }
 
-// ---------- Inventário ----------
+// ---------- Inventário + ledger de movimentos ----------
 
-export async function setInventory(itemId: string, qtyOnHand: number): Promise<void> {
+const round3 = (n: number) => Math.round(n * 1000) / 1000;
+
+type MovementType = 'purchase' | 'consumption' | 'adjustment' | 'count';
+
+/** Núcleo: ajusta o saldo do item e registra um movimento no ledger. */
+async function recordInventory(
+  itemId: string,
+  newQty: number,
+  type: MovementType,
+  reason: string | null = null,
+): Promise<void> {
+  const ts = nowISO();
   const existing = await db.inventory
     .where('itemId')
     .equals(itemId)
     .and((i) => i.deletedAt === null)
     .first();
-  const id = existing?.id ?? uuidv7();
-  const ts = nowISO();
+  const old = existing ? Number(existing.qtyOnHand) : 0;
+  const invId = existing?.id ?? uuidv7();
   await db.inventory.put({
-    id,
+    id: invId,
     householdId: hid(),
     itemId,
-    qtyOnHand,
+    qtyOnHand: newQty,
     countedAt: ts,
     updatedAt: ts,
     deletedAt: null,
     serverVersion: 0,
   });
-  await enqueue({ method: 'PUT', path: '/shopping/inventory', body: { id, itemId, qtyOnHand }, rowId: id });
+  await enqueue({
+    method: 'PUT',
+    path: '/shopping/inventory',
+    body: { id: invId, itemId, qtyOnHand: newQty },
+    rowId: invId,
+  });
+
+  const delta = round3(newQty - old);
+  if (delta !== 0 || reason || type === 'count') {
+    const movId = uuidv7();
+    await db.movements.put({
+      id: movId,
+      householdId: hid(),
+      itemId,
+      type,
+      qty: delta,
+      balanceAfter: newQty,
+      reason,
+      movedAt: ts,
+      updatedAt: ts,
+      deletedAt: null,
+      serverVersion: 0,
+    });
+    await enqueue({
+      method: 'POST',
+      path: '/shopping/movements',
+      body: { id: movId, itemId, type, qty: delta, balanceAfter: newQty, reason, movedAt: ts },
+      rowId: movId,
+    });
+  }
+}
+
+/** Contagem absoluta (inventário manual / contagem física). */
+export function setInventory(itemId: string, qtyOnHand: number): Promise<void> {
+  return recordInventory(itemId, qtyOnHand, 'count');
+}
+
+/** Ajuste manual com motivo (correção). */
+export function adjustInventory(itemId: string, newQty: number, reason: string): Promise<void> {
+  return recordInventory(itemId, newQty, 'adjustment', reason.trim() || null);
+}
+
+/** Registra consumo: subtrai do saldo (nunca abaixo de zero). */
+export async function logConsumption(itemId: string, used: number): Promise<void> {
+  const existing = await db.inventory
+    .where('itemId')
+    .equals(itemId)
+    .and((i) => i.deletedAt === null)
+    .first();
+  const old = existing ? Number(existing.qtyOnHand) : 0;
+  await recordInventory(itemId, Math.max(round3(old - used), 0), 'consumption');
+}
+
+/** Soma ao saldo (compra). */
+async function addStock(itemId: string, newQty: number): Promise<void> {
+  await recordInventory(itemId, newQty, 'purchase');
 }
 
 // ---------- Sessão de compra ----------
@@ -636,7 +707,7 @@ export async function completeSession(sessionId: string): Promise<void> {
       .and((i) => i.deletedAt === null)
       .first();
     const current = inv ? Number(inv.qtyOnHand) : 0;
-    await setInventory(si.itemId, current + Number(si.actualQty));
+    await addStock(si.itemId, round3(current + Number(si.actualQty)));
   }
   await db.sessions.update(sessionId, { status: 'completed', completedAt: ts, updatedAt: ts });
   await enqueue({
@@ -652,6 +723,7 @@ export type {
   LocalBrand,
   LocalCategory,
   LocalInventory,
+  LocalMovement,
   LocalItem,
   LocalList,
   LocalListEntry,

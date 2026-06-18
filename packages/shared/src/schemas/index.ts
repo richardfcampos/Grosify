@@ -36,6 +36,8 @@ export const itemSchema = syncMetaSchema.extend({
   photoKey: z.string().max(500).nullable(),
   /** Observações livres do item. */
   notes: z.string().trim().max(2000).nullable(),
+  /** Estoque mínimo (alerta de "acabando"). */
+  minStock: z.number().nonnegative().multipleOf(0.001).nullable(),
   unit: unitSchema,
 });
 export type Item = z.infer<typeof itemSchema>;
@@ -119,6 +121,21 @@ export const inventoryCountSchema = syncMetaSchema.extend({
 });
 export type InventoryCount = z.infer<typeof inventoryCountSchema>;
 
+export const MOVEMENT_TYPES = ['purchase', 'consumption', 'adjustment', 'count'] as const;
+export const movementTypeSchema = z.enum(MOVEMENT_TYPES);
+export type MovementType = z.infer<typeof movementTypeSchema>;
+
+/** Movimento de estoque (ledger append-only). qty é a variação (±). */
+export const stockMovementSchema = syncMetaSchema.extend({
+  itemId: z.uuid(),
+  type: movementTypeSchema,
+  qty: z.number().multipleOf(0.001),
+  balanceAfter: z.number().nonnegative().multipleOf(0.001),
+  reason: z.string().trim().max(200).nullable(),
+  movedAt: isoDate,
+});
+export type StockMovement = z.infer<typeof stockMovementSchema>;
+
 export const SESSION_STATUSES = ['active', 'completed', 'abandoned'] as const;
 
 export const shoppingSessionSchema = syncMetaSchema.extend({
@@ -155,6 +172,7 @@ export const SYNC_TABLES = {
   shopping_lists: shoppingListSchema,
   shopping_list_entries: shoppingListEntrySchema,
   inventory_counts: inventoryCountSchema,
+  stock_movements: stockMovementSchema,
   shopping_sessions: shoppingSessionSchema,
   shopping_session_items: shoppingSessionItemSchema,
 } as const;
