@@ -2,15 +2,19 @@ import { eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { db } from '../db/index.js';
 import {
+  categories,
   households,
   inventoryCounts,
   itemBarcodes,
+  itemBrands,
+  itemComments,
   items,
   priceRecords,
   shoppingListEntries,
   shoppingLists,
   shoppingSessionItems,
   shoppingSessions,
+  stockMovements,
   stores,
   user,
 } from '../db/schema.js';
@@ -23,13 +27,17 @@ export const meRoute = new Hono<HouseholdEnv>()
   .get('/export', async (c) => {
     const hid = c.get('householdId');
     const tables = {
+      categories,
       items,
+      item_brands: itemBrands,
+      item_comments: itemComments,
       item_barcodes: itemBarcodes,
       stores,
       price_records: priceRecords,
       shopping_lists: shoppingLists,
       shopping_list_entries: shoppingListEntries,
       inventory_counts: inventoryCounts,
+      stock_movements: stockMovements,
       shopping_sessions: shoppingSessions,
       shopping_session_items: shoppingSessionItems,
     };

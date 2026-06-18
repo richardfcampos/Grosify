@@ -80,6 +80,14 @@ export function AnalyticsPage() {
           ← {t('common.back')}
         </button>
         <h1 className="text-2xl font-bold text-zinc-900">{t('analytics.title')}</h1>
+        {bought.length > 0 && (
+          <button
+            onClick={() => window.print()}
+            className="ml-auto rounded-full bg-zinc-100 px-3 py-1.5 text-sm font-medium text-zinc-700"
+          >
+            {t('analytics.print')}
+          </button>
+        )}
       </header>
 
       {bought.length === 0 ? (

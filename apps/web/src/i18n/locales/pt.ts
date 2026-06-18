@@ -217,6 +217,11 @@ export default {
       syncHint: 'Envia e baixa mudanças manualmente.',
       exportData: 'Exportar meus dados',
       exportHint: 'Baixa tudo em JSON (LGPD).',
+      exportCsv: 'Exportar preços (CSV)',
+      exportCsvHint: 'Histórico de preços em planilha.',
+      restore: 'Restaurar backup',
+      restoreHint: 'Importa um JSON exportado neste dispositivo.',
+      restoreConfirm: 'Importar este backup? Os dados serão mesclados no dispositivo.',
       deleteAccount: 'Excluir conta e dados',
       deleteHint: 'Apaga sua conta e toda a casa. Irreversível.',
       deleteConfirm: 'Tem certeza? Isso apaga TUDO e não pode ser desfeito.',
@@ -298,6 +303,7 @@ export default {
       spendByCategory: 'Gasto por categoria',
       topItems: 'Itens mais caros',
       total: 'Total',
+      print: 'Imprimir / PDF',
     },
     review: {
       title: 'Revisar compra',
@@ -326,6 +332,12 @@ export default {
       title: 'Comentários',
       placeholder: 'Escreva um comentário',
       send: 'Enviar',
+    },
+    search: {
+      placeholder: 'Buscar item, marca, categoria…',
+      allCategories: 'Todas categorias',
+      saveFilter: 'Salvar filtro',
+      status: { all: 'Todos', instock: 'Em estoque', low: 'Acabando', out: 'Zerado' },
     },
     common: {
       confirm: 'Confirmar',

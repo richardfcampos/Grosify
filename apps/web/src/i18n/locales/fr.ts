@@ -217,6 +217,11 @@ export default {
       syncHint: 'Envoyer et récupérer les changements manuellement.',
       exportData: 'Exporter mes données',
       exportHint: 'Télécharge tout en JSON (confidentialité).',
+      exportCsv: 'Exporter les prix (CSV)',
+      exportCsvHint: 'Historique des prix en tableur.',
+      restore: 'Restaurer la sauvegarde',
+      restoreHint: 'Importe un JSON exporté sur cet appareil.',
+      restoreConfirm: 'Importer cette sauvegarde ? Les données seront fusionnées sur l’appareil.',
       deleteAccount: 'Supprimer le compte et les données',
       deleteHint: 'Efface votre compte et tout le foyer. Irréversible.',
       deleteConfirm: 'Sûr ? Cela efface TOUT et est irréversible.',
@@ -298,6 +303,7 @@ export default {
       spendByCategory: 'Dépense par catégorie',
       topItems: 'Articles les plus chers',
       total: 'Total',
+      print: 'Imprimer / PDF',
     },
     review: {
       title: 'Vérifier les achats',
@@ -326,6 +332,12 @@ export default {
       title: 'Commentaires',
       placeholder: 'Écrire un commentaire',
       send: 'Envoyer',
+    },
+    search: {
+      placeholder: 'Rechercher article, marque, catégorie…',
+      allCategories: 'Toutes catégories',
+      saveFilter: 'Enregistrer le filtre',
+      status: { all: 'Tous', instock: 'En stock', low: 'Bas', out: 'Épuisé' },
     },
     common: {
       confirm: 'Confirmer',

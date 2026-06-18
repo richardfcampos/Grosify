@@ -8,7 +8,8 @@ import { signOut } from '../lib/auth-client.js';
 import { useConfirm } from '../lib/confirm.js';
 import { useHouseholdPlan } from '../lib/use-currency.js';
 import { clearLocalData, getSyncState, subscribeSync, syncNow } from '../sync/engine.js';
-import { useSyncExternalStore } from 'react';
+import { exportPricesCsv, importBackup } from '../lib/backup.js';
+import { useRef, useSyncExternalStore } from 'react';
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3010';
 
@@ -21,6 +22,25 @@ export function AjustesPage() {
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const syncState = useSyncExternalStore(subscribeSync, getSyncState);
+  const restoreRef = useRef<HTMLInputElement>(null);
+
+  async function onRestore(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    const ok = await confirm({
+      title: t('settings.restore'),
+      message: t('settings.restoreConfirm'),
+      confirmLabel: t('settings.restore'),
+    });
+    if (!ok) return;
+    try {
+      const json = JSON.parse(await file.text());
+      await importBackup(json);
+    } catch {
+      // backup inválido — ignora
+    }
+  }
 
   const invite = useMutation({
     mutationFn: async () => {
@@ -215,6 +235,27 @@ export function AjustesPage() {
           <span className="font-medium text-zinc-900">{t('settings.exportData')}</span>
           <span className="text-sm text-zinc-500">{t('settings.exportHint')}</span>
         </button>
+        <button
+          onClick={() => void exportPricesCsv()}
+          className="flex flex-col items-start rounded-xl border border-zinc-200 px-4 py-3 text-left"
+        >
+          <span className="font-medium text-zinc-900">{t('settings.exportCsv')}</span>
+          <span className="text-sm text-zinc-500">{t('settings.exportCsvHint')}</span>
+        </button>
+        <button
+          onClick={() => restoreRef.current?.click()}
+          className="flex flex-col items-start rounded-xl border border-zinc-200 px-4 py-3 text-left"
+        >
+          <span className="font-medium text-zinc-900">{t('settings.restore')}</span>
+          <span className="text-sm text-zinc-500">{t('settings.restoreHint')}</span>
+        </button>
+        <input
+          ref={restoreRef}
+          type="file"
+          accept="application/json,.json"
+          onChange={onRestore}
+          className="hidden"
+        />
         <button
           onClick={onDelete}
           disabled={busy}

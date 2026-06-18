@@ -217,6 +217,11 @@ export default {
       syncHint: 'Manually push and pull changes.',
       exportData: 'Export my data',
       exportHint: 'Download everything as JSON (privacy).',
+      exportCsv: 'Export prices (CSV)',
+      exportCsvHint: 'Price history as a spreadsheet.',
+      restore: 'Restore backup',
+      restoreHint: 'Import an exported JSON on this device.',
+      restoreConfirm: 'Import this backup? Data will be merged on this device.',
       deleteAccount: 'Delete account and data',
       deleteHint: 'Erases your account and the whole household. Irreversible.',
       deleteConfirm: 'Are you sure? This erases EVERYTHING and cannot be undone.',
@@ -298,6 +303,7 @@ export default {
       spendByCategory: 'Spend by category',
       topItems: 'Top items',
       total: 'Total',
+      print: 'Print / PDF',
     },
     review: {
       title: 'Review purchase',
@@ -326,6 +332,12 @@ export default {
       title: 'Comments',
       placeholder: 'Write a comment',
       send: 'Send',
+    },
+    search: {
+      placeholder: 'Search item, brand, category…',
+      allCategories: 'All categories',
+      saveFilter: 'Save filter',
+      status: { all: 'All', instock: 'In stock', low: 'Low', out: 'Out' },
     },
     common: {
       confirm: 'Confirm',
