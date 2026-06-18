@@ -584,8 +584,60 @@ export async function setSessionStore(sessionId: string, storeId: string): Promi
   await enqueue({ method: 'PATCH', path: `/shopping/sessions/${sessionId}`, body: { storeId }, rowId: sessionId });
 }
 
+/** Adiciona um item à sessão em andamento (compra fora da lista). */
+export async function addSessionItem(sessionId: string, itemId: string): Promise<string> {
+  const id = uuidv7();
+  const ts = nowISO();
+  const prices = await db.prices.filter((p) => p.deletedAt === null && p.itemId === itemId).toArray();
+  const cheapest = cheapestStore(prices);
+  await db.sessionItems.put({
+    id,
+    householdId: hid(),
+    sessionId,
+    itemId,
+    neededQty: 1,
+    estimatedUnitPriceCents: cheapest?.priceCents ?? null,
+    estimatedPriceStoreId: cheapest?.storeId ?? null,
+    checkedAt: null,
+    actualBrandId: null,
+    actualQty: null,
+    actualUnitPriceCents: null,
+    updatedAt: ts,
+    deletedAt: null,
+    serverVersion: 0,
+  });
+  await enqueue({
+    method: 'POST',
+    path: `/shopping/sessions/${sessionId}/items`,
+    body: {
+      id,
+      itemId,
+      neededQty: 1,
+      estimatedUnitPriceCents: cheapest?.priceCents ?? null,
+      estimatedPriceStoreId: cheapest?.storeId ?? null,
+    },
+    rowId: id,
+  });
+  return id;
+}
+
 export async function completeSession(sessionId: string): Promise<void> {
   const ts = nowISO();
+  // o que foi comprado volta para o estoque de casa
+  const bought = await db.sessionItems
+    .where('sessionId')
+    .equals(sessionId)
+    .filter((s) => s.deletedAt === null && s.checkedAt != null && s.actualQty != null)
+    .toArray();
+  for (const si of bought) {
+    const inv = await db.inventory
+      .where('itemId')
+      .equals(si.itemId)
+      .and((i) => i.deletedAt === null)
+      .first();
+    const current = inv ? Number(inv.qtyOnHand) : 0;
+    await setInventory(si.itemId, current + Number(si.actualQty));
+  }
   await db.sessions.update(sessionId, { status: 'completed', completedAt: ts, updatedAt: ts });
   await enqueue({
     method: 'PATCH',

@@ -190,3 +190,13 @@ export const updateSessionItemPayload = z.object({
   actualUnitPriceCents: z.number().int().positive().nullable().optional(),
 });
 export type UpdateSessionItemPayload = z.infer<typeof updateSessionItemPayload>;
+
+/** Adiciona um item à sessão já em andamento (quick-add fora da lista). */
+export const addSessionItemPayload = z.object({
+  id: z.uuid(),
+  itemId: z.uuid(),
+  neededQty: qty,
+  estimatedUnitPriceCents: z.number().int().positive().nullable().optional(),
+  estimatedPriceStoreId: z.uuid().nullable().optional(),
+});
+export type AddSessionItemPayload = z.infer<typeof addSessionItemPayload>;

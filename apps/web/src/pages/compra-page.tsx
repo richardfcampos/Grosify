@@ -1,10 +1,16 @@
 import { estimateTotal } from '@grosify/shared';
 import { useNavigate, useParams } from '@tanstack/react-router';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState, type ReactNode, type TouchEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { db, type LocalItem, type LocalSessionItem } from '../db/dexie.js';
-import { completeSession, resolveBarcode, setSessionStore, uncheckSessionItem } from '../db/repositories.js';
+import {
+  addSessionItem,
+  completeSession,
+  resolveBarcode,
+  setSessionStore,
+  uncheckSessionItem,
+} from '../db/repositories.js';
 import { CheckItemSheet } from '../features/shopping/check-item-sheet.js';
 import { UnknownBarcodeSheet } from '../features/brands/unknown-barcode-sheet.js';
 import { ScannerModal } from '../features/scanner/scanner-modal.js';
@@ -37,6 +43,8 @@ export function CompraPage() {
   const [scannedBrandId, setScannedBrandId] = useState<string | null>(null);
   const [unknownCode, setUnknownCode] = useState<string | null>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
+  const [hideBought, setHideBought] = useState(false);
+  const [quickAdd, setQuickAdd] = useState(false);
   const itemById = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
 
   const estimated = useMemo(
@@ -59,6 +67,21 @@ export function CompraPage() {
   );
   const over = current > estimated;
   const checkedCount = sessionItems.filter((si) => si.checkedAt).length;
+
+  // agrupa por categoria (nome desnormalizado); sem categoria vai por último
+  const groups = useMemo(() => {
+    const visible = hideBought ? sessionItems.filter((si) => !si.checkedAt) : sessionItems;
+    const map = new Map<string, LocalSessionItem[]>();
+    for (const si of visible) {
+      const cat = itemById.get(si.itemId)?.category ?? '';
+      const arr = map.get(cat) ?? [];
+      arr.push(si);
+      map.set(cat, arr);
+    }
+    return [...map.entries()].sort((a, b) =>
+      a[0] === '' ? 1 : b[0] === '' ? -1 : a[0].localeCompare(b[0]),
+    );
+  }, [sessionItems, itemById, hideBought]);
 
   async function onScanned(barcode: string) {
     const resolved = await resolveBarcode(barcode);
@@ -136,40 +159,59 @@ export function CompraPage() {
             ))}
           </select>
         )}
+        <div className="mt-2 flex items-center justify-between text-xs text-stone-400">
+          <span>
+            {checkedCount}/{sessionItems.length}
+          </span>
+          <button
+            onClick={() => setHideBought((v) => !v)}
+            className="rounded-full bg-stone-800 px-3 py-1 font-medium text-stone-200"
+          >
+            {hideBought ? t('shopping.showBought') : t('shopping.hideBought')}
+          </button>
+        </div>
       </header>
 
       <main className="px-5 py-4 pb-32">
         {sessionItems.length === 0 ? (
           <p className="mt-8 text-center text-stone-400">{t('shopping.emptySession')}</p>
         ) : (
-          <ul className="flex flex-col">
-            {sessionItems.map((si) => {
-              const item = itemById.get(si.itemId);
-              if (!item) return null;
-              const done = !!si.checkedAt;
-              return (
-                <li
-                  key={si.id}
-                  className="relative flex min-h-16 items-center gap-3 border-b border-stone-800 py-2"
-                  onClick={() => (done ? uncheckSessionItem(si.id) : setActive(si))}
-                >
-                  <div className={`min-w-0 flex-1 ${done ? 'opacity-40' : ''}`}>
-                    <p className="font-medium">{item.name}</p>
-                    <p className="font-mono text-xs text-stone-400">
-                      {si.checkedAt && si.actualUnitPriceCents
-                        ? `${si.actualQty} × ${fmt(si.actualUnitPriceCents)}`
-                        : `${si.neededQty} ${t(`catalog.units.${item.unit}`)}`}
-                    </p>
-                  </div>
-                  {done && (
-                    <span className="absolute right-3 -rotate-[8deg] rounded-md border-[2.5px] border-blue-300 px-2.5 py-0.5 text-xs font-extrabold tracking-wider text-blue-300">
-                      ✓ {t('shopping.bought')}
-                    </span>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
+          groups.map(([cat, rows]) => (
+            <section key={cat} className="mb-2">
+              <h2 className="py-1 text-xs font-semibold uppercase tracking-wide text-stone-500">
+                {cat || t('catalog.noCategory')}
+              </h2>
+              <ul className="flex flex-col">
+                {rows.map((si) => {
+                  const item = itemById.get(si.itemId);
+                  if (!item) return null;
+                  const done = !!si.checkedAt;
+                  return (
+                    <ShoppingRow
+                      key={si.id}
+                      done={done}
+                      onCheck={() => setActive(si)}
+                      onUncheck={() => uncheckSessionItem(si.id)}
+                    >
+                      <div className={`min-w-0 flex-1 ${done ? 'opacity-40' : ''}`}>
+                        <p className="font-medium">{item.name}</p>
+                        <p className="font-mono text-xs text-stone-400">
+                          {si.checkedAt && si.actualUnitPriceCents
+                            ? `${si.actualQty} × ${fmt(si.actualUnitPriceCents)}`
+                            : `${si.neededQty} ${t(`catalog.units.${item.unit}`)}`}
+                        </p>
+                      </div>
+                      {done && (
+                        <span className="absolute right-3 -rotate-[8deg] rounded-md border-[2.5px] border-blue-300 px-2.5 py-0.5 text-xs font-extrabold tracking-wider text-blue-300">
+                          ✓ {t('shopping.bought')}
+                        </span>
+                      )}
+                    </ShoppingRow>
+                  );
+                })}
+              </ul>
+            </section>
+          ))
         )}
       </main>
 
@@ -179,6 +221,13 @@ export function CompraPage() {
           className="flex h-12 w-12 items-center justify-center rounded-full bg-yellow-400 text-xl"
         >
           ▦
+        </button>
+        <button
+          onClick={() => setQuickAdd(true)}
+          aria-label={t('shopping.quickAdd')}
+          className="flex h-12 w-12 items-center justify-center rounded-full bg-stone-700 text-2xl text-white"
+        >
+          +
         </button>
         <button
           onClick={async () => {
@@ -215,6 +264,106 @@ export function CompraPage() {
           onClose={() => setUnknownCode(null)}
         />
       )}
+      {quickAdd && (
+        <QuickAddSheet
+          items={items}
+          inSession={new Set(sessionItems.map((si) => si.itemId))}
+          onPick={async (itemId) => {
+            setQuickAdd(false);
+            const existing = sessionItems.find((si) => si.itemId === itemId);
+            if (existing) setActive(existing);
+            else await addSessionItem(id, itemId);
+          }}
+          onClose={() => setQuickAdd(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+/** Linha do modo compra com swipe: →abre marcar; ←desmarca. Tap mantém o mesmo. */
+function ShoppingRow({
+  done,
+  onCheck,
+  onUncheck,
+  children,
+}: {
+  done: boolean;
+  onCheck: () => void;
+  onUncheck: () => void;
+  children: ReactNode;
+}) {
+  const startX = useRef<number | null>(null);
+  function onTouchEnd(e: TouchEvent) {
+    if (startX.current === null) return;
+    const dx = e.changedTouches[0]!.clientX - startX.current;
+    startX.current = null;
+    if (Math.abs(dx) < 60) return; // não foi swipe
+    if (dx > 0 && !done) onCheck();
+    else if (dx < 0 && done) onUncheck();
+  }
+  return (
+    <li
+      className="relative flex min-h-16 items-center gap-3 border-b border-stone-800 py-2"
+      onClick={() => (done ? onUncheck() : onCheck())}
+      onTouchStart={(e) => (startX.current = e.touches[0]!.clientX)}
+      onTouchEnd={onTouchEnd}
+    >
+      {children}
+    </li>
+  );
+}
+
+/** Adiciona um item fora da lista durante a compra (busca no catálogo). */
+function QuickAddSheet({
+  items,
+  inSession,
+  onPick,
+  onClose,
+}: {
+  items: LocalItem[];
+  inSession: Set<string>;
+  onPick: (itemId: string) => void;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  const [q, setQ] = useState('');
+  const filtered = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    return [...items]
+      .filter((i) => !s || i.name.toLowerCase().includes(s))
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .slice(0, 12);
+  }, [items, q]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end bg-black/60" onClick={onClose}>
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="mx-auto flex max-h-[80dvh] w-full max-w-md flex-col gap-2 overflow-y-auto rounded-t-3xl bg-stone-950 p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-stone-50"
+      >
+        <h2 className="text-lg font-bold">{t('shopping.quickAdd')}</h2>
+        <input
+          autoFocus
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder={t('barcode.searchItem')}
+          className="min-h-12 rounded-xl border border-stone-700 bg-stone-900 px-4 py-3 text-base outline-none focus:border-yellow-400"
+        />
+        <ul className="flex flex-col gap-1">
+          {filtered.map((i) => (
+            <li key={i.id}>
+              <button
+                onClick={() => onPick(i.id)}
+                className="flex min-h-11 w-full items-center justify-between rounded-xl bg-stone-900 px-4 text-left text-sm font-medium active:bg-stone-800"
+              >
+                <span className="truncate">{i.name}</span>
+                {inSession.has(i.id) && <span className="text-xs text-stone-400">✓</span>}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }

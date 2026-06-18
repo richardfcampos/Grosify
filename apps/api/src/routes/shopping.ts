@@ -1,5 +1,6 @@
 import { zValidator } from '@hono/zod-validator';
 import {
+  addSessionItemPayload,
   createListPayload,
   createPricePayload,
   createSessionPayload,
@@ -234,6 +235,26 @@ export const shoppingRoute = new Hono<HouseholdEnv>()
       return s ?? null;
     });
     return c.json({ session }, 201);
+  })
+
+  .post('/sessions/:id/items', zValidator('json', addSessionItemPayload), async (c) => {
+    const hid = c.get('householdId');
+    const sessionId = c.req.param('id');
+    const p = c.req.valid('json');
+    const [row] = await db
+      .insert(shoppingSessionItems)
+      .values({
+        id: p.id,
+        householdId: hid,
+        sessionId,
+        itemId: p.itemId,
+        neededQty: String(p.neededQty),
+        estimatedUnitPriceCents: p.estimatedUnitPriceCents ?? null,
+        estimatedPriceStoreId: p.estimatedPriceStoreId ?? null,
+      })
+      .onConflictDoNothing()
+      .returning();
+    return c.json({ item: row ?? null }, 201);
   })
 
   .patch('/sessions/:id', zValidator('json', updateSessionPayload), async (c) => {
