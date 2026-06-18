@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { db } from '../../db/dexie.js';
 import { createBrand } from '../../db/repositories.js';
@@ -27,6 +27,21 @@ export function BrandPicker({ itemId, value, onChange, dark }: Props) {
   );
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState('');
+
+  // pré-seleciona a marca preferida do item (uma vez), se nada foi escolhido ainda
+  const autoApplied = useRef(false);
+  useEffect(() => {
+    if (autoApplied.current) return;
+    if (value != null) {
+      autoApplied.current = true;
+      return;
+    }
+    const pref = brands.find((b) => b.isPreferred);
+    if (pref) {
+      autoApplied.current = true;
+      onChange(pref.id);
+    }
+  }, [brands, value, onChange]);
 
   const base = dark
     ? 'min-h-12 w-full rounded-xl border border-stone-700 bg-stone-900 px-4 py-3 text-base text-stone-50 outline-none focus:border-yellow-400'
@@ -78,7 +93,7 @@ export function BrandPicker({ itemId, value, onChange, dark }: Props) {
       <option value="">{t('brands.none')}</option>
       {brands.map((b) => (
         <option key={b.id} value={b.id}>
-          {b.name}
+          {b.isPreferred ? `⭐ ${b.name}` : b.name}
         </option>
       ))}
       <option value={NEW}>+ {t('brands.new')}</option>

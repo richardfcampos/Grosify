@@ -117,6 +117,7 @@ export default {
       delete: 'Marke löschen',
       deleteConfirm: 'Marke „{{name}}“ löschen?',
       forBarcode: 'Marke für diesen Barcode',
+      preferred: 'Bevorzugte Marke',
     },
     barcode: {
       unknownTitle: 'Barcode nicht erfasst',
@@ -141,6 +142,8 @@ export default {
       itemName: 'Artikelname',
       category: 'Kategorie',
       categoryHint: 'z. B. Getreide, Reinigung, Getränke',
+      notes: 'Notizen',
+      notesHint: 'z. B. laktosefrei, reif kaufen',
       unit: 'Einheit',
       photo: 'Foto',
       addPhoto: 'Foto hinzufügen',

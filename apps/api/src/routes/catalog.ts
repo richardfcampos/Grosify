@@ -5,6 +5,7 @@ import {
   createItemPayload,
   createStorePayload,
   maxItems,
+  updateBrandPayload,
   updateItemPayload,
   updateStorePayload,
 } from '@grosify/shared';
@@ -66,12 +67,56 @@ export const catalogRoute = new Hono<HouseholdEnv>()
   .post('/brands', zValidator('json', createBrandPayload), async (c) => {
     const hid = c.get('householdId');
     const p = c.req.valid('json');
-    const [brand] = await db
-      .insert(itemBrands)
-      .values({ id: p.id, householdId: hid, itemId: p.itemId, name: p.name })
-      .onConflictDoNothing()
-      .returning();
-    return c.json({ brand: brand ?? null }, 201);
+    const brand = await db.transaction(async (tx) => {
+      // marca preferida é única por item — desmarca as demais
+      if (p.isPreferred) {
+        await tx
+          .update(itemBrands)
+          .set({ isPreferred: false, updatedAt: new Date() })
+          .where(and(eq(itemBrands.householdId, hid), eq(itemBrands.itemId, p.itemId)));
+      }
+      const [b] = await tx
+        .insert(itemBrands)
+        .values({
+          id: p.id,
+          householdId: hid,
+          itemId: p.itemId,
+          name: p.name,
+          isPreferred: p.isPreferred ?? false,
+        })
+        .onConflictDoNothing()
+        .returning();
+      return b ?? null;
+    });
+    return c.json({ brand }, 201);
+  })
+
+  .patch('/brands/:id', zValidator('json', updateBrandPayload), async (c) => {
+    const hid = c.get('householdId');
+    const id = c.req.param('id');
+    const p = c.req.valid('json');
+    const brand = await db.transaction(async (tx) => {
+      const [existing] = await tx
+        .select({ itemId: itemBrands.itemId })
+        .from(itemBrands)
+        .where(and(eq(itemBrands.id, id), eq(itemBrands.householdId, hid)))
+        .limit(1);
+      if (!existing) return null;
+      if (p.isPreferred === true) {
+        await tx
+          .update(itemBrands)
+          .set({ isPreferred: false, updatedAt: new Date() })
+          .where(and(eq(itemBrands.householdId, hid), eq(itemBrands.itemId, existing.itemId)));
+      }
+      const [b] = await tx
+        .update(itemBrands)
+        .set({ ...p, updatedAt: new Date() })
+        .where(and(eq(itemBrands.id, id), eq(itemBrands.householdId, hid)))
+        .returning();
+      return b ?? null;
+    });
+    if (!brand) return c.json({ error: 'not_found' }, 404);
+    return c.json({ brand });
   })
 
   .delete('/brands/:id', async (c) => {
@@ -107,6 +152,7 @@ export const catalogRoute = new Hono<HouseholdEnv>()
             name: payload.name,
             category: payload.category ?? null,
             photoKey: payload.photoKey ?? null,
+            notes: payload.notes ?? null,
             unit: payload.unit,
           })
           .onConflictDoNothing()

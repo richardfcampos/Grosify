@@ -63,6 +63,7 @@ export function ItemFormPage() {
 
   const [name, setName] = useState('');
   const [category, setCategory] = useState('');
+  const [notes, setNotes] = useState('');
   const [unit, setUnit] = useState<Unit>('un');
   const [photoBlob, setPhotoBlob] = useState<Blob | null>(null);
   const [photoTouched, setPhotoTouched] = useState(false);
@@ -82,6 +83,7 @@ export function ItemFormPage() {
       hydratedFor.current = editingId;
       setName(existing.name);
       setCategory(existing.category ?? '');
+      setNotes(existing.notes ?? '');
       setUnit(existing.unit);
       setPhotoBlob(existing.photoBlob ?? null);
     }
@@ -133,6 +135,7 @@ export function ItemFormPage() {
         await updateItem(editingId, {
           name: name.trim(),
           category: category.trim() || null,
+          notes: notes.trim() || null,
           unit,
           ...(photoTouched ? { photoBlob } : {}),
         });
@@ -140,6 +143,7 @@ export function ItemFormPage() {
         await createItem({
           name: name.trim(),
           category: category.trim() || null,
+          notes: notes.trim() || null,
           unit,
           photoBlob,
           barcodes: pendingBarcodes,
@@ -233,6 +237,18 @@ export function ItemFormPage() {
               <option key={c} value={c} />
             ))}
           </datalist>
+        </label>
+
+        <label className="flex flex-col gap-1">
+          <span className={labelClass}>{t('catalog.notes')}</span>
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder={t('catalog.notesHint')}
+            maxLength={2000}
+            rows={2}
+            className={`${inputClass} resize-none`}
+          />
         </label>
 
         <label className="flex flex-col gap-1">

@@ -2,7 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { db } from '../../db/dexie.js';
-import { createBrand, deleteBrand } from '../../db/repositories.js';
+import { createBrand, deleteBrand, setBrandPreferred } from '../../db/repositories.js';
 import { useConfirm } from '../../lib/confirm.js';
 
 /** Seção de marcas de um item (modo edição): listar, adicionar e remover. */
@@ -41,21 +41,31 @@ export function BrandsSection({ itemId }: { itemId: string }) {
         <p className="text-sm text-zinc-400">{t('brands.empty')}</p>
       ) : (
         <ul className="flex flex-col gap-1.5">
-          {brands.map((b) => (
-            <li
-              key={b.id}
-              className="flex items-center justify-between rounded-xl bg-zinc-100 px-3 py-2"
-            >
-              <span className="text-sm text-zinc-800">{b.name}</span>
-              <button
-                type="button"
-                onClick={() => remove(b.id, b.name)}
-                className="text-sm text-red-600"
+          {[...brands]
+            .sort((a, b) => Number(b.isPreferred) - Number(a.isPreferred) || a.name.localeCompare(b.name))
+            .map((b) => (
+              <li
+                key={b.id}
+                className="flex items-center gap-2 rounded-xl bg-zinc-100 px-3 py-2"
               >
-                {t('common.delete')}
-              </button>
-            </li>
-          ))}
+                <button
+                  type="button"
+                  onClick={() => setBrandPreferred(itemId, b.id, !b.isPreferred)}
+                  aria-label={t('brands.preferred')}
+                  className={`text-lg leading-none ${b.isPreferred ? '' : 'opacity-30'}`}
+                >
+                  {b.isPreferred ? '⭐' : '☆'}
+                </button>
+                <span className="min-w-0 flex-1 truncate text-sm text-zinc-800">{b.name}</span>
+                <button
+                  type="button"
+                  onClick={() => remove(b.id, b.name)}
+                  className="shrink-0 text-sm text-red-600"
+                >
+                  {t('common.delete')}
+                </button>
+              </li>
+            ))}
         </ul>
       )}
       <div className="flex gap-2">

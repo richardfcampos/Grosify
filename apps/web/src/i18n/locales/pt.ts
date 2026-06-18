@@ -117,6 +117,7 @@ export default {
       delete: 'Excluir marca',
       deleteConfirm: 'Excluir a marca "{{name}}"?',
       forBarcode: 'Marca deste código',
+      preferred: 'Marca preferida',
     },
     barcode: {
       unknownTitle: 'Código não cadastrado',
@@ -141,6 +142,8 @@ export default {
       itemName: 'Nome do item',
       category: 'Categoria',
       categoryHint: 'ex.: Grãos, Limpeza, Bebidas',
+      notes: 'Observações',
+      notesHint: 'ex.: sem lactose, comprar maduro',
       unit: 'Unidade',
       photo: 'Foto',
       addPhoto: 'Adicionar foto',

@@ -117,6 +117,7 @@ export default {
       delete: 'Delete brand',
       deleteConfirm: 'Delete the brand "{{name}}"?',
       forBarcode: 'Brand for this barcode',
+      preferred: 'Preferred brand',
     },
     barcode: {
       unknownTitle: 'Barcode not registered',
@@ -141,6 +142,8 @@ export default {
       itemName: 'Item name',
       category: 'Category',
       categoryHint: 'e.g. Grains, Cleaning, Drinks',
+      notes: 'Notes',
+      notesHint: 'e.g. lactose-free, buy ripe',
       unit: 'Unit',
       photo: 'Photo',
       addPhoto: 'Add photo',

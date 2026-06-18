@@ -85,6 +85,13 @@
       "when": 1781751437763,
       "tag": "0011_brand_trigger",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1781758014379,
+      "tag": "0012_colossal_thunderbolts",
+      "breakpoints": true
     }
   ]
 }

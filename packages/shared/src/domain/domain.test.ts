@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import type { PriceRecord } from '../schemas/index.js';
 import {
   averagePrice,
+  baseUnitFor,
   cheapestStore,
+  convertUnit,
   estimateTotal,
   formatBRL,
   latestPriceByStoreBrand,
@@ -48,6 +50,26 @@ describe('averagePrice', () => {
   });
   it('ignora apagados e retorna null sem registros', () => {
     expect(averagePrice([], '2026-01-01T00:00:00.000Z')).toBeNull();
+  });
+});
+
+describe('convertUnit / baseUnitFor', () => {
+  it('converte g↔kg e ml↔L', () => {
+    expect(convertUnit(1500, 'g', 'kg')).toBe(1.5);
+    expect(convertUnit(2, 'kg', 'g')).toBe(2000);
+    expect(convertUnit(500, 'ml', 'l')).toBe(0.5);
+    expect(convertUnit(1, 'l', 'ml')).toBe(1000);
+  });
+  it('mesma unidade é identidade; incompatível é null', () => {
+    expect(convertUnit(5, 'kg', 'kg')).toBe(5);
+    expect(convertUnit(5, 'kg', 'l')).toBeNull();
+    expect(convertUnit(5, 'un', 'kg')).toBeNull();
+  });
+  it('baseUnitFor mapeia g→kg, ml→l, resto null', () => {
+    expect(baseUnitFor('g')).toBe('kg');
+    expect(baseUnitFor('ml')).toBe('l');
+    expect(baseUnitFor('un')).toBeNull();
+    expect(baseUnitFor('kg')).toBeNull();
   });
 });
 

@@ -32,6 +32,7 @@ export async function syncBootstrap(): Promise<void> {
 export interface NewItemInput {
   name: string;
   category?: string | null;
+  notes?: string | null;
   unit: Unit;
   photoBlob?: Blob | null;
   barcodes: string[];
@@ -47,6 +48,7 @@ export async function createItem(input: NewItemInput): Promise<string> {
     householdId: hid(),
     name: input.name,
     category: input.category ?? null,
+    notes: input.notes ?? null,
     photoKey: null,
     unit: input.unit,
     updatedAt: ts,
@@ -73,6 +75,7 @@ export async function createItem(input: NewItemInput): Promise<string> {
       id,
       name: input.name,
       category: input.category ?? undefined,
+      notes: input.notes ?? undefined,
       unit: input.unit,
       barcodes: barcodeRows,
     },
@@ -83,7 +86,13 @@ export async function createItem(input: NewItemInput): Promise<string> {
 
 export async function updateItem(
   id: string,
-  updates: { name?: string; category?: string | null; unit?: Unit; photoBlob?: Blob | null },
+  updates: {
+    name?: string;
+    category?: string | null;
+    notes?: string | null;
+    unit?: Unit;
+    photoBlob?: Blob | null;
+  },
 ): Promise<void> {
   const { photoBlob, ...serverFields } = updates;
   await db.items.update(id, {
@@ -132,19 +141,53 @@ export async function removeBarcode(id: string): Promise<void> {
 
 // ---------- Marcas ----------
 
-export async function createBrand(itemId: string, name: string): Promise<string> {
+export async function createBrand(
+  itemId: string,
+  name: string,
+  isPreferred = false,
+): Promise<string> {
   const id = uuidv7();
+  const ts = nowISO();
+  // preferida é única por item — desmarca as demais localmente
+  if (isPreferred) {
+    await db.brands.where('itemId').equals(itemId).modify({ isPreferred: false, updatedAt: ts });
+  }
   await db.brands.put({
     id,
     householdId: hid(),
     itemId,
     name,
-    updatedAt: nowISO(),
+    isPreferred,
+    updatedAt: ts,
     deletedAt: null,
     serverVersion: 0,
   });
-  await enqueue({ method: 'POST', path: '/catalog/brands', body: { id, itemId, name }, rowId: id });
+  await enqueue({
+    method: 'POST',
+    path: '/catalog/brands',
+    body: { id, itemId, name, isPreferred },
+    rowId: id,
+  });
   return id;
+}
+
+/** Define/limpa a marca preferida de um item (única por item). */
+export async function setBrandPreferred(
+  itemId: string,
+  brandId: string,
+  value: boolean,
+): Promise<void> {
+  const ts = nowISO();
+  if (value) {
+    await db.brands.where('itemId').equals(itemId).modify({ isPreferred: false, updatedAt: ts });
+  }
+  await db.brands.update(brandId, { isPreferred: value, updatedAt: ts });
+  await enqueue({
+    method: 'PATCH',
+    path: `/catalog/brands/${brandId}`,
+    body: { isPreferred: value },
+    rowId: brandId,
+  });
 }
 
 export async function deleteBrand(id: string): Promise<void> {

@@ -1,4 +1,26 @@
-import type { PriceRecord } from '../schemas/index.js';
+import type { PriceRecord, Unit } from '../schemas/index.js';
+
+/** Fatores de conversão entre unidades da MESMA dimensão (massa, volume). */
+const UNIT_FACTOR: Record<string, number> = {
+  'g>kg': 1 / 1000,
+  'kg>g': 1000,
+  'ml>l': 1 / 1000,
+  'l>ml': 1000,
+};
+
+/** Converte um valor entre g↔kg / ml↔L. Retorna null se as unidades não combinam. */
+export function convertUnit(value: number, from: Unit, to: Unit): number | null {
+  if (from === to) return value;
+  const factor = UNIT_FACTOR[`${from}>${to}`];
+  return factor === undefined ? null : value * factor;
+}
+
+/** Unidade "base" pra mostrar preço normalizado (g→kg, ml→L); null se já é base/un. */
+export function baseUnitFor(unit: Unit): Unit | null {
+  if (unit === 'g') return 'kg';
+  if (unit === 'ml') return 'l';
+  return null;
+}
 
 /** Quanto falta comprar: padrão mensal menos o que tem em casa, nunca negativo. */
 export function neededQty(defaultMonthlyQty: number, qtyOnHand: number): number {

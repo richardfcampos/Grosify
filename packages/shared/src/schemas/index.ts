@@ -22,14 +22,17 @@ export const itemSchema = syncMetaSchema.extend({
   name: z.string().trim().min(1).max(200),
   category: z.string().trim().min(1).max(100).nullable(),
   photoKey: z.string().max(500).nullable(),
+  /** Observações livres do item. */
+  notes: z.string().trim().max(2000).nullable(),
   unit: unitSchema,
 });
 export type Item = z.infer<typeof itemSchema>;
 
-/** Marca de um item (opcional). */
+/** Marca de um item (opcional). isPreferred: a marca usual (máx. 1 por item). */
 export const itemBrandSchema = syncMetaSchema.extend({
   itemId: z.uuid(),
   name: z.string().trim().min(1).max(100),
+  isPreferred: z.boolean(),
 });
 export type ItemBrand = z.infer<typeof itemBrandSchema>;
 

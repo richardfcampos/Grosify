@@ -135,6 +135,8 @@ export const items = pgTable(
     name: text('name').notNull(),
     category: text('category'),
     photoKey: text('photo_key'),
+    /** Observações livres do item. */
+    notes: text('notes'),
     unit: text('unit', { enum: ['un', 'kg', 'g', 'l', 'ml'] })
       .notNull()
       .default('un'),
@@ -158,6 +160,8 @@ export const itemBrands = pgTable(
       .notNull()
       .references(() => items.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
+    /** Marca preferida do item (no máx. uma por item; resto são alternativas). */
+    isPreferred: boolean('is_preferred').notNull().default(false),
     ...syncColumns,
   },
   (t) => [

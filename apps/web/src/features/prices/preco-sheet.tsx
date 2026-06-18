@@ -1,6 +1,8 @@
 import {
   averagePrice,
+  baseUnitFor,
   cheapestStore,
+  convertUnit,
   historyCutoff,
   parseToMinorUnits,
   priceChange,
@@ -48,6 +50,14 @@ export function PrecoSheet({ itemId, itemName, onClose }: Props) {
     [itemId],
     [],
   );
+  const item = useLiveQuery(() => db.items.get(itemId), [itemId]);
+  // preço normalizado por kg/L quando o item é vendido em g/ml
+  const baseUnit = item ? baseUnitFor(item.unit) : null;
+  const perBase = (cents: number): string | null => {
+    if (!item || !baseUnit) return null;
+    const factor = convertUnit(1, baseUnit, item.unit); // ex.: 1 kg = 1000 g
+    return factor ? `${fmt(Math.round(cents * factor))}/${t(`catalog.units.${baseUnit}`)}` : null;
+  };
 
   const [storeId, setStoreId] = useState('');
   const [brandId, setBrandId] = useState<string | null>(null);
@@ -120,6 +130,9 @@ export function PrecoSheet({ itemId, itemName, onClose }: Props) {
             })}
             {brandName(cheapest.brandId) ? ` · ${brandName(cheapest.brandId)}` : ''}{' '}
             <span className="text-green-600">{t('prices.seenOn', { date: fmtDate(cheapest.recordedAt) })}</span>
+            {perBase(cheapest.priceCents) && (
+              <span className="ml-1 text-green-600">≈ {perBase(cheapest.priceCents)}</span>
+            )}
           </div>
         )}
 

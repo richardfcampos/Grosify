@@ -12,8 +12,15 @@ export const createBrandPayload = z.object({
   id: z.uuid(),
   itemId: z.uuid(),
   name: z.string().trim().min(1).max(100),
+  isPreferred: z.boolean().optional(),
 });
 export type CreateBrandPayload = z.infer<typeof createBrandPayload>;
+
+export const updateBrandPayload = z.object({
+  name: z.string().trim().min(1).max(100).optional(),
+  isPreferred: z.boolean().optional(),
+});
+export type UpdateBrandPayload = z.infer<typeof updateBrandPayload>;
 
 /** Payload de criação de item (id gerado no client, com barcodes embutidos). */
 export const createItemPayload = z.object({
@@ -21,6 +28,7 @@ export const createItemPayload = z.object({
   name: itemSchema.shape.name,
   category: itemSchema.shape.category.optional(),
   photoKey: itemSchema.shape.photoKey.optional(),
+  notes: itemSchema.shape.notes.optional(),
   unit: unitSchema.default('un'),
   barcodes: z
     .array(z.object({ id: z.uuid(), barcode, brandId: z.uuid().nullable().optional() }))
@@ -33,6 +41,7 @@ export const updateItemPayload = z.object({
   name: itemSchema.shape.name.optional(),
   category: itemSchema.shape.category.optional(),
   photoKey: itemSchema.shape.photoKey.optional(),
+  notes: itemSchema.shape.notes.optional(),
   unit: unitSchema.optional(),
 });
 export type UpdateItemPayload = z.infer<typeof updateItemPayload>;
