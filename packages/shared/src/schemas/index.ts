@@ -74,9 +74,21 @@ const qty = z.number().nonnegative().multipleOf(0.001);
  * isRecurring: lista entra no ciclo mensal (inventário desconta o que tem em casa).
  * Não-recorrente: quantidade da entrada é o que comprar, direto.
  */
+export const RECURRENCES = ['weekly', 'biweekly', 'monthly'] as const;
+export const recurrenceSchema = z.enum(RECURRENCES);
+export type Recurrence = z.infer<typeof recurrenceSchema>;
+
 export const shoppingListSchema = syncMetaSchema.extend({
   name: z.string().trim().min(1).max(100),
   isRecurring: z.boolean(),
+  /** Emoji da lista. */
+  icon: z.string().max(16).nullable(),
+  /** Cor de destaque (hex). */
+  color: z.string().max(16).nullable(),
+  /** Frequência quando recorrente; null = avulsa. */
+  recurrence: recurrenceSchema.nullable(),
+  /** Dia do ciclo: 0-6 (semana) ou 1-28 (mês). */
+  recurrenceDay: z.number().int().min(0).max(28).nullable(),
 });
 export type ShoppingList = z.infer<typeof shoppingListSchema>;
 

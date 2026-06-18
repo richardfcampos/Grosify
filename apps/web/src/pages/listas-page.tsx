@@ -1,9 +1,13 @@
+import { RECURRENCES, type Recurrence } from '@grosify/shared';
 import { Link } from '@tanstack/react-router';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { db, type LocalList } from '../db/dexie.js';
 import { createList } from '../db/repositories.js';
+
+const LIST_ICONS = ['🛒', '🔥', '🎉', '🥩', '🧺', '🍎', '🧽', '🎂', '🍷', '🐶'];
+const LIST_COLORS = ['#15803D', '#DC2626', '#CA8A04', '#2563EB', '#7C3AED', '#0D9488', '#DB2777'];
 
 export function ListasPage() {
   const { t } = useTranslation();
@@ -38,22 +42,24 @@ export function ListasPage() {
                 <Link
                   to="/listas/$id"
                   params={{ id: list.id }}
-                  className="flex items-center justify-between rounded-2xl border border-zinc-200 p-4 active:bg-zinc-50"
+                  className="flex items-center gap-3 rounded-2xl border border-zinc-200 p-4 active:bg-zinc-50"
+                  style={list.color ? { borderLeftColor: list.color, borderLeftWidth: 4 } : undefined}
                 >
-                  <div>
-                    <p className="font-medium text-zinc-900">{list.name}</p>
+                  {list.icon && <span className="text-2xl">{list.icon}</span>}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium text-zinc-900">{list.name}</p>
                     <p className="text-sm text-zinc-500">
                       {countByList.get(list.id) ?? 0} {t('nav.items').toLowerCase()}
                     </p>
                   </div>
                   <span
-                    className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                      list.isRecurring
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-zinc-100 text-zinc-500'
+                    className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${
+                      list.isRecurring ? 'bg-green-100 text-green-700' : 'bg-zinc-100 text-zinc-500'
                     }`}
                   >
-                    {list.isRecurring ? t('lists.recurringTag') : t('lists.oneTimeTag')}
+                    {list.isRecurring
+                      ? t(`lists.recurrenceTag.${list.recurrence ?? 'monthly'}`)
+                      : t('lists.oneTimeTag')}
                   </span>
                 </Link>
               </li>
@@ -75,15 +81,32 @@ export function ListasPage() {
 }
 
 function NewListSheet({ onClose }: { onClose: () => void }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [name, setName] = useState('');
+  const [icon, setIcon] = useState<string | null>(null);
+  const [color, setColor] = useState<string | null>(null);
   const [isRecurring, setIsRecurring] = useState(false);
+  const [recurrence, setRecurrence] = useState<Recurrence>('monthly');
+  const [recurrenceDay, setRecurrenceDay] = useState(1);
   const [busy, setBusy] = useState(false);
+
+  const weekly = recurrence === 'weekly' || recurrence === 'biweekly';
+  // rótulos de dia da semana no idioma atual
+  const weekdays = Array.from({ length: 7 }, (_, d) =>
+    new Intl.DateTimeFormat(i18n.resolvedLanguage, { weekday: 'short' }).format(new Date(2024, 0, 7 + d)),
+  );
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
-    await createList(name.trim(), isRecurring);
+    await createList({
+      name: name.trim(),
+      isRecurring,
+      icon,
+      color,
+      recurrence: isRecurring ? recurrence : null,
+      recurrenceDay: isRecurring ? recurrenceDay : null,
+    });
     onClose();
   }
 
@@ -92,7 +115,7 @@ function NewListSheet({ onClose }: { onClose: () => void }) {
       <form
         onClick={(e) => e.stopPropagation()}
         onSubmit={onSubmit}
-        className="mx-auto flex w-full max-w-md flex-col gap-3 rounded-t-3xl bg-white p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]"
+        className="mx-auto flex max-h-[88dvh] w-full max-w-md flex-col gap-3 overflow-y-auto rounded-t-3xl bg-white p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]"
       >
         <h2 className="text-lg font-bold text-zinc-900">{t('lists.newList')}</h2>
         <input
@@ -103,6 +126,36 @@ function NewListSheet({ onClose }: { onClose: () => void }) {
           placeholder={t('lists.listNameHint')}
           className="min-h-12 w-full rounded-xl border border-zinc-300 px-4 py-3 text-base outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100"
         />
+
+        <span className="text-sm font-medium text-zinc-600">{t('lists.icon')}</span>
+        <div className="flex flex-wrap gap-1.5">
+          {LIST_ICONS.map((ic) => (
+            <button
+              key={ic}
+              type="button"
+              onClick={() => setIcon(icon === ic ? null : ic)}
+              className={`flex h-10 w-10 items-center justify-center rounded-xl text-xl ${
+                icon === ic ? 'bg-green-100 ring-2 ring-green-500' : 'bg-zinc-100'
+              }`}
+            >
+              {ic}
+            </button>
+          ))}
+        </div>
+
+        <span className="text-sm font-medium text-zinc-600">{t('lists.color')}</span>
+        <div className="flex flex-wrap gap-2">
+          {LIST_COLORS.map((co) => (
+            <button
+              key={co}
+              type="button"
+              onClick={() => setColor(color === co ? null : co)}
+              style={{ backgroundColor: co }}
+              className={`h-8 w-8 rounded-full ${color === co ? 'ring-2 ring-offset-2 ring-zinc-900' : ''}`}
+            />
+          ))}
+        </div>
+
         <label className="flex items-center gap-3 py-1">
           <input
             type="checkbox"
@@ -112,6 +165,45 @@ function NewListSheet({ onClose }: { onClose: () => void }) {
           />
           <span className="text-zinc-700">{t('lists.recurring')}</span>
         </label>
+
+        {isRecurring && (
+          <div className="flex gap-2">
+            <select
+              value={recurrence}
+              onChange={(e) => {
+                const r = e.target.value as Recurrence;
+                setRecurrence(r);
+                const isWeekly = r === 'weekly' || r === 'biweekly';
+                setRecurrenceDay((d) => (isWeekly ? Math.min(d, 6) : Math.max(d, 1)));
+              }}
+              className="min-h-11 flex-1 rounded-xl border border-zinc-300 px-3 text-base"
+            >
+              {RECURRENCES.map((r) => (
+                <option key={r} value={r}>
+                  {t(`lists.recurrenceTag.${r}`)}
+                </option>
+              ))}
+            </select>
+            <select
+              value={recurrenceDay}
+              onChange={(e) => setRecurrenceDay(Number(e.target.value))}
+              className="min-h-11 flex-1 rounded-xl border border-zinc-300 px-3 text-base"
+            >
+              {weekly
+                ? weekdays.map((label, d) => (
+                    <option key={d} value={d}>
+                      {label}
+                    </option>
+                  ))
+                : Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
+                    <option key={d} value={d}>
+                      {t('lists.dayOfMonth', { day: d })}
+                    </option>
+                  ))}
+            </select>
+          </div>
+        )}
+
         <button
           type="submit"
           disabled={busy || !name.trim()}

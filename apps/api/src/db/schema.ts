@@ -249,6 +249,14 @@ export const shoppingLists = pgTable(
       .references(() => households.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
     isRecurring: boolean('is_recurring').notNull().default(false),
+    /** Emoji da lista (ex.: 🛒, 🔥). */
+    icon: text('icon'),
+    /** Cor de destaque (hex, ex.: #15803D). */
+    color: text('color'),
+    /** Frequência quando recorrente; null = avulsa. */
+    recurrence: text('recurrence', { enum: ['weekly', 'biweekly', 'monthly'] }),
+    /** Dia do ciclo: 0-6 (semana) ou 1-28 (mês). */
+    recurrenceDay: integer('recurrence_day'),
     ...syncColumns,
   },
   (t) => [

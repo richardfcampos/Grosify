@@ -1,4 +1,4 @@
-import { cheapestStore, neededQty, type Unit } from '@grosify/shared';
+import { cheapestStore, neededQty, type Recurrence, type Unit } from '@grosify/shared';
 import { v7 as uuidv7 } from 'uuid';
 import { enqueue, householdId, syncNow } from '../sync/engine.js';
 import {
@@ -262,24 +262,47 @@ export async function deleteStore(id: string): Promise<void> {
 
 // ---------- Listas ----------
 
-export async function createList(name: string, isRecurring: boolean): Promise<string> {
+export interface NewListInput {
+  name: string;
+  isRecurring: boolean;
+  icon?: string | null;
+  color?: string | null;
+  recurrence?: Recurrence | null;
+  recurrenceDay?: number | null;
+}
+
+export async function createList(input: NewListInput): Promise<string> {
   const id = uuidv7();
-  await db.lists.put({
+  const body = {
     id,
+    name: input.name,
+    isRecurring: input.isRecurring,
+    icon: input.icon ?? null,
+    color: input.color ?? null,
+    recurrence: input.recurrence ?? null,
+    recurrenceDay: input.recurrenceDay ?? null,
+  };
+  await db.lists.put({
+    ...body,
     householdId: hid(),
-    name,
-    isRecurring,
     updatedAt: nowISO(),
     deletedAt: null,
     serverVersion: 0,
   });
-  await enqueue({ method: 'POST', path: '/shopping/lists', body: { id, name, isRecurring }, rowId: id });
+  await enqueue({ method: 'POST', path: '/shopping/lists', body, rowId: id });
   return id;
 }
 
 export async function updateList(
   id: string,
-  updates: { name?: string; isRecurring?: boolean },
+  updates: {
+    name?: string;
+    isRecurring?: boolean;
+    icon?: string | null;
+    color?: string | null;
+    recurrence?: Recurrence | null;
+    recurrenceDay?: number | null;
+  },
 ): Promise<void> {
   await db.lists.update(id, { ...updates, updatedAt: nowISO() });
   await enqueue({ method: 'PATCH', path: `/shopping/lists/${id}`, body: updates, rowId: id });

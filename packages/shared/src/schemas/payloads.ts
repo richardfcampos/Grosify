@@ -86,16 +86,27 @@ export type CreatePricePayload = z.infer<typeof createPricePayload>;
 
 // ---------- Listas ----------
 
+const recurrence = z.enum(['weekly', 'biweekly', 'monthly']);
+const recurrenceDay = z.number().int().min(0).max(28);
+
 export const createListPayload = z.object({
   id: z.uuid(),
   name: z.string().trim().min(1).max(100),
   isRecurring: z.boolean().default(false),
+  icon: z.string().max(16).nullable().optional(),
+  color: z.string().max(16).nullable().optional(),
+  recurrence: recurrence.nullable().optional(),
+  recurrenceDay: recurrenceDay.nullable().optional(),
 });
 export type CreateListPayload = z.infer<typeof createListPayload>;
 
 export const updateListPayload = z.object({
   name: z.string().trim().min(1).max(100).optional(),
   isRecurring: z.boolean().optional(),
+  icon: z.string().max(16).nullable().optional(),
+  color: z.string().max(16).nullable().optional(),
+  recurrence: recurrence.nullable().optional(),
+  recurrenceDay: recurrenceDay.nullable().optional(),
 });
 export type UpdateListPayload = z.infer<typeof updateListPayload>;
 

@@ -44,7 +44,16 @@ export const shoppingRoute = new Hono<HouseholdEnv>()
     const p = c.req.valid('json');
     const [list] = await db
       .insert(shoppingLists)
-      .values({ id: p.id, householdId: hid, name: p.name, isRecurring: p.isRecurring })
+      .values({
+        id: p.id,
+        householdId: hid,
+        name: p.name,
+        isRecurring: p.isRecurring,
+        icon: p.icon ?? null,
+        color: p.color ?? null,
+        recurrence: p.recurrence ?? null,
+        recurrenceDay: p.recurrenceDay ?? null,
+      })
       .onConflictDoNothing()
       .returning();
     return c.json({ list: list ?? null }, 201);
