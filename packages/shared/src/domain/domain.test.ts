@@ -8,6 +8,7 @@ import {
   convertUnit,
   estimateTotal,
   formatBRL,
+  isRecurrenceDue,
   latestPriceByStoreBrand,
   neededQty,
   priceChange,
@@ -86,6 +87,22 @@ describe('budgetStatus', () => {
     expect(budgetStatus(99, 100)?.level).toBe('warn');
     expect(budgetStatus(100, 100)?.level).toBe('over');
     expect(budgetStatus(120, 100)?.pct).toBe(120);
+  });
+});
+
+describe('isRecurrenceDue', () => {
+  it('mensal vence no dia do mês', () => {
+    expect(isRecurrenceDue('monthly', 15, new Date(2026, 5, 15))).toBe(true);
+    expect(isRecurrenceDue('monthly', 15, new Date(2026, 5, 14))).toBe(false);
+  });
+  it('semanal vence no dia da semana', () => {
+    // 2026-06-15 é segunda-feira (getDay()===1)
+    expect(isRecurrenceDue('weekly', 1, new Date(2026, 5, 15))).toBe(true);
+    expect(isRecurrenceDue('weekly', 2, new Date(2026, 5, 15))).toBe(false);
+  });
+  it('null/sem dia nunca vence', () => {
+    expect(isRecurrenceDue(null, 1, new Date(2026, 5, 15))).toBe(false);
+    expect(isRecurrenceDue('monthly', null, new Date(2026, 5, 15))).toBe(false);
   });
 });
 

@@ -1,4 +1,15 @@
-import type { PriceRecord, Unit } from '../schemas/index.js';
+import type { PriceRecord, Recurrence, Unit } from '../schemas/index.js';
+
+/** Hoje é o dia de comprar da lista recorrente? mensal→dia do mês; semanal→dia da semana. */
+export function isRecurrenceDue(
+  recurrence: Recurrence | null,
+  recurrenceDay: number | null,
+  date: Date,
+): boolean {
+  if (!recurrence || recurrenceDay == null) return false;
+  if (recurrence === 'monthly') return date.getDate() === recurrenceDay;
+  return date.getDay() === recurrenceDay; // weekly/biweekly: dia da semana
+}
 
 /** Fatores de conversão entre unidades da MESMA dimensão (massa, volume). */
 const UNIT_FACTOR: Record<string, number> = {

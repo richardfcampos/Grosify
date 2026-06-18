@@ -50,6 +50,7 @@ export default {
       missingCount: '{{count}} articles manquants',
       title: 'Réassort du mois',
       subtitle: 'À acheter, selon votre stock',
+      dueToday: 'C’est le jour des courses',
       nothing: 'Stock à jour ! Rien à réapprovisionner.',
       noTargets: 'Définissez le recommandé/mois sur les articles pour générer la liste.',
       toBuy: 'Acheter',
@@ -294,6 +295,17 @@ export default {
       spendByCategory: 'Dépense par catégorie',
       topItems: 'Articles les plus chers',
       total: 'Total',
+    },
+    review: {
+      title: 'Vérifier les achats',
+      start: 'Commencer les courses',
+      empty: 'Rien à acheter — stock à jour.',
+      showInStock: 'Afficher {{count}} en stock',
+      hideInStock: 'Masquer en stock',
+    },
+    history: {
+      title: 'Historique des achats',
+      empty: 'Aucun achat finalisé.',
     },
     common: {
       confirm: 'Confirmer',

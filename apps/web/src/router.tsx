@@ -8,6 +8,8 @@ import { CadastroPage, EntrarPage } from './pages/auth-pages.js';
 import { DashboardPage } from './pages/dashboard-page.js';
 import { CasaPage, ConvitePage } from './pages/household-pages.js';
 import { CompraPage } from './pages/compra-page.js';
+import { ComprarReviewPage } from './pages/comprar-review-page.js';
+import { HistoricoPage } from './pages/historico-page.js';
 import { PrivacidadePage } from './pages/privacidade-page.js';
 import { InventarioPage } from './pages/inventario-page.js';
 import { ItemFormPage } from './pages/item-form-page.js';
@@ -90,6 +92,16 @@ const listaDetailRoute = createRoute({
   path: '/listas/$id',
   component: ListaDetailPage,
 });
+const comprarReviewRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/listas/$id/comprar',
+  component: ComprarReviewPage,
+});
+const historicoRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/historico',
+  component: HistoricoPage,
+});
 const inventarioRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/inventario',
@@ -130,6 +142,8 @@ const routeTree = rootRoute.addChildren([
     lojasRoute,
     listasRoute,
     listaDetailRoute,
+    comprarReviewRoute,
+    historicoRoute,
     inventarioRoute,
     compraRoute,
     ajustesRoute,

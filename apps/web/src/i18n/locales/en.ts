@@ -50,6 +50,7 @@ export default {
       missingCount: '{{count}} items missing',
       title: 'Monthly restock',
       subtitle: 'To buy, based on your stock',
+      dueToday: 'Time to shop today',
       nothing: 'Stock is good! Nothing to restock.',
       noTargets: 'Set recommended/month on items to auto-generate the restock list.',
       toBuy: 'Buy',
@@ -294,6 +295,17 @@ export default {
       spendByCategory: 'Spend by category',
       topItems: 'Top items',
       total: 'Total',
+    },
+    review: {
+      title: 'Review purchase',
+      start: 'Start shopping',
+      empty: 'Nothing to buy — stock is fine.',
+      showInStock: 'Show {{count}} in stock',
+      hideInStock: 'Hide in stock',
+    },
+    history: {
+      title: 'Purchase history',
+      empty: 'No completed purchases yet.',
     },
     common: {
       confirm: 'Confirm',

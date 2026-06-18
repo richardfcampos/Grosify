@@ -1,10 +1,15 @@
-import { cheapestStore, estimateTotal, neededQty, type PriceRecord } from '@grosify/shared';
+import {
+  cheapestStore,
+  estimateTotal,
+  isRecurrenceDue,
+  neededQty,
+  type PriceRecord,
+} from '@grosify/shared';
 import { Link, Navigate, useNavigate } from '@tanstack/react-router';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { db, type LocalList } from '../db/dexie.js';
-import { startShoppingSession } from '../db/repositories.js';
 import { useSession } from '../lib/auth-client.js';
 import { useFormatMoney } from '../lib/use-currency.js';
 import { useMembership } from '../lib/use-membership.js';
@@ -104,7 +109,15 @@ export function DashboardPage() {
             <li key={list.id} className="flex flex-col gap-3 rounded-2xl border border-zinc-200 p-4">
               <div className="flex items-start justify-between">
                 <Link to="/listas/$id" params={{ id: list.id }} className="min-w-0">
-                  <p className="truncate font-semibold text-zinc-900">{list.name}</p>
+                  <p className="truncate font-semibold text-zinc-900">
+                    {list.icon ? `${list.icon} ` : ''}
+                    {list.name}
+                  </p>
+                  {isRecurrenceDue(list.recurrence, list.recurrenceDay, new Date()) && (
+                    <span className="mt-0.5 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
+                      {t('restock.dueToday')}
+                    </span>
+                  )}
                   <p className="text-sm text-zinc-500">
                     {missing > 0
                       ? t('restock.missingCount', { count: missing })
@@ -115,10 +128,7 @@ export function DashboardPage() {
               </div>
               {missing > 0 && (
                 <button
-                  onClick={async () => {
-                    const sid = await startShoppingSession(list.id);
-                    navigate({ to: '/compra/$id', params: { id: sid } });
-                  }}
+                  onClick={() => navigate({ to: '/listas/$id/comprar', params: { id: list.id } })}
                   className="min-h-11 rounded-xl bg-green-600 text-sm font-bold text-white active:bg-green-700"
                 >
                   {t('restock.startShopping')}

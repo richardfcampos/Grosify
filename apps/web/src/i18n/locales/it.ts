@@ -50,6 +50,7 @@ export default {
       missingCount: '{{count}} articoli mancanti',
       title: 'Rifornimento del mese',
       subtitle: 'Da comprare, in base alle scorte',
+      dueToday: 'Oggi è giorno di spesa',
       nothing: 'Scorte a posto! Niente da rifornire.',
       noTargets: 'Imposta il consigliato/mese sugli articoli per generare il rifornimento.',
       toBuy: 'Comprare',
@@ -294,6 +295,17 @@ export default {
       spendByCategory: 'Spesa per categoria',
       topItems: 'Articoli più cari',
       total: 'Totale',
+    },
+    review: {
+      title: 'Rivedi la spesa',
+      start: 'Inizia la spesa',
+      empty: 'Niente da comprare — scorte ok.',
+      showInStock: 'Mostra {{count}} in stock',
+      hideInStock: 'Nascondi in stock',
+    },
+    history: {
+      title: 'Storico acquisti',
+      empty: 'Nessun acquisto completato.',
     },
     common: {
       confirm: 'Conferma',

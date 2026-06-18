@@ -50,6 +50,7 @@ export default {
       missingCount: '{{count}} artículos faltan',
       title: 'Reposición del mes',
       subtitle: 'Falta comprar, según tu inventario',
+      dueToday: 'Hoy toca comprar',
       nothing: '¡Inventario al día! Nada que reponer.',
       noTargets: 'Define el recomendado/mes en los artículos para generar la reposición.',
       toBuy: 'Comprar',
@@ -294,6 +295,17 @@ export default {
       spendByCategory: 'Gasto por categoría',
       topItems: 'Artículos más caros',
       total: 'Total',
+    },
+    review: {
+      title: 'Revisar compra',
+      start: 'Empezar compra',
+      empty: 'Nada que comprar — stock al día.',
+      showInStock: 'Mostrar {{count}} en stock',
+      hideInStock: 'Ocultar en stock',
+    },
+    history: {
+      title: 'Historial de compras',
+      empty: 'Sin compras finalizadas todavía.',
     },
     common: {
       confirm: 'Confirmar',

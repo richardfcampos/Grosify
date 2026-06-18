@@ -544,30 +544,61 @@ async function addStock(itemId: string, newQty: number): Promise<void> {
 
 // ---------- Sessão de compra ----------
 
+/** Linha calculada para a tela de revisão (antes de criar a sessão). */
+export interface SessionLine {
+  itemId: string;
+  recommended: number;
+  onHand: number;
+  needed: number;
+}
+
+/** Calcula o que falta comprar por item de uma lista (recorrente desconta estoque). */
+export async function previewSessionLines(listId: string): Promise<SessionLine[]> {
+  const [list, entries, inventory] = await Promise.all([
+    db.lists.get(listId),
+    db.listEntries.where('listId').equals(listId).filter((e) => e.deletedAt === null).toArray(),
+    db.inventory.filter((i) => i.deletedAt === null).toArray(),
+  ]);
+  if (!list) return [];
+  const onHandMap = new Map(inventory.map((i) => [i.itemId, Number(i.qtyOnHand)]));
+  return entries.map((e) => {
+    const onHand = onHandMap.get(e.itemId) ?? 0;
+    return {
+      itemId: e.itemId,
+      recommended: e.qty,
+      onHand,
+      needed: list.isRecurring ? neededQty(e.qty, onHand) : e.qty,
+    };
+  });
+}
+
 /**
  * Inicia sessão a partir de uma lista. Snapshot das quantidades necessárias
  * (recorrente desconta inventário) e da estimativa (loja mais barata atual).
  */
 export async function startShoppingSession(listId: string): Promise<string> {
-  const [list, entries, prices, inventory] = await Promise.all([
-    db.lists.get(listId),
-    db.listEntries.where('listId').equals(listId).filter((e) => e.deletedAt === null).toArray(),
-    db.prices.filter((p) => p.deletedAt === null).toArray(),
-    db.inventory.filter((i) => i.deletedAt === null).toArray(),
-  ]);
-  if (!list) throw new Error('list_not_found');
+  const lines = await previewSessionLines(listId);
+  return startShoppingSessionWith(
+    listId,
+    lines.filter((l) => l.needed > 0).map((l) => ({ itemId: l.itemId, neededQty: l.needed })),
+  );
+}
 
-  const onHand = new Map(inventory.map((i) => [i.itemId, i.qtyOnHand]));
+/** Cria a sessão com as linhas já revisadas (qtd ajustada / itens excluídos). */
+export async function startShoppingSessionWith(
+  listId: string,
+  lines: { itemId: string; neededQty: number }[],
+): Promise<string> {
+  const prices = await db.prices.filter((p) => p.deletedAt === null).toArray();
   const sessionId = uuidv7();
   const ts = nowISO();
 
-  const items = entries.map((entry) => {
-    const need = list.isRecurring ? neededQty(entry.qty, onHand.get(entry.itemId) ?? 0) : entry.qty;
-    const cheapest = cheapestStore(prices.filter((p) => p.itemId === entry.itemId));
+  const items = lines.map((line) => {
+    const cheapest = cheapestStore(prices.filter((p) => p.itemId === line.itemId));
     return {
       id: uuidv7(),
-      itemId: entry.itemId,
-      neededQty: need,
+      itemId: line.itemId,
+      neededQty: line.neededQty,
       estimatedUnitPriceCents: cheapest?.priceCents ?? null,
       estimatedPriceStoreId: cheapest?.storeId ?? null,
     };

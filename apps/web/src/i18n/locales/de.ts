@@ -50,6 +50,7 @@ export default {
       missingCount: '{{count}} Artikel fehlen',
       title: 'Monatliches Auffüllen',
       subtitle: 'Zu kaufen, je nach Bestand',
+      dueToday: 'Heute einkaufen',
       nothing: 'Bestand ist gut! Nichts aufzufüllen.',
       noTargets: 'Lege Empfohlen/Monat bei Artikeln fest, um die Liste zu erzeugen.',
       toBuy: 'Kaufen',
@@ -294,6 +295,17 @@ export default {
       spendByCategory: 'Ausgaben pro Kategorie',
       topItems: 'Teuerste Artikel',
       total: 'Gesamt',
+    },
+    review: {
+      title: 'Einkauf prüfen',
+      start: 'Einkauf starten',
+      empty: 'Nichts zu kaufen — Bestand ok.',
+      showInStock: '{{count}} auf Lager zeigen',
+      hideInStock: 'Vorrätige ausblenden',
+    },
+    history: {
+      title: 'Einkaufsverlauf',
+      empty: 'Noch keine abgeschlossenen Einkäufe.',
     },
     common: {
       confirm: 'Bestätigen',
