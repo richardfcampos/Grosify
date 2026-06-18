@@ -1,4 +1,11 @@
-import { cheapestStore, historyCutoff, parseToMinorUnits, priceChange } from '@grosify/shared';
+import {
+  averagePrice,
+  cheapestStore,
+  historyCutoff,
+  parseToMinorUnits,
+  priceChange,
+  PRICE_ALERT_THRESHOLD_PCT,
+} from '@grosify/shared';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useMemo, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -52,12 +59,19 @@ export function PrecoSheet({ itemId, itemName, onClose }: Props) {
   const brandName = (id: string | null) => (id ? brands.find((b) => b.id === id)?.name ?? null : null);
   const fmtDate = (iso: string) => new Date(iso).toLocaleDateString(i18n.resolvedLanguage);
 
+  // média dos últimos 90 dias (mesmo item) — contexto além do "vs última compra"
+  const avg3m = useMemo(
+    () => averagePrice(prices, new Date(Date.now() - 90 * 86_400_000).toISOString()),
+    [prices],
+  );
+
   const alert = useMemo(() => {
     if (!storeId || !value) return null;
     try {
       const cents = parseToMinorUnits(value, currency);
       const change = priceChange(cents, storeId, brandId, prices);
-      if (!change || change.deltaCents === 0) return null;
+      // só alerta variações relevantes (≥ limite) vs última compra na mesma loja+marca
+      if (!change || Math.abs(change.deltaPct) < PRICE_ALERT_THRESHOLD_PCT) return null;
       const key = change.deltaCents > 0 ? 'prices.priceUp' : 'prices.priceDown';
       return {
         up: change.deltaCents > 0,
@@ -141,6 +155,9 @@ export function PrecoSheet({ itemId, itemName, onClose }: Props) {
               <p className={`text-sm font-medium ${alert.up ? 'text-red-600' : 'text-green-700'}`}>
                 {alert.up ? '▲' : '▼'} {alert.text}
               </p>
+            )}
+            {avg3m != null && (
+              <p className="text-xs text-zinc-500">{t('prices.avg3m', { price: fmt(avg3m) })}</p>
             )}
             <button
               type="submit"

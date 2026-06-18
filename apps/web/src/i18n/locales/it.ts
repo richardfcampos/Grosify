@@ -98,6 +98,7 @@ export default {
       cheapest: 'Più economico',
       cheapestAt: 'Più economico: {{price}} da {{store}}',
       seenOn: 'il {{date}}',
+      avg3m: 'Media 90 giorni: {{price}}',
       priceUp: 'Salito di {{delta}} ({{pct}}%) dal {{date}}',
       priceDown: 'Sceso di {{delta}} ({{pct}}%) dal {{date}}',
       store: 'Negozio',
@@ -125,6 +126,8 @@ export default {
       createItem: 'Crea articolo',
       saveCode: 'Salva codice',
       change: 'cambia',
+      lookingUp: 'Ricerca prodotto…',
+      offFound: 'Nome compilato da OpenFoodFacts',
     },
     catalog: {
       searchPlace: 'Cerca luogo',
@@ -166,6 +169,7 @@ export default {
       manualLabel: 'Oppure digita il codice',
       manualPlaceholder: 'Numero del codice a barre',
       cameraError: 'Fotocamera non disponibile. Digita il codice manualmente.',
+      torch: 'Torcia',
     },
     errors: {
       not_authenticated: 'Devi accedere per continuare',
@@ -191,6 +195,8 @@ export default {
       title: 'Impostazioni',
       account: 'Account',
       data: 'I tuoi dati',
+      syncNow: 'Sincronizza ora',
+      syncHint: 'Invia e scarica modifiche manualmente.',
       exportData: 'Esporta i miei dati',
       exportHint: 'Scarica tutto in JSON (privacy).',
       deleteAccount: 'Elimina account e dati',
@@ -231,6 +237,9 @@ export default {
       offline: 'Offline',
       pending_one: '{{count}} in sospeso',
       pending_other: '{{count}} in sospeso',
+      syncing: 'Sincronizzazione…',
+      synced: 'Sincronizzato ✓',
+      error: 'Errore di sincronizzazione',
     },
     common: {
       confirm: 'Conferma',

@@ -10,10 +10,11 @@ interface Props {
 /** Modal de scanner: câmera (uma mão) com fallback manual sempre disponível. */
 export function ScannerModal({ onDetect, onClose }: Props) {
   const { t } = useTranslation();
-  const { videoRef, status, error, start, stop } = useBarcodeScanner((code) => {
-    onDetect(code);
-    onClose();
-  });
+  const { videoRef, status, error, torchSupported, torchOn, toggleTorch, start, stop } =
+    useBarcodeScanner((code) => {
+      onDetect(code);
+      onClose();
+    });
   const [manual, setManual] = useState('');
 
   useEffect(() => {
@@ -43,6 +44,17 @@ export function ScannerModal({ onDetect, onClose }: Props) {
         <video ref={videoRef} playsInline muted className="h-full w-full object-cover" />
         {status === 'scanning' && (
           <div className="pointer-events-none absolute inset-x-10 top-1/2 h-32 -translate-y-1/2 rounded-2xl border-4 border-yellow-400/90" />
+        )}
+        {torchSupported && (
+          <button
+            onClick={toggleTorch}
+            aria-label={t('scanner.torch')}
+            className={`absolute bottom-4 left-1/2 flex h-12 w-12 -translate-x-1/2 items-center justify-center rounded-full text-2xl ${
+              torchOn ? 'bg-yellow-400 text-stone-900' : 'bg-stone-800/90 text-stone-100'
+            }`}
+          >
+            🔦
+          </button>
         )}
         {error && (
           <p className="absolute inset-x-6 top-6 rounded-xl bg-red-950 px-4 py-3 text-sm text-red-300">

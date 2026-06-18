@@ -1,4 +1,10 @@
-import { cheapestStore, parseToMinorUnits, priceChange, type PriceRecord } from '@grosify/shared';
+import {
+  cheapestStore,
+  parseToMinorUnits,
+  priceChange,
+  PRICE_ALERT_THRESHOLD_PCT,
+  type PriceRecord,
+} from '@grosify/shared';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useMemo, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -64,7 +70,7 @@ export function CheckItemSheet({
     if (!storeId || !value) return null;
     try {
       const change = priceChange(parseToMinorUnits(value, currency), storeId, brandId, prices);
-      return change && change.deltaCents > 0
+      return change && change.deltaPct >= PRICE_ALERT_THRESHOLD_PCT
         ? t('shopping.priceUpWarn') + ` (+${fmt(change.deltaCents)})`
         : null;
     } catch {

@@ -90,6 +90,17 @@ export function priceChange(
   };
 }
 
+/** Preço médio dos registros vivos do MESMO item desde uma data ISO; null se nenhum. */
+export function averagePrice(records: PriceRecord[], sinceISO: string): number | null {
+  const live = records.filter((r) => isLive(r) && r.recordedAt >= sinceISO);
+  if (live.length === 0) return null;
+  const sum = live.reduce((acc, r) => acc + r.priceCents, 0);
+  return Math.round(sum / live.length);
+}
+
+/** Limite de variação (%) a partir do qual um aumento/queda vira alerta. */
+export const PRICE_ALERT_THRESHOLD_PCT = 10;
+
 export interface EstimateLine {
   qty: number;
   unitPriceCents: number | null;

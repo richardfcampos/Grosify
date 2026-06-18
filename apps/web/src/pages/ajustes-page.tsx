@@ -7,7 +7,8 @@ import { api } from '../lib/api.js';
 import { signOut } from '../lib/auth-client.js';
 import { useConfirm } from '../lib/confirm.js';
 import { useHouseholdPlan } from '../lib/use-currency.js';
-import { clearLocalData } from '../sync/engine.js';
+import { clearLocalData, getSyncState, subscribeSync, syncNow } from '../sync/engine.js';
+import { useSyncExternalStore } from 'react';
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3010';
 
@@ -19,6 +20,7 @@ export function AjustesPage() {
   const [busy, setBusy] = useState(false);
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const syncState = useSyncExternalStore(subscribeSync, getSyncState);
 
   const invite = useMutation({
     mutationFn: async () => {
@@ -147,6 +149,25 @@ export function AjustesPage() {
         <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
           {t('settings.data')}
         </h2>
+        <button
+          onClick={() => void syncNow()}
+          disabled={syncState === 'syncing'}
+          className="flex items-center justify-between rounded-xl border border-zinc-200 px-4 py-3 text-left disabled:opacity-60"
+        >
+          <span className="flex flex-col">
+            <span className="font-medium text-zinc-900">{t('settings.syncNow')}</span>
+            <span className="text-sm text-zinc-500">{t('settings.syncHint')}</span>
+          </span>
+          <span className="text-sm font-medium text-zinc-500">
+            {syncState === 'syncing'
+              ? t('sync.syncing')
+              : syncState === 'error'
+                ? t('sync.error')
+                : syncState === 'offline'
+                  ? t('sync.offline')
+                  : t('sync.synced')}
+          </span>
+        </button>
         <button
           onClick={onExport}
           className="flex flex-col items-start rounded-xl border border-zinc-200 px-4 py-3 text-left"

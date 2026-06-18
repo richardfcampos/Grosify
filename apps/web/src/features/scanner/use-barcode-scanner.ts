@@ -2,13 +2,20 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 type ScannerStatus = 'idle' | 'starting' | 'scanning' | 'error';
 
-const FORMATS = ['ean_13', 'ean_8', 'upc_a', 'upc_e'] as const;
+const FORMATS = ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'qr_code'] as const;
 
 interface DetectedBarcode {
   rawValue: string;
+  format?: string;
 }
 interface Detector {
   detect(source: CanvasImageSource): Promise<DetectedBarcode[]>;
+}
+
+/** Aceita EAN/UPC (8-14 dígitos) ou QR (texto curto, ex.: código/URL do produto). */
+function acceptValue(b: DetectedBarcode): boolean {
+  if (b.format === 'qr_code') return b.rawValue.length >= 4 && b.rawValue.length <= 512;
+  return /^\d{8,14}$/.test(b.rawValue);
 }
 
 /** BarcodeDetector nativo (Chrome Android) quando há; senão polyfill ZXing-wasm. */
@@ -22,9 +29,12 @@ async function createDetector(): Promise<Detector> {
 export function useBarcodeScanner(onDetect: (barcode: string) => void) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const trackRef = useRef<MediaStreamTrack | null>(null);
   const rafRef = useRef<number | null>(null);
   const [status, setStatus] = useState<ScannerStatus>('idle');
   const [error, setError] = useState<string | null>(null);
+  const [torchSupported, setTorchSupported] = useState(false);
+  const [torchOn, setTorchOn] = useState(false);
   const onDetectRef = useRef(onDetect);
   onDetectRef.current = onDetect;
 
@@ -33,8 +43,24 @@ export function useBarcodeScanner(onDetect: (barcode: string) => void) {
     rafRef.current = null;
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
+    trackRef.current = null;
+    setTorchSupported(false);
+    setTorchOn(false);
     setStatus('idle');
   }, []);
+
+  /** Lanterna via constraint avançada do track (Chrome Android; iOS não suporta). */
+  const toggleTorch = useCallback(async () => {
+    const track = trackRef.current;
+    if (!track) return;
+    const next = !torchOn;
+    try {
+      await track.applyConstraints({ advanced: [{ torch: next }] as unknown as MediaTrackConstraintSet[] });
+      setTorchOn(next);
+    } catch {
+      // dispositivo recusou — ignora
+    }
+  }, [torchOn]);
 
   const start = useCallback(async () => {
     setStatus('starting');
@@ -45,6 +71,11 @@ export function useBarcodeScanner(onDetect: (barcode: string) => void) {
         video: { facingMode: 'environment' },
       });
       streamRef.current = stream;
+      const track = stream.getVideoTracks()[0] ?? null;
+      trackRef.current = track;
+      // torch só existe em alguns dispositivos (capabilities.torch)
+      const caps = track?.getCapabilities?.() as { torch?: boolean } | undefined;
+      setTorchSupported(!!caps?.torch);
       const video = videoRef.current;
       if (!video) {
         stream.getTracks().forEach((t) => t.stop());
@@ -61,9 +92,10 @@ export function useBarcodeScanner(onDetect: (barcode: string) => void) {
           busy = true;
           try {
             const found = await detector.detect(video);
-            const value = found[0]?.rawValue;
-            if (value && /^\d{8,14}$/.test(value)) {
-              onDetectRef.current(value);
+            const hit = found.find(acceptValue);
+            if (hit) {
+              navigator.vibrate?.(60);
+              onDetectRef.current(hit.rawValue);
               stop();
               return;
             }
@@ -83,5 +115,5 @@ export function useBarcodeScanner(onDetect: (barcode: string) => void) {
 
   useEffect(() => stop, [stop]);
 
-  return { videoRef, status, error, start, stop };
+  return { videoRef, status, error, torchSupported, torchOn, toggleTorch, start, stop };
 }

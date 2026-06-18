@@ -1,8 +1,15 @@
 import { Link, Outlet, useLocation } from '@tanstack/react-router';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
-import { initHousehold, pendingCount, startSync } from '../../sync/engine.js';
+import {
+  getSyncState,
+  initHousehold,
+  pendingCount,
+  startSync,
+  subscribeSync,
+  syncNow,
+} from '../../sync/engine.js';
 import { useSession } from '../../lib/auth-client.js';
 import { useMembership } from '../../lib/use-membership.js';
 import { Loading } from '../../pages/household-pages.js';
@@ -23,6 +30,7 @@ export function AppLayout() {
   const membership = useMembership(!!session);
   const [online, setOnline] = useState(navigator.onLine);
   const pending = useLiveQuery(() => pendingCount(), [], 0);
+  const syncState = useSyncExternalStore(subscribeSync, getSyncState);
 
   useEffect(() => {
     if (membership.data) {
@@ -39,6 +47,18 @@ export function AppLayout() {
       window.removeEventListener('offline', update);
     };
   }, []);
+
+  // mostra "Sincronizado ✓" por alguns segundos após um sync bem-sucedido
+  const [showSynced, setShowSynced] = useState(false);
+  useEffect(() => {
+    if (syncState !== 'synced') {
+      setShowSynced(false);
+      return;
+    }
+    setShowSynced(true);
+    const id = setTimeout(() => setShowSynced(false), 2500);
+    return () => clearTimeout(id);
+  }, [syncState]);
 
   if (isPending || (session && membership.isLoading)) return <Loading />;
   if (!session) return <Navigate to="/entrar" search={{ redirect: location.pathname }} />;
@@ -73,11 +93,59 @@ export function AppLayout() {
           );
         })}
       </nav>
-      {(!online || pending > 0) && (
-        <span className="pointer-events-none fixed right-3 top-3 rounded-full bg-zinc-900/90 px-2.5 py-1 text-xs font-medium text-white">
-          {!online ? t('sync.offline') : t('sync.pending', { count: pending })}
-        </span>
-      )}
+      <SyncChip
+        online={online}
+        state={syncState}
+        pending={pending}
+        showSynced={showSynced}
+      />
     </div>
+  );
+}
+
+/** Chip de status de sync no canto: offline / sincronizando / pendentes / erro / sincronizado ✓. */
+function SyncChip({
+  online,
+  state,
+  pending,
+  showSynced,
+}: {
+  online: boolean;
+  state: ReturnType<typeof getSyncState>;
+  pending: number;
+  showSynced: boolean;
+}) {
+  const { t } = useTranslation();
+  let label: string | null = null;
+  let cls = 'bg-zinc-900/90 text-white';
+  let onClick: (() => void) | undefined;
+
+  if (!online) {
+    label = t('sync.offline');
+  } else if (state === 'syncing') {
+    label = t('sync.syncing');
+  } else if (state === 'error') {
+    label = t('sync.error');
+    cls = 'bg-red-600 text-white';
+    onClick = () => void syncNow();
+  } else if (pending > 0) {
+    label = t('sync.pending', { count: pending });
+    onClick = () => void syncNow();
+  } else if (showSynced) {
+    label = t('sync.synced');
+    cls = 'bg-green-600 text-white';
+  }
+
+  if (!label) return null;
+  return (
+    <button
+      onClick={onClick}
+      disabled={!onClick}
+      className={`fixed right-3 top-3 rounded-full px-2.5 py-1 text-xs font-medium ${cls} ${
+        onClick ? '' : 'pointer-events-none'
+      }`}
+    >
+      {label}
+    </button>
   );
 }

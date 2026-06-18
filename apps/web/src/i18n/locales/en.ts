@@ -98,6 +98,7 @@ export default {
       cheapest: 'Cheapest',
       cheapestAt: 'Cheapest: {{price}} at {{store}}',
       seenOn: 'on {{date}}',
+      avg3m: '90-day average: {{price}}',
       priceUp: 'Up {{delta}} ({{pct}}%) since {{date}}',
       priceDown: 'Down {{delta}} ({{pct}}%) since {{date}}',
       store: 'Store',
@@ -125,6 +126,8 @@ export default {
       createItem: 'Create item',
       saveCode: 'Save barcode',
       change: 'change',
+      lookingUp: 'Looking up product…',
+      offFound: 'Name filled from OpenFoodFacts',
     },
     catalog: {
       searchPlace: 'Search place',
@@ -166,6 +169,7 @@ export default {
       manualLabel: 'Or type the code',
       manualPlaceholder: 'Barcode number',
       cameraError: 'Camera unavailable. Type the code manually.',
+      torch: 'Flashlight',
     },
     errors: {
       not_authenticated: 'You need to sign in to continue',
@@ -191,6 +195,8 @@ export default {
       title: 'Settings',
       account: 'Account',
       data: 'Your data',
+      syncNow: 'Sync now',
+      syncHint: 'Manually push and pull changes.',
       exportData: 'Export my data',
       exportHint: 'Download everything as JSON (privacy).',
       deleteAccount: 'Delete account and data',
@@ -231,6 +237,9 @@ export default {
       offline: 'Offline',
       pending_one: '{{count}} pending',
       pending_other: '{{count}} pending',
+      syncing: 'Syncing…',
+      synced: 'Synced ✓',
+      error: 'Sync error',
     },
     common: {
       confirm: 'Confirm',

@@ -1,9 +1,10 @@
 import { UNITS, type Unit } from '@grosify/shared';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { db, type LocalItem } from '../../db/dexie.js';
 import { addBarcode, createItem } from '../../db/repositories.js';
+import { lookupOpenFoodFacts } from '../../lib/openfoodfacts.js';
 import { BrandPicker } from './brand-picker.js';
 
 interface Props {
@@ -34,6 +35,25 @@ export function UnknownBarcodeSheet({ code, onResolved, onClose }: Props) {
   const [newUnit, setNewUnit] = useState<Unit>('un');
   const [brandId, setBrandId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [offState, setOffState] = useState<'idle' | 'looking' | 'found' | 'none'>('idle');
+
+  // tenta preencher nome via OpenFoodFacts (online); fallback é criação manual
+  useEffect(() => {
+    let alive = true;
+    setOffState('looking');
+    lookupOpenFoodFacts(code).then((p) => {
+      if (!alive) return;
+      if (p?.name) {
+        setNewName((prev) => prev || p.name!);
+        setOffState('found');
+      } else {
+        setOffState('none');
+      }
+    });
+    return () => {
+      alive = false;
+    };
+  }, [code]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -133,6 +153,12 @@ export function UnknownBarcodeSheet({ code, onResolved, onClose }: Props) {
             )}
             <div className="mt-1 border-t border-zinc-200 pt-3">
               <span className="text-sm font-medium text-zinc-600">{t('barcode.orCreate')}</span>
+              {offState === 'looking' && (
+                <p className="mt-1 text-xs text-zinc-400">{t('barcode.lookingUp')}</p>
+              )}
+              {offState === 'found' && (
+                <p className="mt-1 text-xs text-green-600">{t('barcode.offFound')}</p>
+              )}
               <div className="mt-2 flex flex-col gap-2">
                 <input
                   value={newName}

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { PriceRecord } from '../schemas/index.js';
 import {
+  averagePrice,
   cheapestStore,
   estimateTotal,
   formatBRL,
@@ -31,6 +32,24 @@ function record(partial: Partial<PriceRecord> & Pick<PriceRecord, 'storeId' | 'p
     ...partial,
   };
 }
+
+describe('averagePrice', () => {
+  const records = [
+    record({ storeId: STORE_A, priceCents: 1000, recordedAt: '2026-01-01T10:00:00.000Z' }),
+    record({ storeId: STORE_B, priceCents: 2000, recordedAt: '2026-03-01T10:00:00.000Z' }),
+    record({ storeId: STORE_A, priceCents: 3000, recordedAt: '2026-06-01T10:00:00.000Z' }),
+  ];
+
+  it('média de todos os registros desde a data', () => {
+    expect(averagePrice(records, '2026-01-01T00:00:00.000Z')).toBe(2000);
+  });
+  it('filtra por janela de data', () => {
+    expect(averagePrice(records, '2026-04-01T00:00:00.000Z')).toBe(3000);
+  });
+  it('ignora apagados e retorna null sem registros', () => {
+    expect(averagePrice([], '2026-01-01T00:00:00.000Z')).toBeNull();
+  });
+});
 
 describe('neededQty', () => {
   it('subtrai estoque do padrão mensal', () => {

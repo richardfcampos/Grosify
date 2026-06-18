@@ -19,6 +19,24 @@ export function householdId(): string {
   return currentHouseholdId;
 }
 
+// ---- Estado de sync observável (pra UI: offline/sincronizando/sincronizado/erro) ----
+export type SyncState = 'idle' | 'syncing' | 'synced' | 'offline' | 'error';
+let syncState: SyncState = 'idle';
+const syncListeners = new Set<() => void>();
+
+function setSyncState(s: SyncState): void {
+  if (s === syncState) return;
+  syncState = s;
+  syncListeners.forEach((l) => l());
+}
+export function getSyncState(): SyncState {
+  return syncState;
+}
+export function subscribeSync(fn: () => void): () => void {
+  syncListeners.add(fn);
+  return () => syncListeners.delete(fn);
+}
+
 /** Limpa todo o cache de domínio + outbox + cursor (troca de conta / logout). */
 export async function clearLocalData(): Promise<void> {
   await db.transaction(
@@ -81,8 +99,11 @@ async function setCursor(value: number): Promise<void> {
   await db.meta.put({ key: CURSOR_KEY, value: String(value) });
 }
 
-/** Replica a outbox em ordem; para na primeira falha de rede (mantém fila). */
-async function drainOutbox(): Promise<void> {
+/**
+ * Replica a outbox em ordem; para na primeira falha de rede (mantém fila).
+ * Retorna false se algo retryável (rede/5xx) impediu drenar tudo.
+ */
+async function drainOutbox(): Promise<boolean> {
   const entries = await db.outbox.orderBy('seq').toArray();
   for (const entry of entries) {
     let res: Response;
@@ -94,12 +115,13 @@ async function drainOutbox(): Promise<void> {
         credentials: 'include',
       });
     } catch {
-      return; // offline: tenta de novo depois
+      return false; // offline: tenta de novo depois
     }
-    if (res.status >= 500) return; // erro de servidor: mantém pra retry
+    if (res.status >= 500) return false; // erro de servidor: mantém pra retry
     // 2xx (sucesso) ou 4xx (rejeição definitiva: limite/validação) → remove da fila
     await db.outbox.delete(entry.seq!);
   }
+  return true;
 }
 
 function num<T extends { qty?: unknown; qtyOnHand?: unknown }>(row: T): T {
@@ -118,15 +140,15 @@ function numSessionItem(row: unknown): unknown {
 }
 
 /** Puxa mudanças do servidor e aplica no Dexie, sem clobrar pendências locais nem fotos. */
-async function pull(): Promise<void> {
+async function pull(): Promise<boolean> {
   const cursor = await getCursor();
   let res: Response;
   try {
     res = await fetch(`${API_URL}/sync/pull?cursor=${cursor}`, { credentials: 'include' });
   } catch {
-    return;
+    return false;
   }
-  if (!res.ok) return;
+  if (!res.ok) return false;
   const { changes, cursor: newCursor } = (await res.json()) as {
     changes: Record<string, Record<string, unknown>[]>;
     cursor: number;
@@ -181,6 +203,7 @@ async function pull(): Promise<void> {
   );
 
   if (newCursor > cursor) await setCursor(newCursor);
+  return true;
 }
 
 async function applyTable(
@@ -194,13 +217,19 @@ async function applyTable(
   }
 }
 
-/** Drena outbox e puxa mudanças. Não concorrente. */
+/** Drena outbox e puxa mudanças. Não concorrente. Atualiza o estado observável. */
 export async function syncNow(): Promise<void> {
-  if (syncing || !navigator.onLine) return;
+  if (syncing) return;
+  if (!navigator.onLine) {
+    setSyncState('offline');
+    return;
+  }
   syncing = true;
+  setSyncState('syncing');
   try {
-    await drainOutbox();
-    await pull();
+    const okDrain = await drainOutbox();
+    const okPull = await pull();
+    setSyncState(okDrain && okPull ? 'synced' : 'error');
   } finally {
     syncing = false;
   }
@@ -212,6 +241,7 @@ export function startSync(): void {
   started = true;
   const tick = () => void syncNow();
   window.addEventListener('online', tick);
+  window.addEventListener('offline', () => setSyncState('offline'));
   window.addEventListener('focus', tick);
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') tick();

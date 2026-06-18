@@ -98,6 +98,7 @@ export default {
       cheapest: 'Günstigster',
       cheapestAt: 'Günstigster: {{price}} bei {{store}}',
       seenOn: 'am {{date}}',
+      avg3m: '90-Tage-Schnitt: {{price}}',
       priceUp: 'Um {{delta}} ({{pct}}%) gestiegen seit {{date}}',
       priceDown: 'Um {{delta}} ({{pct}}%) gefallen seit {{date}}',
       store: 'Laden',
@@ -125,6 +126,8 @@ export default {
       createItem: 'Artikel anlegen',
       saveCode: 'Barcode speichern',
       change: 'ändern',
+      lookingUp: 'Produkt wird gesucht…',
+      offFound: 'Name von OpenFoodFacts übernommen',
     },
     catalog: {
       searchPlace: 'Ort suchen',
@@ -166,6 +169,7 @@ export default {
       manualLabel: 'Oder Code eingeben',
       manualPlaceholder: 'Barcode-Nummer',
       cameraError: 'Kamera nicht verfügbar. Code manuell eingeben.',
+      torch: 'Taschenlampe',
     },
     errors: {
       not_authenticated: 'Du musst dich anmelden, um fortzufahren',
@@ -191,6 +195,8 @@ export default {
       title: 'Einstellungen',
       account: 'Konto',
       data: 'Deine Daten',
+      syncNow: 'Jetzt synchronisieren',
+      syncHint: 'Änderungen manuell senden und laden.',
       exportData: 'Meine Daten exportieren',
       exportHint: 'Alles als JSON herunterladen (Datenschutz).',
       deleteAccount: 'Konto und Daten löschen',
@@ -231,6 +237,9 @@ export default {
       offline: 'Offline',
       pending_one: '{{count}} ausstehend',
       pending_other: '{{count}} ausstehend',
+      syncing: 'Synchronisiere…',
+      synced: 'Synchronisiert ✓',
+      error: 'Sync-Fehler',
     },
     common: {
       confirm: 'Bestätigen',
