@@ -3,6 +3,7 @@ import {
   addBarcodePayload,
   createBrandPayload,
   createCategoryPayload,
+  createCommentPayload,
   createItemPayload,
   createStorePayload,
   maxItems,
@@ -15,7 +16,8 @@ import {
 import { and, count, eq, isNull } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { db } from '../db/index.js';
-import { categories, itemBarcodes, itemBrands, items, stores } from '../db/schema.js';
+import { categories, itemBarcodes, itemBrands, itemComments, items, stores } from '../db/schema.js';
+import { logActivity } from '../lib/activity.js';
 import { requireHousehold, type HouseholdEnv } from '../middleware/household.js';
 
 /** Erro de violação de unique (Postgres SQLSTATE 23505). Drizzle embrulha em `cause`. */
@@ -253,6 +255,8 @@ export const catalogRoute = new Hono<HouseholdEnv>()
           : [];
         return item ? { ...item, barcodes: insertedBarcodes } : null;
       });
+      if (created)
+        await logActivity(hid, c.get('user').id, c.get('user').name, 'item_added', payload.name);
       return c.json({ item: created }, 201);
     } catch (err) {
       if (isUniqueViolation(err)) return c.json({ error: 'barcode_exists' }, 409);
@@ -290,6 +294,35 @@ export const catalogRoute = new Hono<HouseholdEnv>()
         .set({ deletedAt: now, updatedAt: now })
         .where(and(eq(itemBarcodes.itemId, id), eq(itemBarcodes.householdId, hid)));
     });
+    return c.json({ ok: true });
+  })
+
+  // ---------- Comentários ----------
+  .post('/items/:id/comments', zValidator('json', createCommentPayload), async (c) => {
+    const hid = c.get('householdId');
+    const p = c.req.valid('json');
+    const [comment] = await db
+      .insert(itemComments)
+      .values({
+        id: p.id,
+        householdId: hid,
+        itemId: c.req.param('id'),
+        authorId: p.authorId ?? c.get('user').id,
+        authorName: p.authorName ?? c.get('user').name,
+        body: p.body,
+      })
+      .onConflictDoNothing()
+      .returning();
+    return c.json({ comment: comment ?? null }, 201);
+  })
+
+  .delete('/comments/:id', async (c) => {
+    const hid = c.get('householdId');
+    const now = new Date();
+    await db
+      .update(itemComments)
+      .set({ deletedAt: now, updatedAt: now })
+      .where(and(eq(itemComments.id, c.req.param('id')), eq(itemComments.householdId, hid)));
     return c.json({ ok: true });
   })
 

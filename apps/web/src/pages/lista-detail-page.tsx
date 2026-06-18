@@ -4,7 +4,13 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { db, type LocalItem } from '../db/dexie.js';
-import { createItem, deleteList, removeListEntry, setListEntry } from '../db/repositories.js';
+import {
+  assignListEntry,
+  createItem,
+  deleteList,
+  removeListEntry,
+  setListEntry,
+} from '../db/repositories.js';
 import { PrecoSheet } from '../features/prices/preco-sheet.js';
 import { useConfirm } from '../lib/confirm.js';
 import { useFormatMoney } from '../lib/use-currency.js';
@@ -41,6 +47,15 @@ export function ListaDetailPage() {
 
   const [priceItem, setPriceItem] = useState<{ id: string; name: string } | null>(null);
   const [adding, setAdding] = useState(false);
+  // membros da casa (online) para atribuir responsável
+  const [members, setMembers] = useState<{ userId: string; name: string }[]>([]);
+  useEffect(() => {
+    const url = import.meta.env.VITE_API_URL ?? 'http://localhost:3010';
+    fetch(`${url}/households/members`, { credentials: 'include' })
+      .then((r) => (r.ok ? r.json() : { members: [] }))
+      .then((d: { members: { userId: string; name: string }[] }) => setMembers(d.members))
+      .catch(() => {});
+  }, []);
 
   const itemById = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
 
@@ -142,6 +157,23 @@ export function ListaDetailPage() {
                   >
                     {price !== null ? fmt(price) : t('prices.record')}
                   </button>
+                  {members.length > 1 && (
+                    <select
+                      value={entry.assignedTo ?? ''}
+                      onChange={(e) => {
+                        const m = members.find((x) => x.userId === e.target.value);
+                        assignListEntry(id, entry.itemId, m?.userId ?? null, m?.name ?? null);
+                      }}
+                      className="mt-1 block w-full rounded-lg border border-zinc-200 px-2 py-1 text-xs text-zinc-600"
+                    >
+                      <option value="">{t('lists.unassigned')}</option>
+                      {members.map((m) => (
+                        <option key={m.userId} value={m.userId}>
+                          {m.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
                 <QtyInput
                   value={entry.qty}

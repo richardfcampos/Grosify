@@ -14,6 +14,7 @@ import {
 import { and, eq, isNull } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { db } from '../db/index.js';
+import { logActivity } from '../lib/activity.js';
 import {
   inventoryCounts,
   priceRecords,
@@ -60,6 +61,7 @@ export const shoppingRoute = new Hono<HouseholdEnv>()
       })
       .onConflictDoNothing()
       .returning();
+    if (list) await logActivity(hid, c.get('user').id, c.get('user').name, 'list_created', list.name);
     return c.json({ list: list ?? null }, 201);
   })
 
@@ -104,10 +106,18 @@ export const shoppingRoute = new Hono<HouseholdEnv>()
         listId,
         itemId: p.itemId,
         qty: String(p.qty),
+        assignedTo: p.assignedTo ?? null,
+        assignedToName: p.assignedToName ?? null,
       })
       .onConflictDoUpdate({
         target: [shoppingListEntries.listId, shoppingListEntries.itemId],
-        set: { qty: String(p.qty), deletedAt: null, updatedAt: new Date() },
+        set: {
+          qty: String(p.qty),
+          ...(p.assignedTo !== undefined ? { assignedTo: p.assignedTo } : {}),
+          ...(p.assignedToName !== undefined ? { assignedToName: p.assignedToName } : {}),
+          deletedAt: null,
+          updatedAt: new Date(),
+        },
       })
       .returning();
     return c.json({ entry }, 201);
@@ -298,6 +308,8 @@ export const shoppingRoute = new Hono<HouseholdEnv>()
       .where(and(eq(shoppingSessions.id, c.req.param('id')), eq(shoppingSessions.householdId, hid)))
       .returning();
     if (!session) return c.json({ error: 'not_found' }, 404);
+    if (p.status === 'completed')
+      await logActivity(hid, c.get('user').id, c.get('user').name, 'shopping_completed', null);
     return c.json({ session });
   })
 

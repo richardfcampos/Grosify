@@ -77,6 +77,7 @@ export default {
       recurring: 'Recurring (every month)',
       recurringTag: 'Recurring',
       oneTimeTag: 'One-time',
+      unassigned: 'Unassigned',
       budget: 'Budget',
       budgetHint: 'Spending limit (optional)',
       icon: 'Icon',
@@ -194,6 +195,8 @@ export default {
       rate_limited: 'Too many attempts, please wait a moment',
       item_limit_reached: 'Free plan item limit reached.',
       barcode_exists: 'That barcode already exists.',
+      read_only: 'You are a viewer (read-only).',
+      forbidden: 'You do not have permission for this.',
       generic: 'Something went wrong, please try again',
     },
     billing: {
@@ -306,6 +309,23 @@ export default {
     history: {
       title: 'Purchase history',
       empty: 'No completed purchases yet.',
+    },
+    members: {
+      title: 'Members',
+      you: 'you',
+      remove: 'Remove member',
+      removeConfirm: 'Remove {{name}} from the household?',
+      roles: { owner: 'Owner', admin: 'Admin', member: 'Member', viewer: 'Viewer' },
+    },
+    activity: {
+      title: 'Activity',
+      empty: 'No activity yet.',
+      action: { item_added: 'added an item', list_created: 'created a list', shopping_completed: 'completed a shopping', member_removed: 'removed a member' },
+    },
+    comments: {
+      title: 'Comments',
+      placeholder: 'Write a comment',
+      send: 'Send',
     },
     common: {
       confirm: 'Confirm',

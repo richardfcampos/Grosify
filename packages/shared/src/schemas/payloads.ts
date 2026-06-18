@@ -161,8 +161,26 @@ export const setListEntryPayload = z.object({
   id: z.uuid(),
   itemId: z.uuid(),
   qty: positiveQty,
+  assignedTo: z.string().nullable().optional(),
+  assignedToName: z.string().nullable().optional(),
 });
 export type SetListEntryPayload = z.infer<typeof setListEntryPayload>;
+
+// ---------- Comentários ----------
+export const createCommentPayload = z.object({
+  id: z.uuid(),
+  itemId: z.uuid(),
+  authorId: z.string().nullable().optional(),
+  authorName: z.string().nullable().optional(),
+  body: z.string().trim().min(1).max(1000),
+});
+export type CreateCommentPayload = z.infer<typeof createCommentPayload>;
+
+// ---------- Membros ----------
+export const updateMemberPayload = z.object({
+  role: z.enum(['admin', 'member', 'viewer']),
+});
+export type UpdateMemberPayload = z.infer<typeof updateMemberPayload>;
 
 // ---------- Inventário ----------
 

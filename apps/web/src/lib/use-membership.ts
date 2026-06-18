@@ -3,7 +3,7 @@ import { api } from './api.js';
 
 export interface Membership {
   householdId: string;
-  role: 'owner' | 'member';
+  role: 'owner' | 'admin' | 'member' | 'viewer';
   name: string;
   plan: 'free' | 'pro';
   currency: string;

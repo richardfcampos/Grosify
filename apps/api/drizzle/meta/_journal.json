@@ -120,6 +120,13 @@
       "when": 1781762678380,
       "tag": "0016_lame_falcon",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1781764465390,
+      "tag": "0017_public_vector",
+      "breakpoints": true
     }
   ]
 }

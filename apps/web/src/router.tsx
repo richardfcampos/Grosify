@@ -3,7 +3,9 @@ import { z } from 'zod';
 import { AppLayout } from './features/catalog/app-layout.js';
 import { AjustesPage } from './pages/ajustes-page.js';
 import { AnalyticsPage } from './pages/analytics-page.js';
+import { AtividadesPage } from './pages/atividades-page.js';
 import { CategoriasPage } from './pages/categorias-page.js';
+import { MembrosPage } from './pages/membros-page.js';
 import { CadastroPage, EntrarPage } from './pages/auth-pages.js';
 import { DashboardPage } from './pages/dashboard-page.js';
 import { CasaPage, ConvitePage } from './pages/household-pages.js';
@@ -127,6 +129,16 @@ const analyticsRoute = createRoute({
   path: '/analise',
   component: AnalyticsPage,
 });
+const membrosRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/membros',
+  component: MembrosPage,
+});
+const atividadesRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/atividades',
+  component: AtividadesPage,
+});
 
 const routeTree = rootRoute.addChildren([
   entrarRoute,
@@ -149,6 +161,8 @@ const routeTree = rootRoute.addChildren([
     ajustesRoute,
     categoriasRoute,
     analyticsRoute,
+    membrosRoute,
+    atividadesRoute,
   ]),
 ]);
 

@@ -77,6 +77,7 @@ export default {
       recurring: 'Wiederkehrend (jeden Monat)',
       recurringTag: 'Wiederkehrend',
       oneTimeTag: 'Einmalig',
+      unassigned: 'Nicht zugewiesen',
       budget: 'Budget',
       budgetHint: 'Ausgabenlimit (optional)',
       icon: 'Symbol',
@@ -194,6 +195,8 @@ export default {
       rate_limited: 'Zu viele Versuche, bitte kurz warten',
       item_limit_reached: 'Artikellimit des Gratis-Plans erreicht.',
       barcode_exists: 'Dieser Barcode existiert bereits.',
+      read_only: 'Du bist Betrachter (nur lesen).',
+      forbidden: 'Du hast keine Berechtigung dafür.',
       generic: 'Etwas ist schiefgelaufen, bitte erneut versuchen',
     },
     billing: {
@@ -306,6 +309,23 @@ export default {
     history: {
       title: 'Einkaufsverlauf',
       empty: 'Noch keine abgeschlossenen Einkäufe.',
+    },
+    members: {
+      title: 'Mitglieder',
+      you: 'du',
+      remove: 'Mitglied entfernen',
+      removeConfirm: '{{name}} aus dem Haushalt entfernen?',
+      roles: { owner: 'Besitzer', admin: 'Admin', member: 'Mitglied', viewer: 'Betrachter' },
+    },
+    activity: {
+      title: 'Aktivität',
+      empty: 'Noch keine Aktivität.',
+      action: { item_added: 'hat einen Artikel hinzugefügt', list_created: 'hat eine Liste erstellt', shopping_completed: 'hat einen Einkauf abgeschlossen', member_removed: 'hat ein Mitglied entfernt' },
+    },
+    comments: {
+      title: 'Kommentare',
+      placeholder: 'Kommentar schreiben',
+      send: 'Senden',
     },
     common: {
       confirm: 'Bestätigen',

@@ -90,7 +90,7 @@ export const householdMembers = pgTable(
     userId: text('user_id')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
-    role: text('role', { enum: ['owner', 'member'] })
+    role: text('role', { enum: ['owner', 'admin', 'member', 'viewer'] })
       .notNull()
       .default('member'),
     joinedAt: timestamp('joined_at', { withTimezone: true }).notNull().defaultNow(),
@@ -113,6 +113,23 @@ export const householdInvites = pgTable('household_invites', {
   usedBy: text('used_by').references(() => user.id),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** Feed de atividades da casa (server-authoritative, não syncado). */
+export const activities = pgTable(
+  'activities',
+  {
+    id: uuid('id').primaryKey(),
+    householdId: uuid('household_id')
+      .notNull()
+      .references(() => households.id, { onDelete: 'cascade' }),
+    actorId: text('actor_id').references(() => user.id, { onDelete: 'set null' }),
+    actorName: text('actor_name'),
+    action: text('action').notNull(),
+    summary: text('summary'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('activities_household_idx').on(t.householdId, t.createdAt)],
+);
 
 // ===== Catálogo [sync] — colunas de sync em toda tabela do domínio =====
 // updated_at: relógio do escritor (comparador LWW na fase 3)
@@ -218,6 +235,28 @@ export const itemBarcodes = pgTable(
   ],
 );
 
+/** Comentário em um item (sincronizado, append-only). */
+export const itemComments = pgTable(
+  'item_comments',
+  {
+    id: uuid('id').primaryKey(),
+    householdId: uuid('household_id')
+      .notNull()
+      .references(() => households.id, { onDelete: 'cascade' }),
+    itemId: uuid('item_id')
+      .notNull()
+      .references(() => items.id, { onDelete: 'cascade' }),
+    authorId: text('author_id'),
+    authorName: text('author_name'),
+    body: text('body').notNull(),
+    ...syncColumns,
+  },
+  (t) => [
+    index('item_comments_household_version_idx').on(t.householdId, t.serverVersion),
+    index('item_comments_item_idx').on(t.itemId),
+  ],
+);
+
 export const stores = pgTable(
   'stores',
   {
@@ -309,6 +348,9 @@ export const shoppingListEntries = pgTable(
       .notNull()
       .references(() => items.id, { onDelete: 'cascade' }),
     qty: numeric('qty', { precision: 10, scale: 3 }).notNull(),
+    /** Membro responsável por comprar este item (id + nome desnormalizado). */
+    assignedTo: text('assigned_to'),
+    assignedToName: text('assigned_to_name'),
     ...syncColumns,
   },
   (t) => [

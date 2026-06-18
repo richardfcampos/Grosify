@@ -18,6 +18,7 @@ import { ScannerModal } from '../features/scanner/scanner-modal.js';
 import { BrandsSection } from '../features/brands/brands-section.js';
 import { BarcodeBrandChooser } from '../features/brands/barcode-brand-chooser.js';
 import { CategoryPicker } from '../features/catalog/category-picker.js';
+import { CommentsSection } from '../features/catalog/comments-section.js';
 
 const labelClass = 'text-sm font-medium text-zinc-600';
 const inputClass =
@@ -307,6 +308,8 @@ export function ItemFormPage() {
         </div>
 
         {editingId && <BrandsSection itemId={editingId} />}
+
+        {editingId && <CommentsSection itemId={editingId} />}
 
         {error && <p className="text-sm text-red-600">{error}</p>}
 

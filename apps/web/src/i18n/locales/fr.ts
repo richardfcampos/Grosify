@@ -77,6 +77,7 @@ export default {
       recurring: 'Récurrente (chaque mois)',
       recurringTag: 'Récurrente',
       oneTimeTag: 'Ponctuelle',
+      unassigned: 'Non assigné',
       budget: 'Budget',
       budgetHint: 'Limite de dépense (facultatif)',
       icon: 'Icône',
@@ -194,6 +195,8 @@ export default {
       rate_limited: 'Trop de tentatives, patientez un instant',
       item_limit_reached: 'Limite d’articles du forfait gratuit atteinte.',
       barcode_exists: 'Ce code-barres existe déjà.',
+      read_only: 'Vous êtes lecteur (lecture seule).',
+      forbidden: 'Vous n’avez pas la permission.',
       generic: 'Une erreur est survenue, réessayez',
     },
     billing: {
@@ -306,6 +309,23 @@ export default {
     history: {
       title: 'Historique des achats',
       empty: 'Aucun achat finalisé.',
+    },
+    members: {
+      title: 'Membres',
+      you: 'vous',
+      remove: 'Retirer le membre',
+      removeConfirm: 'Retirer {{name}} du foyer ?',
+      roles: { owner: 'Propriétaire', admin: 'Admin', member: 'Membre', viewer: 'Lecteur' },
+    },
+    activity: {
+      title: 'Activité',
+      empty: 'Aucune activité.',
+      action: { item_added: 'a ajouté un article', list_created: 'a créé une liste', shopping_completed: 'a finalisé un achat', member_removed: 'a retiré un membre' },
+    },
+    comments: {
+      title: 'Commentaires',
+      placeholder: 'Écrire un commentaire',
+      send: 'Envoyer',
     },
     common: {
       confirm: 'Confirmer',

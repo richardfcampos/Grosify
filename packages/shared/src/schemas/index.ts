@@ -115,8 +115,25 @@ export const shoppingListEntrySchema = syncMetaSchema.extend({
   itemId: z.uuid(),
   /** Recorrente: padrão mensal. Não-recorrente: quantidade planejada. */
   qty: qty.refine((v) => v > 0, 'quantidade deve ser positiva'),
+  /** Membro responsável (id + nome desnormalizado). */
+  assignedTo: z.string().nullable(),
+  assignedToName: z.string().nullable(),
 });
 export type ShoppingListEntry = z.infer<typeof shoppingListEntrySchema>;
+
+/** Comentário em um item (sincronizado). */
+export const itemCommentSchema = syncMetaSchema.extend({
+  itemId: z.uuid(),
+  authorId: z.string().nullable(),
+  authorName: z.string().nullable(),
+  body: z.string().trim().min(1).max(1000),
+});
+export type ItemComment = z.infer<typeof itemCommentSchema>;
+
+/** Papéis de membro da casa. */
+export const MEMBER_ROLES = ['owner', 'admin', 'member', 'viewer'] as const;
+export const memberRoleSchema = z.enum(MEMBER_ROLES);
+export type MemberRole = z.infer<typeof memberRoleSchema>;
 
 export const inventoryCountSchema = syncMetaSchema.extend({
   itemId: z.uuid(),
@@ -172,6 +189,7 @@ export const SYNC_TABLES = {
   categories: categorySchema,
   items: itemSchema,
   item_brands: itemBrandSchema,
+  item_comments: itemCommentSchema,
   item_barcodes: itemBarcodeSchema,
   stores: storeSchema,
   price_records: priceRecordSchema,

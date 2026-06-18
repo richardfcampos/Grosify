@@ -47,6 +47,7 @@ export async function clearLocalData(): Promise<void> {
       db.categories,
       db.barcodes,
       db.brands,
+      db.comments,
       db.stores,
       db.prices,
       db.lists,
@@ -64,6 +65,7 @@ export async function clearLocalData(): Promise<void> {
         db.categories.clear(),
         db.barcodes.clear(),
         db.brands.clear(),
+        db.comments.clear(),
         db.stores.clear(),
         db.prices.clear(),
         db.lists.clear(),
@@ -177,6 +179,7 @@ async function pull(): Promise<boolean> {
       db.categories,
       db.barcodes,
       db.brands,
+      db.comments,
       db.stores,
       db.prices,
       db.lists,
@@ -196,6 +199,7 @@ async function pull(): Promise<boolean> {
       await applyTable(db.categories, changes.categories, pendingIds);
       await applyTable(db.barcodes, changes.item_barcodes, pendingIds);
       await applyTable(db.brands, changes.item_brands, pendingIds);
+      await applyTable(db.comments, changes.item_comments, pendingIds);
       await applyTable(db.stores, changes.stores, pendingIds);
       await applyTable(db.prices, changes.price_records, pendingIds);
       await applyTable(db.lists, changes.shopping_lists, pendingIds);
@@ -269,6 +273,13 @@ export function startSync(): void {
     if (document.visibilityState === 'visible') tick();
   });
   setInterval(tick, 30_000);
+  // SSE: servidor "poka" quando outro membro muda algo → sincroniza na hora
+  try {
+    const es = new EventSource(`${API_URL}/sync/stream`, { withCredentials: true });
+    es.addEventListener('poke', () => void syncNow());
+  } catch {
+    // SSE indisponível — segue com os gatilhos por tempo/foco
+  }
   tick();
 }
 

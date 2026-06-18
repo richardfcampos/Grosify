@@ -5,6 +5,7 @@ import {
   db,
   type LocalBrand,
   type LocalCategory,
+  type LocalComment,
   type LocalInventory,
   type LocalMovement,
   type LocalItem,
@@ -279,6 +280,41 @@ export async function resolveBarcode(
   return local ? { itemId: local.itemId, brandId: local.brandId ?? null } : null;
 }
 
+// ---------- Comentários ----------
+
+export async function createComment(
+  itemId: string,
+  text: string,
+  authorId: string | null,
+  authorName: string | null,
+): Promise<string> {
+  const id = uuidv7();
+  const ts = nowISO();
+  await db.comments.put({
+    id,
+    householdId: hid(),
+    itemId,
+    authorId,
+    authorName,
+    body: text,
+    updatedAt: ts,
+    deletedAt: null,
+    serverVersion: 0,
+  });
+  await enqueue({
+    method: 'POST',
+    path: `/catalog/items/${itemId}/comments`,
+    body: { id, itemId, authorId, authorName, body: text },
+    rowId: id,
+  });
+  return id;
+}
+
+export async function deleteComment(id: string): Promise<void> {
+  await db.comments.update(id, { deletedAt: nowISO() });
+  await enqueue({ method: 'DELETE', path: `/catalog/comments/${id}`, rowId: id });
+}
+
 // ---------- Lojas ----------
 
 export interface NewStoreInput {
@@ -403,6 +439,8 @@ export async function setListEntry(listId: string, itemId: string, qty: number):
     listId,
     itemId,
     qty,
+    assignedTo: existing?.assignedTo ?? null,
+    assignedToName: existing?.assignedToName ?? null,
     updatedAt: nowISO(),
     deletedAt: null,
     serverVersion: 0,
@@ -412,6 +450,28 @@ export async function setListEntry(listId: string, itemId: string, qty: number):
     path: `/shopping/lists/${listId}/entries`,
     body: { id, itemId, qty },
     rowId: id,
+  });
+}
+
+/** Define o membro responsável por uma entrada da lista. */
+export async function assignListEntry(
+  listId: string,
+  itemId: string,
+  assignedTo: string | null,
+  assignedToName: string | null,
+): Promise<void> {
+  const existing = await db.listEntries
+    .where('listId')
+    .equals(listId)
+    .and((e) => e.itemId === itemId && e.deletedAt === null)
+    .first();
+  if (!existing) return;
+  await db.listEntries.update(existing.id, { assignedTo, assignedToName, updatedAt: nowISO() });
+  await enqueue({
+    method: 'PUT',
+    path: `/shopping/lists/${listId}/entries`,
+    body: { id: existing.id, itemId, qty: Number(existing.qty), assignedTo, assignedToName },
+    rowId: existing.id,
   });
 }
 
@@ -765,6 +825,7 @@ export async function completeSession(sessionId: string): Promise<void> {
 export type {
   LocalBrand,
   LocalCategory,
+  LocalComment,
   LocalInventory,
   LocalMovement,
   LocalItem,

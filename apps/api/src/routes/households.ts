@@ -1,12 +1,13 @@
 import { zValidator } from '@hono/zod-validator';
-import { isValidCurrency } from '@grosify/shared';
-import { and, eq, isNull } from 'drizzle-orm';
+import { isValidCurrency, updateMemberPayload } from '@grosify/shared';
+import { and, desc, eq, isNull } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { randomBytes } from 'node:crypto';
 import { v7 as uuidv7 } from 'uuid';
 import { z } from 'zod';
 import { db } from '../db/index.js';
-import { householdInvites, householdMembers, households } from '../db/schema.js';
+import { activities, householdInvites, householdMembers, households, user } from '../db/schema.js';
+import { logActivity } from '../lib/activity.js';
 import { rateLimit } from '../middleware/rate-limit.js';
 import { requireSession, type AuthEnv } from '../middleware/session.js';
 
@@ -77,11 +78,102 @@ export const householdsRoute = new Hono<AuthEnv>()
     },
   )
 
+  .get('/members', async (c) => {
+    const membership = await membershipOf(c.get('user').id);
+    if (!membership) return c.json({ error: 'no_household' }, 403);
+    const members = await db
+      .select({
+        userId: householdMembers.userId,
+        role: householdMembers.role,
+        name: user.name,
+        email: user.email,
+        joinedAt: householdMembers.joinedAt,
+      })
+      .from(householdMembers)
+      .innerJoin(user, eq(user.id, householdMembers.userId))
+      .where(eq(householdMembers.householdId, membership.householdId));
+    return c.json({ members, me: c.get('user').id, myRole: membership.role });
+  })
+
+  .patch('/members/:userId', zValidator('json', updateMemberPayload), async (c) => {
+    const membership = await membershipOf(c.get('user').id);
+    if (!membership) return c.json({ error: 'no_household' }, 403);
+    if (membership.role !== 'owner' && membership.role !== 'admin')
+      return c.json({ error: 'forbidden' }, 403);
+    const target = c.req.param('userId');
+    const [current] = await db
+      .select({ role: householdMembers.role })
+      .from(householdMembers)
+      .where(
+        and(
+          eq(householdMembers.householdId, membership.householdId),
+          eq(householdMembers.userId, target),
+        ),
+      )
+      .limit(1);
+    if (!current) return c.json({ error: 'not_found' }, 404);
+    if (current.role === 'owner') return c.json({ error: 'cannot_change_owner' }, 403);
+    await db
+      .update(householdMembers)
+      .set({ role: c.req.valid('json').role })
+      .where(
+        and(
+          eq(householdMembers.householdId, membership.householdId),
+          eq(householdMembers.userId, target),
+        ),
+      );
+    return c.json({ ok: true });
+  })
+
+  .delete('/members/:userId', async (c) => {
+    const membership = await membershipOf(c.get('user').id);
+    if (!membership) return c.json({ error: 'no_household' }, 403);
+    if (membership.role !== 'owner' && membership.role !== 'admin')
+      return c.json({ error: 'forbidden' }, 403);
+    const target = c.req.param('userId');
+    const [current] = await db
+      .select({ role: householdMembers.role })
+      .from(householdMembers)
+      .where(
+        and(
+          eq(householdMembers.householdId, membership.householdId),
+          eq(householdMembers.userId, target),
+        ),
+      )
+      .limit(1);
+    if (!current) return c.json({ error: 'not_found' }, 404);
+    if (current.role === 'owner') return c.json({ error: 'cannot_remove_owner' }, 403);
+    await db
+      .delete(householdMembers)
+      .where(
+        and(
+          eq(householdMembers.householdId, membership.householdId),
+          eq(householdMembers.userId, target),
+        ),
+      );
+    await logActivity(membership.householdId, c.get('user').id, c.get('user').name, 'member_removed', null);
+    return c.json({ ok: true });
+  })
+
+  .get('/activities', async (c) => {
+    const membership = await membershipOf(c.get('user').id);
+    if (!membership) return c.json({ error: 'no_household' }, 403);
+    const rows = await db
+      .select()
+      .from(activities)
+      .where(eq(activities.householdId, membership.householdId))
+      .orderBy(desc(activities.createdAt))
+      .limit(50);
+    return c.json({ activities: rows });
+  })
+
   .post('/invites', rateLimit({ windowMs: 60_000, max: 5 }), async (c) => {
     const membership = await membershipOf(c.get('user').id);
     if (!membership) {
       return c.json({ error: 'no_household' }, 403);
     }
+    if (membership.role !== 'owner' && membership.role !== 'admin')
+      return c.json({ error: 'forbidden' }, 403);
     const code = inviteCode();
     await db.insert(householdInvites).values({
       code,

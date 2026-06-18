@@ -1,11 +1,13 @@
 import { and, eq, gt } from 'drizzle-orm';
 import { Hono } from 'hono';
+import { streamSSE } from 'hono/streaming';
 import { db } from '../db/index.js';
 import {
   categories,
   inventoryCounts,
   itemBarcodes,
   itemBrands,
+  itemComments,
   items,
   priceRecords,
   shoppingListEntries,
@@ -15,6 +17,7 @@ import {
   stockMovements,
   stores,
 } from '../db/schema.js';
+import { subscribePoke } from '../lib/poke.js';
 import { requireHousehold, type HouseholdEnv } from '../middleware/household.js';
 
 /** Tabelas sync expostas no pull, nome (chave do client) → tabela drizzle. */
@@ -22,6 +25,7 @@ const TABLES = {
   categories,
   items,
   item_brands: itemBrands,
+  item_comments: itemComments,
   item_barcodes: itemBarcodes,
   stores,
   price_records: priceRecords,
@@ -64,4 +68,24 @@ export const syncRoute = new Hono<HouseholdEnv>()
     }
 
     return c.json({ changes, cursor: newCursor });
+  })
+
+  /** SSE: emite "poke" quando há mutação na casa; o client então faz o pull. */
+  .get('/stream', (c) => {
+    const hid = c.get('householdId');
+    return streamSSE(c, async (stream) => {
+      let alive = true;
+      const unsub = subscribePoke(hid, () => {
+        void stream.writeSSE({ event: 'poke', data: '1' });
+      });
+      stream.onAbort(() => {
+        alive = false;
+        unsub();
+      });
+      // heartbeat pra manter a conexão viva
+      while (alive) {
+        await stream.writeSSE({ event: 'ping', data: '1' });
+        await stream.sleep(25_000);
+      }
+    });
   });
