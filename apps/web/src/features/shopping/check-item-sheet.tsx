@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { db, type LocalSessionItem } from '../../db/dexie.js';
 import { checkSessionItem } from '../../db/repositories.js';
 import { BrandPicker } from '../brands/brand-picker.js';
+import { PriceScanModal } from '../scanner/price-scan-modal.js';
 import { StarRating } from '../prices/star-rating.js';
 import { useFormatMoney, useHouseholdCurrency } from '../../lib/use-currency.js';
 
@@ -61,6 +62,7 @@ export function CheckItemSheet({
   const [qty, setQty] = useState(String(sessionItem.neededQty || 1));
   const [value, setValue] = useState('');
   const [rating, setRating] = useState<number | null>(null);
+  const [priceScan, setPriceScan] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const cheapest = useMemo(() => cheapestStore(prices), [prices]);
@@ -104,7 +106,11 @@ export function CheckItemSheet({
     'min-h-12 w-full rounded-xl border border-stone-700 bg-stone-900 px-4 py-3 text-base text-stone-50 outline-none focus:border-yellow-400';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end bg-black/60" onClick={onClose}>
+    <>
+      {priceScan && (
+        <PriceScanModal onDetect={(p) => setValue(p)} onClose={() => setPriceScan(false)} />
+      )}
+      <div className="fixed inset-0 z-50 flex items-end bg-black/60" onClick={onClose}>
       <form
         onClick={(e) => e.stopPropagation()}
         onSubmit={onSubmit}
@@ -150,13 +156,23 @@ export function CheckItemSheet({
               </label>
               <label className="flex flex-1 flex-col gap-1">
                 <span className="text-xs text-stone-400">{t('shopping.actualPrice')}</span>
-                <input
-                  value={value}
-                  onChange={(e) => setValue(e.target.value)}
-                  inputMode="decimal"
-                  required
-                  className={inputClass}
-                />
+                <div className="flex gap-2">
+                  <input
+                    value={value}
+                    onChange={(e) => setValue(e.target.value)}
+                    inputMode="decimal"
+                    required
+                    className={inputClass}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setPriceScan(true)}
+                    aria-label={t('priceScan.scan')}
+                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-stone-800 text-xl"
+                  >
+                    📷
+                  </button>
+                </div>
               </label>
             </div>
             {warn && <p className="text-sm font-medium text-red-400">▲ {warn}</p>}
@@ -175,5 +191,6 @@ export function CheckItemSheet({
         )}
       </form>
     </div>
+    </>
   );
 }

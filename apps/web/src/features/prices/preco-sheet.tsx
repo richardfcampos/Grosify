@@ -15,6 +15,7 @@ import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'rec
 import { db } from '../../db/dexie.js';
 import { recordPrice } from '../../db/repositories.js';
 import { BrandPicker } from '../brands/brand-picker.js';
+import { PriceScanModal } from '../scanner/price-scan-modal.js';
 import { StarRating } from './star-rating.js';
 import { useFormatMoney, useHouseholdCurrency, useHouseholdPlan } from '../../lib/use-currency.js';
 
@@ -65,6 +66,7 @@ export function PrecoSheet({ itemId, itemName, onClose }: Props) {
   const [brandId, setBrandId] = useState<string | null>(null);
   const [value, setValue] = useState('');
   const [rating, setRating] = useState<number | null>(null);
+  const [priceScan, setPriceScan] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const cheapest = useMemo(() => cheapestStore(prices), [prices]);
@@ -118,7 +120,11 @@ export function PrecoSheet({ itemId, itemName, onClose }: Props) {
     .map((p) => ({ t: fmtDate(p.recordedAt), price: p.priceCents }));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end bg-black/40" onClick={onClose}>
+    <>
+      {priceScan && (
+        <PriceScanModal onDetect={(p) => setValue(p)} onClose={() => setPriceScan(false)} />
+      )}
+      <div className="fixed inset-0 z-50 flex items-end bg-black/40" onClick={onClose}>
       <div
         onClick={(e) => e.stopPropagation()}
         className="mx-auto flex max-h-[85dvh] w-full max-w-md flex-col gap-4 overflow-y-auto rounded-t-3xl bg-white p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]"
@@ -164,14 +170,24 @@ export function PrecoSheet({ itemId, itemName, onClose }: Props) {
               ))}
             </select>
             <BrandPicker itemId={itemId} value={brandId} onChange={setBrandId} />
-            <input
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              inputMode="decimal"
-              required
-              placeholder={t('prices.price')}
-              className="min-h-12 rounded-xl border border-zinc-300 px-4 py-3 text-base"
-            />
+            <div className="flex gap-2">
+              <input
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+                inputMode="decimal"
+                required
+                placeholder={t('prices.price')}
+                className="min-h-12 flex-1 rounded-xl border border-zinc-300 px-4 py-3 text-base"
+              />
+              <button
+                type="button"
+                onClick={() => setPriceScan(true)}
+                aria-label={t('priceScan.scan')}
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-zinc-100 text-xl"
+              >
+                📷
+              </button>
+            </div>
             {alert && (
               <p className={`text-sm font-medium ${alert.up ? 'text-red-600' : 'text-green-700'}`}>
                 {alert.up ? '▲' : '▼'} {alert.text}
@@ -230,5 +246,6 @@ export function PrecoSheet({ itemId, itemName, onClose }: Props) {
         </div>
       </div>
     </div>
+    </>
   );
 }

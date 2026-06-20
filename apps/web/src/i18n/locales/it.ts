@@ -339,6 +339,15 @@ export default {
       saveFilter: 'Salva filtro',
       status: { all: 'Tutti', instock: 'In stock', low: 'In esaurimento', out: 'Esaurito' },
     },
+    priceScan: {
+      scan: 'Scansiona prezzo',
+      title: 'Leggi prezzo',
+      capture: 'Cattura',
+      reading: 'Lettura…',
+      notFound: 'Non sono riuscito a leggere. Avvicinati e riprova.',
+      cameraError: 'Fotocamera non disponibile.',
+      hint: 'Inquadra il prezzo sull’etichetta e cattura.',
+    },
     common: {
       confirm: 'Conferma',
       loading: 'Caricamento…',

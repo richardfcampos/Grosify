@@ -134,6 +134,18 @@ export function averagePrice(records: PriceRecord[], sinceISO: string): number |
 /** Limite de variação (%) a partir do qual um aumento/queda vira alerta. */
 export const PRICE_ALERT_THRESHOLD_PCT = 10;
 
+/**
+ * Extrai um valor de preço de um texto de OCR (etiqueta).
+ * Prefere número com 2 decimais ("12,90"/"12.90"); senão um inteiro plausível.
+ * Retorna a string crua (com vírgula/ponto) pra `parseToMinorUnits`, ou null.
+ */
+export function parsePriceTag(text: string): string | null {
+  const decimal = text.match(/\d{1,3}(?:[.\s]\d{3})*[.,]\d{2}(?!\d)/);
+  if (decimal) return decimal[0].replace(/\s/g, '');
+  const whole = text.match(/\d{1,5}/);
+  return whole ? whole[0] : null;
+}
+
 export interface BudgetStatus {
   ratio: number;
   pct: number;

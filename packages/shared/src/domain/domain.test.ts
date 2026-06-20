@@ -11,6 +11,7 @@ import {
   isRecurrenceDue,
   latestPriceByStoreBrand,
   neededQty,
+  parsePriceTag,
   priceChange,
 } from './index.js';
 
@@ -103,6 +104,22 @@ describe('isRecurrenceDue', () => {
   it('null/sem dia nunca vence', () => {
     expect(isRecurrenceDue(null, 1, new Date(2026, 5, 15))).toBe(false);
     expect(isRecurrenceDue('monthly', null, new Date(2026, 5, 15))).toBe(false);
+  });
+});
+
+describe('parsePriceTag', () => {
+  it('lê valor com decimais (vírgula ou ponto)', () => {
+    expect(parsePriceTag('R$ 12,90')).toBe('12,90');
+    expect(parsePriceTag('Preço 8.49 kg')).toBe('8.49');
+  });
+  it('pega o primeiro candidato quando há vários', () => {
+    expect(parsePriceTag('de 19,90 por 12,90')).toBe('19,90');
+  });
+  it('cai pra inteiro quando não há decimais', () => {
+    expect(parsePriceTag('arroz 5 kg')).toBe('5');
+  });
+  it('null quando não há número', () => {
+    expect(parsePriceTag('promoção')).toBeNull();
   });
 });
 
