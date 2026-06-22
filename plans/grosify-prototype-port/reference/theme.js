@@ -81,7 +81,7 @@
 /* bottom nav */
 .botnav{display:flex;background:var(--app-surface);border-top:1px solid var(--app-border);}
 .botnav button{flex:1;border:0;background:transparent;display:flex;flex-direction:column;align-items:center;gap:3px;
-  padding:9px 0 calc(9px + env(safe-area-inset-bottom));color:var(--app-gray);font-family:var(--gro-font-ui);font-size:11px;font-weight:600;cursor:pointer;transition:.15s;}
+  padding:9px 0 calc(9px + env(safe-area-inset-bottom));color:var(--app-gray);font-family:var(--gro-font-ui);font-size:11px;font-weight:600;cursor:pointer;transition:color .24s var(--ease-out);}
 .botnav button[aria-current="true"]{color:var(--gro-green);}
 .botnav .ic{width:24px;height:24px;}
 

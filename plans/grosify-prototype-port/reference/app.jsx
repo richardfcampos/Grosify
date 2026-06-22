@@ -138,7 +138,10 @@ function BottomNav({ activeTab, navTo }) {
 function NavBtn({ n, active, onClick }) {
   return (
     <button aria-current={active} onClick={onClick}>
-      <Ico name={n.icon} size={23} className="ic" stroke={active ? 2.1 : 1.8} />
+      <span style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 46, height: 30, borderRadius: 99 }}>
+        <span style={{ position: 'absolute', inset: 0, borderRadius: 99, background: 'var(--gro-green)', opacity: active ? 0.15 : 0, transform: active ? 'scale(1)' : 'scale(.6)', transition: 'opacity .24s var(--ease-out), transform .24s var(--ease-out)' }} />
+        <Ico name={n.icon} size={22} className="ic" stroke={active ? 2.1 : 1.8} style={{ position: 'relative', transition: 'transform .24s var(--ease-out)', transform: active ? 'translateY(0)' : 'translateY(0)' }} />
+      </span>
       {n.label}
     </button>
   );
@@ -159,8 +162,9 @@ function Rail({ activeTab, navTo }) {
           <button key={n.id} onClick={() => navTo(n.id)} aria-current={active}
             style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 12px', borderRadius: 11, border: 0, cursor: 'pointer',
               font: 'inherit', fontWeight: 600, fontSize: 14.5, textAlign: 'left', width: '100%',
-              background: active ? 'var(--app-surface-2)' : isBuy ? 'var(--gro-green)' : 'transparent',
-              color: isBuy ? '#fff' : active ? 'var(--app-ink)' : 'var(--app-gray)' }}>
+              background: isBuy ? 'var(--gro-green)' : active ? 'color-mix(in srgb, var(--gro-green) 14%, transparent)' : 'transparent',
+              color: isBuy ? '#fff' : active ? 'var(--gro-green)' : 'var(--app-gray)',
+              transition: 'background .22s var(--ease-out), color .22s var(--ease-out)' }}>
             <Ico name={n.icon} size={20} stroke={active || isBuy ? 2.1 : 1.8} /> {n.label}
           </button>
         );

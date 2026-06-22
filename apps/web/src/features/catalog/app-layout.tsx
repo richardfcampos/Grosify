@@ -175,8 +175,13 @@ function RailLink({
         fontWeight: 600,
         fontSize: 14.5,
         textDecoration: 'none',
-        background: active ? 'var(--app-surface-2)' : buy ? 'var(--gro-green)' : 'transparent',
-        color: buy ? '#fff' : active ? 'var(--app-ink)' : 'var(--app-gray)',
+        background: buy
+          ? 'var(--gro-green)'
+          : active
+            ? 'color-mix(in srgb, var(--gro-green) 14%, transparent)'
+            : 'transparent',
+        color: buy ? '#fff' : active ? 'var(--gro-green)' : 'var(--app-gray)',
+        transition: 'background .22s var(--ease-out), color .22s var(--ease-out)',
       }}
     >
       <Icon name={icon} size={20} stroke={active || buy ? 2.1 : 1.8} /> {label}
@@ -190,10 +195,7 @@ function BottomNav({ isActive }: { isActive: (to: string) => boolean }) {
   return (
     <nav className="botnav fixed inset-x-0 bottom-0 mx-auto max-w-md lg:hidden">
       {NAV_LEFT.map((n) => (
-        <Link key={n.to} to={n.to} aria-current={isActive(n.to) ? 'page' : undefined}>
-          <Icon name={n.icon} size={23} className="ic" stroke={isActive(n.to) ? 2.1 : 1.8} />
-          {t(`nav.${n.key}`)}
-        </Link>
+        <BottomTab key={n.to} to={n.to} icon={n.icon} label={t(`nav.${n.key}`)} active={isActive(n.to)} />
       ))}
       <Link
         to="/listas"
@@ -220,12 +222,58 @@ function BottomNav({ isActive }: { isActive: (to: string) => boolean }) {
         </span>
       </Link>
       {NAV_RIGHT.map((n) => (
-        <Link key={n.to} to={n.to} aria-current={isActive(n.to) ? 'page' : undefined}>
-          <Icon name={n.icon} size={23} className="ic" stroke={isActive(n.to) ? 2.1 : 1.8} />
-          {t(`nav.${n.key}`)}
-        </Link>
+        <BottomTab key={n.to} to={n.to} icon={n.icon} label={t(`nav.${n.key}`)} active={isActive(n.to)} />
       ))}
     </nav>
+  );
+}
+
+/** Aba da bottom nav com pílula verde animada atrás do ícone quando ativa. */
+function BottomTab({
+  to,
+  icon,
+  label,
+  active,
+}: {
+  to: string;
+  icon: IconName;
+  label: string;
+  active: boolean;
+}) {
+  return (
+    <Link to={to} aria-current={active ? 'page' : undefined}>
+      <span
+        style={{
+          position: 'relative',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: 46,
+          height: 30,
+          borderRadius: 99,
+        }}
+      >
+        <span
+          style={{
+            position: 'absolute',
+            inset: 0,
+            borderRadius: 99,
+            background: 'var(--gro-green)',
+            opacity: active ? 0.15 : 0,
+            transform: active ? 'scale(1)' : 'scale(.6)',
+            transition: 'opacity .24s var(--ease-out), transform .24s var(--ease-out)',
+          }}
+        />
+        <Icon
+          name={icon}
+          size={22}
+          className="ic"
+          stroke={active ? 2.1 : 1.8}
+          style={{ position: 'relative' }}
+        />
+      </span>
+      {label}
+    </Link>
   );
 }
 
