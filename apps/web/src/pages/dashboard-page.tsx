@@ -9,8 +9,22 @@ import { Link, Navigate, useNavigate } from '@tanstack/react-router';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { db, type LocalList, type LocalSession, type LocalSessionItem } from '../db/dexie.js';
-import { Badge, Button, Icon, MoneyValue, SectionTitle, useMoneyParts } from '../features/ui/index.js';
+import {
+  db,
+  type LocalItem,
+  type LocalList,
+  type LocalSession,
+  type LocalSessionItem,
+} from '../db/dexie.js';
+import {
+  Badge,
+  Button,
+  Icon,
+  MoneyValue,
+  PriceTag,
+  SectionTitle,
+  useMoneyParts,
+} from '../features/ui/index.js';
 import { useSession } from '../lib/auth-client.js';
 import { useFormatMoney } from '../lib/use-currency.js';
 import { useMembership } from '../lib/use-membership.js';
@@ -60,7 +74,13 @@ export function DashboardPage() {
     [],
     [] as LocalSessionItem[],
   );
+  const items = useLiveQuery(
+    () => db.items.filter((i) => i.deletedAt === null).toArray(),
+    [],
+    [] as LocalItem[],
+  );
 
+  const itemName = useMemo(() => new Map(items.map((i) => [i.id, i.name])), [items]);
   const onHand = useMemo(() => new Map(inventory.map((i) => [i.itemId, i.qtyOnHand])), [inventory]);
   const priceOf = useMemo(() => {
     const m = new Map<string, number | null>();
@@ -89,8 +109,10 @@ export function DashboardPage() {
     [lists, entries, onHand, priceOf],
   );
 
-  // economia do mês: soma de (estimado − pago) × qty nas linhas concluídas das compras deste mês
-  const savedThisMonth = useMemo(() => {
+  // resumo do mês: economia (estimado − pago), quantas compras vieram abaixo do
+  // estimado e o item de melhor negócio (maior economia numa linha). Tudo das
+  // sessões concluídas deste mês.
+  const monthSummary = useMemo(() => {
     const now = new Date();
     const ym = `${now.getFullYear()}-${now.getMonth()}`;
     const monthSessions = new Set(
@@ -103,14 +125,26 @@ export function DashboardPage() {
         .map((s) => s.id),
     );
     let saved = 0;
+    let bestDeal = { name: '', saved: 0 };
+    const perSession = new Map<string, { est: number; act: number }>();
     for (const si of sessionItems) {
       if (!monthSessions.has(si.sessionId)) continue;
       if (si.estimatedUnitPriceCents == null || si.actualUnitPriceCents == null || si.actualQty == null)
         continue;
-      saved += Math.round((si.estimatedUnitPriceCents - si.actualUnitPriceCents) * Number(si.actualQty));
+      const q = Number(si.actualQty);
+      const lineSaved = Math.round((si.estimatedUnitPriceCents - si.actualUnitPriceCents) * q);
+      saved += lineSaved;
+      const agg = perSession.get(si.sessionId) ?? { est: 0, act: 0 };
+      agg.est += si.estimatedUnitPriceCents * q;
+      agg.act += si.actualUnitPriceCents * q;
+      perSession.set(si.sessionId, agg);
+      if (lineSaved > bestDeal.saved) bestDeal = { name: itemName.get(si.itemId) ?? '', saved: lineSaved };
     }
-    return saved;
-  }, [sessions, sessionItems]);
+    let under = 0;
+    for (const v of perSession.values()) if (v.act < v.est) under++;
+    return { saved, under, total: perSession.size, bestDeal };
+  }, [sessions, sessionItems, itemName]);
+  const savedThisMonth = monthSummary.saved;
 
   const monthLabel = new Date().toLocaleDateString(i18n.resolvedLanguage, { month: 'long' });
   // lista alvo do "Iniciar compra": a do dia com pendência, senão a primeira pendente, senão a primeira
@@ -143,6 +177,20 @@ export function DashboardPage() {
           <div className="mt-2">
             <MoneyValue cents={savedThisMonth} size="lg" tone="positive" {...money} />
           </div>
+          {monthSummary.total > 0 && (
+            <div className="mt-[18px] flex flex-wrap gap-4">
+              <Stat
+                label={t('restock.belowEstimate')}
+                value={t('restock.belowEstimateValue', {
+                  under: monthSummary.under,
+                  total: monthSummary.total,
+                })}
+              />
+              {monthSummary.bestDeal.name && (
+                <Stat label={t('restock.bestPrice')} value={monthSummary.bestDeal.name} tag />
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -210,5 +258,21 @@ export function DashboardPage() {
         </div>
       )}
     </main>
+  );
+}
+
+/** Mini-estatística do hero: rótulo + valor. `tag` rende o valor como etiqueta amarela (oferta). */
+function Stat({ label, value, tag }: { label: string; value: string; tag?: boolean }) {
+  return (
+    <div>
+      <div className="kicker">{label}</div>
+      {tag ? (
+        <div className="mt-1.5">
+          <PriceTag>{value}</PriceTag>
+        </div>
+      ) : (
+        <div className="mt-1 text-[15px] font-semibold">{value}</div>
+      )}
+    </div>
   );
 }

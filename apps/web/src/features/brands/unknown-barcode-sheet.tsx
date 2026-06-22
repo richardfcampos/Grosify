@@ -6,6 +6,7 @@ import { db, type LocalItem } from '../../db/dexie.js';
 import { addBarcode, createItem } from '../../db/repositories.js';
 import { lookupOpenFoodFacts } from '../../lib/openfoodfacts.js';
 import { BrandPicker } from './brand-picker.js';
+import { Button } from '../ui/index.js';
 
 interface Props {
   code: string;
@@ -14,8 +15,7 @@ interface Props {
   onClose: () => void;
 }
 
-const input =
-  'min-h-12 w-full rounded-xl border border-zinc-300 px-4 py-3 text-base outline-none focus:border-green-600';
+const input = 'gro-field';
 
 /**
  * Código de barras não cadastrado: escolher item existente ou criar um na hora,
@@ -89,48 +89,49 @@ export function UnknownBarcodeSheet({ code, onResolved, onClose }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end bg-black/50" onClick={onClose}>
+    <div className="gro-sheet-backdrop" onClick={onClose}>
       <div
         onClick={(e) => e.stopPropagation()}
-        className="mx-auto flex max-h-[88dvh] w-full max-w-md flex-col gap-3 overflow-y-auto rounded-t-3xl bg-white p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]"
+        className="gro-sheet-panel flex flex-col gap-3"
       >
+        <div className="gro-sheet-grip" />
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-zinc-900">{t('barcode.unknownTitle')}</h2>
-          <button onClick={onClose} className="text-sm text-zinc-500">
+          <h2 className="text-lg font-bold">{t('barcode.unknownTitle')}</h2>
+          <button onClick={onClose} className="muted text-sm">
             {t('common.cancel')}
           </button>
         </div>
-        <p className="font-mono text-sm text-zinc-500">{code}</p>
+        <p className="mono muted text-sm">{code}</p>
 
         {itemId ? (
           <>
-            <div className="flex items-center justify-between rounded-xl bg-green-50 px-4 py-3">
-              <span className="font-medium text-green-800">{selectedName}</span>
+            <div
+              className="flex items-center justify-between rounded-xl px-4 py-3"
+              style={{ background: 'var(--app-surface-2)' }}
+            >
+              <span className="font-medium">{selectedName}</span>
               <button
                 onClick={() => {
                   setItemId(null);
                   setBrandId(null);
                 }}
-                className="text-sm text-green-700 underline"
+                className="text-sm underline"
+                style={{ color: 'var(--gro-green)' }}
               >
                 {t('barcode.change')}
               </button>
             </div>
             <label className="flex flex-col gap-1">
-              <span className="text-sm font-medium text-zinc-600">{t('brands.label')}</span>
+              <span className="kicker">{t('brands.label')}</span>
               <BrandPicker itemId={itemId} value={brandId} onChange={setBrandId} />
             </label>
-            <button
-              onClick={save}
-              disabled={busy}
-              className="min-h-12 rounded-xl bg-green-600 px-4 py-3 font-semibold text-white disabled:opacity-50"
-            >
+            <Button variant="primary" size="lg" fullWidth onClick={save} disabled={busy}>
               {busy ? t('common.saving') : t('barcode.saveCode')}
-            </button>
+            </Button>
           </>
         ) : (
           <>
-            <span className="text-sm font-medium text-zinc-600">{t('barcode.chooseItem')}</span>
+            <span className="kicker">{t('barcode.chooseItem')}</span>
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -143,7 +144,8 @@ export function UnknownBarcodeSheet({ code, onResolved, onClose }: Props) {
                   <li key={i.id}>
                     <button
                       onClick={() => setItemId(i.id)}
-                      className="min-h-11 w-full rounded-xl bg-zinc-100 px-4 text-left text-sm font-medium text-zinc-800 active:bg-zinc-200"
+                      className="tap min-h-11 w-full rounded-xl px-4 text-left text-sm font-medium"
+                      style={{ background: 'var(--app-surface-2)' }}
                     >
                       {i.name}
                     </button>
@@ -151,13 +153,15 @@ export function UnknownBarcodeSheet({ code, onResolved, onClose }: Props) {
                 ))}
               </ul>
             )}
-            <div className="mt-1 border-t border-zinc-200 pt-3">
-              <span className="text-sm font-medium text-zinc-600">{t('barcode.orCreate')}</span>
+            <div className="mt-1 pt-3" style={{ borderTop: '1px solid var(--app-border)' }}>
+              <span className="kicker">{t('barcode.orCreate')}</span>
               {offState === 'looking' && (
-                <p className="mt-1 text-xs text-zinc-400">{t('barcode.lookingUp')}</p>
+                <p className="muted mt-1 text-xs">{t('barcode.lookingUp')}</p>
               )}
               {offState === 'found' && (
-                <p className="mt-1 text-xs text-green-600">{t('barcode.offFound')}</p>
+                <p className="mt-1 text-xs" style={{ color: 'var(--gro-green)' }}>
+                  {t('barcode.offFound')}
+                </p>
               )}
               <div className="mt-2 flex flex-col gap-2">
                 <input
@@ -179,13 +183,15 @@ export function UnknownBarcodeSheet({ code, onResolved, onClose }: Props) {
                       </option>
                     ))}
                   </select>
-                  <button
+                  <Button
+                    variant="primary"
+                    size="md"
                     onClick={createNew}
                     disabled={busy || !newName.trim()}
-                    className="shrink-0 rounded-xl bg-green-600 px-4 font-semibold text-white disabled:opacity-40"
+                    className="shrink-0"
                   >
                     {t('barcode.createItem')}
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>

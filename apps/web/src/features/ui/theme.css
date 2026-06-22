@@ -186,6 +186,12 @@
   background: var(--app-surface);
   border-top: 1px solid var(--app-border);
 }
+/* ≥lg o rail lateral substitui a nav inferior (vence a ordem de fonte do Tailwind) */
+@media (min-width: 1024px) {
+  .botnav {
+    display: none;
+  }
+}
 .botnav button,
 .botnav a {
   flex: 1;

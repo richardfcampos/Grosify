@@ -62,6 +62,9 @@ export default {
       language: 'Language',
     },
     restock: {
+      belowEstimate: 'Below estimate',
+      belowEstimateValue: '{{under}} of {{total}} lists',
+      bestPrice: 'Best price paid',
       noLists: 'Create a recurring list to generate restock.',
       missingCount: '{{count}} items missing',
       savedIn: 'You saved in {{month}}',
@@ -84,6 +87,11 @@ export default {
       lists: 'Lists',
       items: 'Items',
       stores: 'Stores',
+      prices: 'Prices',
+      stock: 'Stock',
+      settings: 'Settings',
+      planPro: 'Pro plan',
+      planFree: 'Free plan',
     },
     lists: {
       recommended: 'Recommended',

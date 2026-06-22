@@ -13,6 +13,7 @@ import { checkSessionItem } from '../../db/repositories.js';
 import { BrandPicker } from '../brands/brand-picker.js';
 import { PriceScanModal } from '../scanner/price-scan-modal.js';
 import { StarRating } from '../prices/star-rating.js';
+import { Button } from '../ui/index.js';
 import { useFormatMoney, useHouseholdCurrency } from '../../lib/use-currency.js';
 
 interface Props {
@@ -102,24 +103,25 @@ export function CheckItemSheet({
     }
   }
 
-  const inputClass =
-    'min-h-12 w-full rounded-xl border border-stone-700 bg-stone-900 px-4 py-3 text-base text-stone-50 outline-none focus:border-yellow-400';
-
   return (
     <>
       {priceScan && (
         <PriceScanModal onDetect={(p) => setValue(p)} onClose={() => setPriceScan(false)} />
       )}
-      <div className="fixed inset-0 z-50 flex items-end bg-black/60" onClick={onClose}>
+      <div className="gro-sheet-backdrop" onClick={onClose}>
       <form
         onClick={(e) => e.stopPropagation()}
         onSubmit={onSubmit}
-        className="mx-auto flex w-full max-w-md flex-col gap-3 rounded-t-3xl bg-stone-950 p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-stone-50"
+        className="gro-sheet-panel flex flex-col gap-3"
       >
+        <div className="gro-sheet-grip" />
         <h2 className="text-lg font-bold">{itemName}</h2>
 
         {cheapest && cheapest.storeId !== storeId && (
-          <div className="rounded-xl bg-yellow-400 px-4 py-2.5 text-sm font-semibold text-stone-900">
+          <div
+            className="rounded-xl px-4 py-2.5 text-sm font-semibold"
+            style={{ background: 'var(--gro-yellow)', color: '#1c1917' }}
+          >
             {t('shopping.cheaperElsewhere', { store: storeName(cheapest.storeId) })}: {fmt(cheapest.priceCents)}
             {brandName(cheapest.brandId) ? ` · ${brandName(cheapest.brandId)}` : ''}{' '}
             <span className="font-normal">({fmtDate(cheapest.recordedAt)})</span>
@@ -127,10 +129,10 @@ export function CheckItemSheet({
         )}
 
         {stores.length === 0 ? (
-          <p className="text-sm text-amber-400">{t('prices.noStores')}</p>
+          <p className="text-sm" style={{ color: 'var(--gro-yellow)' }}>{t('prices.noStores')}</p>
         ) : (
           <>
-            <select value={storeId} onChange={(e) => setStoreId(e.target.value)} required className={inputClass}>
+            <select value={storeId} onChange={(e) => setStoreId(e.target.value)} required className="gro-field">
               <option value="" disabled>
                 {t('prices.selectStore')}
               </option>
@@ -141,52 +143,59 @@ export function CheckItemSheet({
               ))}
             </select>
             <label className="flex flex-col gap-1">
-              <span className="text-xs text-stone-400">{t('brands.label')}</span>
-              <BrandPicker itemId={sessionItem.itemId} value={brandId} onChange={setBrandId} dark />
+              <span className="kicker">{t('brands.label')}</span>
+              <BrandPicker itemId={sessionItem.itemId} value={brandId} onChange={setBrandId} />
             </label>
             <div className="flex gap-2">
               <label className="flex w-24 flex-col gap-1">
-                <span className="text-xs text-stone-400">{t('shopping.actualQty')}</span>
+                <span className="kicker">{t('shopping.actualQty')}</span>
                 <input
                   value={qty}
                   onChange={(e) => setQty(e.target.value.replace(/[^\d.,]/g, ''))}
                   inputMode="decimal"
-                  className={inputClass}
+                  className="gro-field gro-field--mono"
                 />
               </label>
               <label className="flex flex-1 flex-col gap-1">
-                <span className="text-xs text-stone-400">{t('shopping.actualPrice')}</span>
+                <span className="kicker">{t('shopping.actualPrice')}</span>
                 <div className="flex gap-2">
                   <input
                     value={value}
                     onChange={(e) => setValue(e.target.value)}
                     inputMode="decimal"
                     required
-                    className={inputClass}
+                    className="gro-field gro-field--mono"
                   />
                   <button
                     type="button"
                     onClick={() => setPriceScan(true)}
                     aria-label={t('priceScan.scan')}
-                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-stone-800 text-xl"
+                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-xl"
+                    style={{ background: 'var(--app-surface-2)' }}
                   >
                     📷
                   </button>
                 </div>
               </label>
             </div>
-            {warn && <p className="text-sm font-medium text-red-400">▲ {warn}</p>}
+            {warn && (
+              <p className="text-sm font-medium" style={{ color: 'var(--gro-red)' }}>
+                ▲ {warn}
+              </p>
+            )}
             <div className="flex items-center justify-between">
-              <span className="text-xs text-stone-400">{t('prices.rating')}</span>
+              <span className="kicker">{t('prices.rating')}</span>
               <StarRating value={rating} onChange={setRating} dark />
             </div>
-            <button
+            <Button
+              variant="primary"
+              size="lg"
+              fullWidth
               type="submit"
               disabled={busy || !storeId || !value}
-              className="min-h-12 rounded-xl bg-yellow-400 px-4 py-3 font-bold text-stone-900 disabled:opacity-40"
             >
               {busy ? t('common.saving') : t('shopping.confirm')}
-            </button>
+            </Button>
           </>
         )}
       </form>

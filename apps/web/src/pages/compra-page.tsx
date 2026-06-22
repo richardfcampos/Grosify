@@ -446,28 +446,30 @@ function QuickAddSheet({
   }, [items, q]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end bg-black/60" onClick={onClose}>
+    <div className="gro-sheet-backdrop" onClick={onClose}>
       <div
         onClick={(e) => e.stopPropagation()}
-        className="mx-auto flex max-h-[80dvh] w-full max-w-md flex-col gap-2 overflow-y-auto rounded-t-3xl bg-stone-950 p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-stone-50"
+        className="gro-sheet-panel flex flex-col gap-2"
       >
+        <div className="gro-sheet-grip" />
         <h2 className="text-lg font-bold">{t('shopping.quickAdd')}</h2>
         <input
           autoFocus
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder={t('barcode.searchItem')}
-          className="min-h-12 rounded-xl border border-stone-700 bg-stone-900 px-4 py-3 text-base outline-none focus:border-yellow-400"
+          className="gro-field"
         />
         <ul className="flex flex-col gap-1">
           {filtered.map((i) => (
             <li key={i.id}>
               <button
                 onClick={() => onPick(i.id)}
-                className="flex min-h-11 w-full items-center justify-between rounded-xl bg-stone-900 px-4 text-left text-sm font-medium active:bg-stone-800"
+                className="tap flex min-h-11 w-full items-center justify-between rounded-xl px-4 text-left text-sm font-medium"
+                style={{ background: 'var(--app-surface-2)' }}
               >
                 <span className="truncate">{i.name}</span>
-                {inSession.has(i.id) && <span className="text-xs text-stone-400">✓</span>}
+                {inSession.has(i.id) && <span className="muted text-xs">✓</span>}
               </button>
             </li>
           ))}

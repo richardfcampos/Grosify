@@ -19,11 +19,15 @@ import { Onboarding } from '../onboarding/onboarding.js';
 import { Loading } from '../../pages/household-pages.js';
 import { Navigate } from '@tanstack/react-router';
 
-const NAV = [
+/** IA do design: Início · Preços · (Comprar) · Estoque · Ajustes.
+ *  Preços aponta pra /itens até a tela dedicada /precos (fase C). */
+const NAV_LEFT = [
   { to: '/', key: 'home', icon: 'home' },
-  { to: '/listas', key: 'lists', icon: 'list' },
-  { to: '/itens', key: 'items', icon: 'box' },
-  { to: '/lojas', key: 'stores', icon: 'store' },
+  { to: '/itens', key: 'prices', icon: 'tag' },
+] as const satisfies readonly { to: string; key: string; icon: IconName }[];
+const NAV_RIGHT = [
+  { to: '/inventario', key: 'stock', icon: 'box' },
+  { to: '/ajustes', key: 'settings', icon: 'gear' },
 ] as const satisfies readonly { to: string; key: string; icon: IconName }[];
 
 /** Casca das telas autenticadas: guarda sessão+casa, faz pull do catálogo, nav inferior. */
@@ -76,65 +80,152 @@ export function AppLayout() {
     );
   }
 
-  // Modo compra é fullscreen — sem nav inferior.
-  const fullscreen = location.pathname.startsWith('/compra');
+  // Modo compra é fullscreen — sem chrome (rail/nav). A própria tela é full-bleed.
+  if (location.pathname.startsWith('/compra')) return <Outlet />;
+
+  const isActive = (to: string) =>
+    to === '/' ? location.pathname === '/' : location.pathname.startsWith(to);
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col">
-      <div className={fullscreen ? 'flex-1' : 'flex-1 pb-20'}>
-        <Outlet />
+    <div className="flex min-h-dvh w-full">
+      <Rail name={membership.data.name} plan={membership.data.plan} isActive={isActive} />
+      <div className="relative flex min-h-dvh flex-1 flex-col">
+        <div className="mx-auto w-full max-w-md flex-1 pb-24 lg:max-w-[760px] lg:pb-12">
+          <Outlet />
+        </div>
+        <BottomNav isActive={isActive} />
       </div>
-      <nav className={`botnav fixed inset-x-0 bottom-0 mx-auto max-w-md ${fullscreen ? 'hidden' : ''}`}>
-        {NAV.slice(0, 2).map((n) => {
-          const active = n.to === '/' ? location.pathname === '/' : location.pathname.startsWith(n.to);
-          return (
-            <Link key={n.to} to={n.to} aria-current={active}>
-              <Icon name={n.icon} size={23} className="ic" stroke={active ? 2.1 : 1.8} />
-              {t(`nav.${n.key}`)}
-            </Link>
-          );
-        })}
-        <Link
-          to="/listas"
-          aria-label={t('nav.shop')}
-          style={{ flex: 'none', justifyContent: 'flex-start', paddingTop: 4, color: 'var(--gro-green)' }}
-        >
-          <span
-            style={{
-              width: 50,
-              height: 50,
-              borderRadius: 16,
-              background: 'var(--gro-green)',
-              color: '#fff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 6px 16px -6px var(--gro-green)',
-            }}
-          >
-            <Icon name="cart" size={24} stroke={2} />
-          </span>
-          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--gro-green)', marginTop: 2 }}>
-            {t('nav.shop')}
-          </span>
-        </Link>
-        {NAV.slice(2).map((n) => {
-          const active = location.pathname.startsWith(n.to);
-          return (
-            <Link key={n.to} to={n.to} aria-current={active}>
-              <Icon name={n.icon} size={23} className="ic" stroke={active ? 2.1 : 1.8} />
-              {t(`nav.${n.key}`)}
-            </Link>
-          );
-        })}
-      </nav>
-      <SyncChip
-        online={online}
-        state={syncState}
-        pending={pending}
-        showSynced={showSynced}
-      />
+      <SyncChip online={online} state={syncState} pending={pending} showSynced={showSynced} />
     </div>
+  );
+}
+
+/** Rail lateral do desktop (≥lg): logo, navegação e rodapé com casa + plano. */
+function Rail({
+  name,
+  plan,
+  isActive,
+}: {
+  name: string;
+  plan: 'free' | 'pro';
+  isActive: (to: string) => boolean;
+}) {
+  const { t } = useTranslation();
+  return (
+    <aside
+      className="sticky top-0 hidden h-dvh w-[220px] flex-none flex-col gap-1 lg:flex"
+      style={{
+        borderRight: '1px solid var(--app-border)',
+        background: 'var(--app-surface)',
+        padding: '24px 14px',
+      }}
+    >
+      <div className="flex items-center gap-2.5" style={{ padding: '4px 10px 22px' }}>
+        <span
+          className="flex flex-none items-center justify-center"
+          style={{
+            width: 30,
+            height: 30,
+            borderRadius: 9,
+            background: 'var(--gro-green)',
+            color: '#fff',
+            fontWeight: 800,
+            fontFamily: 'var(--gro-font-money)',
+            fontSize: 18,
+          }}
+        >
+          G
+        </span>
+        <span style={{ fontWeight: 800, fontSize: 18, letterSpacing: '-.02em' }}>Grosify</span>
+      </div>
+      <RailLink to="/" icon="home" label={t('nav.home')} active={isActive('/')} />
+      <RailLink to="/itens" icon="tag" label={t('nav.prices')} active={isActive('/itens')} />
+      <RailLink to="/listas" icon="cart" label={t('nav.shop')} buy />
+      <RailLink to="/inventario" icon="box" label={t('nav.stock')} active={isActive('/inventario')} />
+      <RailLink to="/ajustes" icon="gear" label={t('nav.settings')} active={isActive('/ajustes')} />
+      <div className="flex-1" />
+      <div className="muted" style={{ fontSize: 11, padding: '0 12px' }}>
+        {name} · {plan === 'pro' ? t('nav.planPro') : t('nav.planFree')}
+      </div>
+    </aside>
+  );
+}
+
+function RailLink({
+  to,
+  icon,
+  label,
+  active,
+  buy,
+}: {
+  to: string;
+  icon: IconName;
+  label: string;
+  active?: boolean;
+  buy?: boolean;
+}) {
+  return (
+    <Link
+      to={to}
+      aria-current={active ? 'page' : undefined}
+      className="flex items-center gap-3"
+      style={{
+        padding: '11px 12px',
+        borderRadius: 11,
+        fontWeight: 600,
+        fontSize: 14.5,
+        textDecoration: 'none',
+        background: active ? 'var(--app-surface-2)' : buy ? 'var(--gro-green)' : 'transparent',
+        color: buy ? '#fff' : active ? 'var(--app-ink)' : 'var(--app-gray)',
+      }}
+    >
+      <Icon name={icon} size={20} stroke={active || buy ? 2.1 : 1.8} /> {label}
+    </Link>
+  );
+}
+
+/** Nav inferior do mobile (<lg): Início · Preços · Comprar (verde) · Estoque · Ajustes. */
+function BottomNav({ isActive }: { isActive: (to: string) => boolean }) {
+  const { t } = useTranslation();
+  return (
+    <nav className="botnav fixed inset-x-0 bottom-0 mx-auto max-w-md lg:hidden">
+      {NAV_LEFT.map((n) => (
+        <Link key={n.to} to={n.to} aria-current={isActive(n.to) ? 'page' : undefined}>
+          <Icon name={n.icon} size={23} className="ic" stroke={isActive(n.to) ? 2.1 : 1.8} />
+          {t(`nav.${n.key}`)}
+        </Link>
+      ))}
+      <Link
+        to="/listas"
+        aria-label={t('nav.shop')}
+        style={{ flex: 'none', justifyContent: 'flex-start', paddingTop: 4, color: 'var(--gro-green)' }}
+      >
+        <span
+          style={{
+            width: 50,
+            height: 50,
+            borderRadius: 16,
+            background: 'var(--gro-green)',
+            color: '#fff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 6px 16px -6px var(--gro-green)',
+          }}
+        >
+          <Icon name="cart" size={24} stroke={2} />
+        </span>
+        <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--gro-green)', marginTop: 2 }}>
+          {t('nav.shop')}
+        </span>
+      </Link>
+      {NAV_RIGHT.map((n) => (
+        <Link key={n.to} to={n.to} aria-current={isActive(n.to) ? 'page' : undefined}>
+          <Icon name={n.icon} size={23} className="ic" stroke={isActive(n.to) ? 2.1 : 1.8} />
+          {t(`nav.${n.key}`)}
+        </Link>
+      ))}
+    </nav>
   );
 }
 

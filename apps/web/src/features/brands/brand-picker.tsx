@@ -3,13 +3,12 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { db } from '../../db/dexie.js';
 import { createBrand } from '../../db/repositories.js';
+import { Button } from '../ui/index.js';
 
 interface Props {
   itemId: string;
   value: string | null;
   onChange: (brandId: string | null) => void;
-  /** Tema escuro (folha do modo compra) vs claro (catálogo). */
-  dark?: boolean;
 }
 
 const NEW = '__new__';
@@ -17,8 +16,9 @@ const NEW = '__new__';
 /**
  * Seletor de marca de um item: dropdown com "sem marca", marcas existentes e
  * "+ nova marca" (cria na hora). Reutilizado no modo compra e no registro de preço.
+ * Usa tokens (.gro-field) — adapta a claro/escuro pelo cascade do contexto.
  */
-export function BrandPicker({ itemId, value, onChange, dark }: Props) {
+export function BrandPicker({ itemId, value, onChange }: Props) {
   const { t } = useTranslation();
   const brands = useLiveQuery(
     () => db.brands.where('itemId').equals(itemId).filter((b) => b.deletedAt === null).toArray(),
@@ -43,10 +43,6 @@ export function BrandPicker({ itemId, value, onChange, dark }: Props) {
     }
   }, [brands, value, onChange]);
 
-  const base = dark
-    ? 'min-h-12 w-full rounded-xl border border-stone-700 bg-stone-900 px-4 py-3 text-base text-stone-50 outline-none focus:border-yellow-400'
-    : 'min-h-12 w-full rounded-xl border border-zinc-300 px-4 py-3 text-base';
-
   async function confirmNew() {
     const n = name.trim();
     if (!n) {
@@ -68,15 +64,11 @@ export function BrandPicker({ itemId, value, onChange, dark }: Props) {
           onChange={(e) => setName(e.target.value)}
           placeholder={t('brands.newPlaceholder')}
           maxLength={80}
-          className={base}
+          className="gro-field"
         />
-        <button
-          type="button"
-          onClick={confirmNew}
-          className="shrink-0 rounded-xl bg-green-600 px-4 font-semibold text-white"
-        >
+        <Button variant="primary" size="md" type="button" onClick={confirmNew} className="shrink-0">
           {t('common.add')}
-        </button>
+        </Button>
       </div>
     );
   }
@@ -88,7 +80,7 @@ export function BrandPicker({ itemId, value, onChange, dark }: Props) {
         if (e.target.value === NEW) setCreating(true);
         else onChange(e.target.value || null);
       }}
-      className={base}
+      className="gro-field"
     >
       <option value="">{t('brands.none')}</option>
       {brands.map((b) => (

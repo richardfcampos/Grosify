@@ -62,6 +62,9 @@ export default {
       language: 'Langue',
     },
     restock: {
+      belowEstimate: 'Sous l’estimation',
+      belowEstimateValue: '{{under}} sur {{total}} listes',
+      bestPrice: 'Meilleur prix payé',
       noLists: 'Créez une liste récurrente pour générer le réassort.',
       missingCount: '{{count}} articles manquants',
       savedIn: 'Économisé en {{month}}',
@@ -84,6 +87,11 @@ export default {
       lists: 'Listes',
       items: 'Articles',
       stores: 'Magasins',
+      prices: 'Prix',
+      stock: 'Stock',
+      settings: 'Réglages',
+      planPro: 'Offre Pro',
+      planFree: 'Offre Free',
     },
     lists: {
       recommended: 'Recommandé',
