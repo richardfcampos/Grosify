@@ -10,4 +10,5 @@ export {
 } from './theme-provider.js';
 export { SectionTitle } from './section-title.js';
 export { Empty } from './empty.js';
+export { Sparkline } from './sparkline.js';
 export { useMoneyParts } from './money-parts.js';

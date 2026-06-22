@@ -7,6 +7,7 @@ import { db, type LocalItem } from '../db/dexie.js';
 import { adjustInventory, logConsumption, resolveBarcode, setInventory } from '../db/repositories.js';
 import { ScannerModal } from '../features/scanner/scanner-modal.js';
 import { UnknownBarcodeSheet } from '../features/brands/unknown-barcode-sheet.js';
+import { Badge, Icon, SectionTitle } from '../features/ui/index.js';
 
 type StockStatus = 'ok' | 'low' | 'out';
 type Filter = 'all' | 'low' | 'out';
@@ -74,33 +75,27 @@ export function InventarioPage() {
   const FILTERS: Filter[] = ['all', 'low', 'out'];
 
   return (
-    <main className="flex flex-col gap-4 px-5 py-6 pb-28">
-      <header className="flex items-center justify-between">
-        <button onClick={() => navigate({ to: '/' })} className="text-sm text-zinc-500">
-          ← {t('common.back')}
-        </button>
-      </header>
-      <h1 className="text-2xl font-bold text-zinc-900">{t('lists.inventoryTitle')}</h1>
-      <p className="text-sm text-zinc-500">{t('lists.inventoryHint')}</p>
+    <main className="screen-in flex flex-col gap-4 px-[18px] py-6 pb-28">
+      <button
+        onClick={() => navigate({ to: '/' })}
+        className="muted flex items-center gap-1 text-sm font-semibold"
+      >
+        <Icon name="back" size={17} /> {t('common.back')}
+      </button>
+      <SectionTitle title={t('lists.inventoryTitle')} sub={t('lists.inventoryHint')} />
 
-      <div className="flex gap-2">
+      <div className="seg self-start">
         {FILTERS.map((f) => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`rounded-full px-3 py-1 text-sm font-medium ${
-              filter === f ? 'bg-green-600 text-white' : 'bg-zinc-100 text-zinc-600'
-            }`}
-          >
+          <button key={f} aria-pressed={filter === f} onClick={() => setFilter(f)}>
             {t(`inventory.filter.${f}`)}
           </button>
         ))}
       </div>
 
       {rows.length === 0 ? (
-        <p className="mt-6 text-center text-zinc-500">{t('catalog.noItems')}</p>
+        <p className="muted mt-6 text-center">{t('catalog.noItems')}</p>
       ) : (
-        <ul className="flex flex-col gap-2">
+        <div className="card row-sep" style={{ padding: 0, overflow: 'hidden' }}>
           {rows.map(({ item, onHand, status }) => (
             <InventoryRow
               key={item.id}
@@ -111,15 +106,16 @@ export function InventarioPage() {
               onOpen={() => setActive(item)}
             />
           ))}
-        </ul>
+        </div>
       )}
 
       <button
         onClick={() => setScannerOpen(true)}
-        className="fixed bottom-24 left-1/2 flex h-14 w-14 -translate-x-1/2 items-center justify-center rounded-full bg-green-600 text-2xl text-white shadow-lg active:bg-green-700"
+        className="fab fixed bottom-24 left-1/2 -translate-x-1/2"
+        style={{ position: 'fixed' }}
         aria-label={t('catalog.scan')}
       >
-        ▦
+        <Icon name="scan" size={26} stroke={2} />
       </button>
 
       {scannerOpen && <ScannerModal onDetect={onScanned} onClose={() => setScannerOpen(false)} />}
@@ -145,12 +141,6 @@ export function InventarioPage() {
   );
 }
 
-const STATUS_STYLE: Record<StockStatus, string> = {
-  ok: 'border-zinc-200',
-  low: 'border-amber-400 bg-amber-50',
-  out: 'border-red-400 bg-red-50',
-};
-
 function InventoryRow({
   item,
   onHand,
@@ -165,31 +155,24 @@ function InventoryRow({
   onOpen: () => void;
 }) {
   const { t } = useTranslation();
+  const need = recommended != null ? neededQty(recommended, onHand) : 0;
   return (
-    <li>
-      <button
-        onClick={onOpen}
-        className={`flex w-full items-center gap-3 rounded-2xl border p-3 text-left ${STATUS_STYLE[status]}`}
-      >
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-medium text-zinc-900">{item.name}</p>
-          {recommended != null && (
-            <p className="text-sm text-green-700">
-              {t('lists.needed')}: {neededQty(recommended, onHand)} {t(`catalog.units.${item.unit}`)}
-            </p>
-          )}
-          {item.minStock != null && status !== 'ok' && (
-            <p className="text-xs text-amber-700">
-              {t(`inventory.status.${status}`)} · {t('catalog.minStock')} {item.minStock}
-            </p>
-          )}
-        </div>
-        <div className="text-right">
-          <p className="font-mono text-lg text-zinc-900">{onHand}</p>
-          <p className="text-xs text-zinc-400">{t(`catalog.units.${item.unit}`)}</p>
-        </div>
-      </button>
-    </li>
+    <button onClick={onOpen} className="tap flex w-full items-center gap-3 px-4 py-3 text-left">
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-semibold">{item.name}</p>
+        <p className="muted mt-0.5 text-[12.5px]">
+          {item.category ?? t('catalog.noCategory')}
+          {need > 0 && ` · ${t('restock.toBuy')} ${need} ${t(`catalog.units.${item.unit}`)}`}
+        </p>
+      </div>
+      {status !== 'ok' && <Badge tone="neutral">{t(`inventory.status.${status}`)}</Badge>}
+      <div className="flex items-center gap-2">
+        <span className="kicker">{t('lists.onHand')}</span>
+        <span style={{ fontFamily: 'var(--gro-font-money)', fontSize: 22, minWidth: 22, textAlign: 'center' }}>
+          {onHand}
+        </span>
+      </div>
+    </button>
   );
 }
 

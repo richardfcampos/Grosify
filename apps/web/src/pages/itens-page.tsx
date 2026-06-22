@@ -1,9 +1,12 @@
+import type { PriceRecord } from '@grosify/shared';
 import { Link } from '@tanstack/react-router';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { db, type LocalItem } from '../db/dexie.js';
 import { seedCommonItems } from '../features/catalog/seed-items.js';
+import { Button, Icon, PriceChange, Sparkline, useMoneyParts } from '../features/ui/index.js';
+import { useFormatMoney } from '../lib/use-currency.js';
 import { useHydrateItemPhoto } from '../lib/use-hydrate-photo.js';
 import { useLocalPref } from '../lib/use-local-pref.js';
 import { useObjectUrl } from '../lib/use-object-url.js';
@@ -14,6 +17,13 @@ interface SavedFilter {
   query: string;
   category: string;
   status: StatusFilter;
+}
+
+/** Inteligência de preço por item: menor visto, variação e histórico. */
+interface PriceInfo {
+  cheapest: number;
+  history: number[];
+  delta: number;
 }
 
 const RECENT_KEY = 'items.recent';
@@ -42,6 +52,7 @@ export function ItensPage() {
   const items = useLiveQuery(() => db.items.filter((i) => i.deletedAt === null).toArray(), [], [] as LocalItem[]);
   const brands = useLiveQuery(() => db.brands.filter((b) => b.deletedAt === null).toArray(), [], []);
   const inventory = useLiveQuery(() => db.inventory.filter((i) => i.deletedAt === null).toArray(), [], []);
+  const prices = useLiveQuery(() => db.prices.filter((p) => p.deletedAt === null).toArray(), [], [] as PriceRecord[]);
 
   const brandsByItem = useMemo(() => {
     const m = new Map<string, string[]>();
@@ -53,6 +64,22 @@ export function ItensPage() {
     () => [...new Set(items.map((i) => i.category).filter((c): c is string => !!c))].sort((a, b) => a.localeCompare(b)),
     [items],
   );
+
+  // preço por item: histórico cronológico (sparkline), menor visto, última variação
+  const priceInfo = useMemo(() => {
+    const sorted = [...prices].sort((a, b) => a.recordedAt.localeCompare(b.recordedAt));
+    const hist = new Map<string, number[]>();
+    for (const p of sorted) hist.set(p.itemId, [...(hist.get(p.itemId) ?? []), p.priceCents]);
+    const m = new Map<string, PriceInfo>();
+    for (const [itemId, h] of hist) {
+      m.set(itemId, {
+        cheapest: Math.min(...h),
+        history: h,
+        delta: h.length >= 2 ? h[h.length - 1]! - h[h.length - 2]! : 0,
+      });
+    }
+    return m;
+  }, [prices]);
 
   function statusOf(item: LocalItem): StatusFilter {
     const q = onHand.get(item.id) ?? 0;
@@ -109,20 +136,24 @@ export function ItensPage() {
   const STATUSES: StatusFilter[] = ['all', 'instock', 'low', 'out'];
 
   return (
-    <main className="flex flex-col gap-3 px-5 py-6">
-      <h1 className="text-2xl font-bold text-zinc-900">{t('catalog.itemsTitle')}</h1>
-      <input
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        onBlur={commitSearch}
-        placeholder={t('search.placeholder')}
-        className="min-h-12 w-full rounded-xl border border-zinc-300 px-4 py-3 text-base outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100"
-      />
+    <main className="screen-in flex flex-col gap-3 px-[18px] py-6">
+      <h1 className="text-2xl font-bold tracking-tight">{t('catalog.itemsTitle')}</h1>
+
+      <div className="card flex items-center gap-2.5" style={{ padding: '12px 14px' }}>
+        <Icon name="search" size={18} className="text-[var(--app-gray)]" />
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onBlur={commitSearch}
+          placeholder={t('search.placeholder')}
+          className="flex-1 bg-transparent text-[15px] outline-none"
+        />
+      </div>
 
       {!query && recent.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {recent.map((r) => (
-            <button key={r} onClick={() => setQuery(r)} className="rounded-full bg-zinc-100 px-3 py-1 text-sm text-zinc-600">
+            <button key={r} onClick={() => setQuery(r)} className="pill" style={{ background: 'var(--app-surface-2)' }}>
               🕘 {r}
             </button>
           ))}
@@ -130,44 +161,45 @@ export function ItensPage() {
       )}
 
       <div className="flex flex-wrap items-center gap-2">
-        <select
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          className="rounded-full bg-zinc-100 px-3 py-1.5 text-sm text-zinc-700"
-        >
-          <option value="">{t('search.allCategories')}</option>
-          {categories.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
+        <div className="seg">
+          {STATUSES.map((s) => (
+            <button key={s} aria-pressed={status === s} onClick={() => setStatus(s)}>
+              {t(`search.status.${s}`)}
+            </button>
           ))}
-        </select>
-        {STATUSES.map((s) => (
-          <button
-            key={s}
-            onClick={() => setStatus(s)}
-            className={`rounded-full px-3 py-1.5 text-sm font-medium ${
-              status === s ? 'bg-green-600 text-white' : 'bg-zinc-100 text-zinc-600'
-            }`}
+        </div>
+        {categories.length > 0 && (
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className="pill"
+            style={{ background: 'var(--app-surface-2)', border: 0 }}
           >
-            {t(`search.status.${s}`)}
-          </button>
-        ))}
+            <option value="">{t('search.allCategories')}</option>
+            {categories.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
 
       <div className="flex items-center gap-2 text-sm">
         <button
           onClick={() => setSort(sort === 'name' ? 'category' : 'name')}
-          className="rounded-full bg-zinc-100 px-3 py-1 font-medium text-zinc-700"
+          className="pill"
+          style={{ background: 'var(--app-surface-2)' }}
         >
           {sort === 'name' ? t('prefs.byName') : t('prefs.byCategory')}
         </button>
-        <button onClick={saveCurrent} className="rounded-full bg-zinc-100 px-3 py-1 font-medium text-zinc-700">
+        <button onClick={saveCurrent} className="pill" style={{ background: 'var(--app-surface-2)' }}>
           {t('search.saveFilter')}
         </button>
         <button
           onClick={() => setDensity(compact ? 'comfortable' : 'compact')}
-          className="ml-auto rounded-full bg-zinc-100 px-3 py-1 font-medium text-zinc-700"
+          className="pill ml-auto"
+          style={{ background: 'var(--app-surface-2)' }}
         >
           {compact ? t('prefs.comfortable') : t('prefs.compact')}
         </button>
@@ -176,9 +208,9 @@ export function ItensPage() {
       {saved.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {saved.map((s) => (
-            <span key={s.name} className="flex items-center gap-1 rounded-full bg-green-50 px-3 py-1 text-sm text-green-700">
+            <span key={s.name} className="pill" style={{ background: 'var(--app-surface-2)' }}>
               <button onClick={() => applySaved(s)}>⭐ {s.name}</button>
-              <button onClick={() => deleteSaved(s.name)} className="text-green-500">
+              <button onClick={() => deleteSaved(s.name)} className="text-[var(--app-gray)]">
                 ✕
               </button>
             </span>
@@ -188,27 +220,24 @@ export function ItensPage() {
 
       {filtered.length === 0 ? (
         <div className="mt-8 flex flex-col items-center gap-4">
-          <p className="text-center text-zinc-500">{t('catalog.noItems')}</p>
+          <p className="muted text-center">{t('catalog.noItems')}</p>
           {items.length === 0 && (
-            <button
-              onClick={() => seedCommonItems()}
-              className="rounded-xl border border-green-600 px-4 py-2.5 text-sm font-semibold text-green-700"
-            >
+            <Button variant="secondary" size="md" onClick={() => seedCommonItems()}>
               {t('settings.seedItems')}
-            </button>
+            </Button>
           )}
         </div>
       ) : (
-        <ul className={`flex flex-col ${compact ? 'gap-1' : 'gap-2'}`}>
+        <div className="card row-sep" style={{ padding: 0, overflow: 'hidden' }}>
           {filtered.map((item) => (
-            <ItemRow key={item.id} item={item} compact={compact} />
+            <ItemRow key={item.id} item={item} compact={compact} info={priceInfo.get(item.id)} />
           ))}
-        </ul>
+        </div>
       )}
 
       <Link
         to="/itens/novo"
-        className="fixed bottom-24 left-1/2 flex h-14 w-14 -translate-x-1/2 items-center justify-center rounded-full bg-green-600 text-3xl text-white shadow-lg active:bg-green-700"
+        className="fixed bottom-24 left-1/2 flex h-14 w-14 -translate-x-1/2 items-center justify-center rounded-full bg-[var(--gro-green)] text-3xl text-white shadow-lg active:scale-95"
         aria-label={t('catalog.newItem')}
       >
         +
@@ -217,31 +246,41 @@ export function ItensPage() {
   );
 }
 
-function ItemRow({ item, compact }: { item: LocalItem; compact: boolean }) {
+function ItemRow({ item, compact, info }: { item: LocalItem; compact: boolean; info?: PriceInfo }) {
   const { t } = useTranslation();
+  const fmt = useFormatMoney();
+  const money = useMoneyParts();
   useHydrateItemPhoto(item.id, item.photoKey, item.photoBlob);
   const photoUrl = useObjectUrl(item.photoBlob);
-  const size = compact ? 'h-9 w-9 text-base' : 'h-12 w-12 text-xl';
+  const size = compact ? 'h-9 w-9 text-base' : 'h-11 w-11 text-xl';
   return (
-    <li>
-      <Link
-        to="/itens/$id"
-        params={{ id: item.id }}
-        className={`flex items-center gap-3 rounded-2xl border border-zinc-200 active:bg-zinc-50 ${
-          compact ? 'p-2' : 'p-3'
-        }`}
-      >
-        {photoUrl ? (
-          <img src={photoUrl} alt="" className={`rounded-lg object-cover ${size}`} />
-        ) : (
-          <div className={`flex items-center justify-center rounded-lg bg-zinc-100 ${size}`}>🛒</div>
-        )}
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-medium text-zinc-900">{item.name}</p>
-          {!compact && item.category && <p className="truncate text-sm text-zinc-500">{item.category}</p>}
+    <Link
+      to="/itens/$id"
+      params={{ id: item.id }}
+      className={`tap flex items-center gap-3 ${compact ? 'px-4 py-2' : 'px-4 py-3'}`}
+    >
+      {photoUrl ? (
+        <img src={photoUrl} alt="" className={`flex-none rounded-lg object-cover ${size}`} />
+      ) : (
+        <div className={`flex flex-none items-center justify-center rounded-lg bg-[var(--app-surface-2)] ${size}`}>
+          🛒
         </div>
-        <span className="text-sm text-zinc-400">{t(`catalog.units.${item.unit}`)}</span>
-      </Link>
-    </li>
+      )}
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-semibold">{item.name}</p>
+        {!compact && item.category && <p className="muted truncate text-sm">{item.category}</p>}
+      </div>
+      {info && info.history.length >= 2 && <Sparkline data={info.history} />}
+      <div className="text-right">
+        {info ? (
+          <>
+            <div className="mono text-[15px] font-semibold">{fmt(info.cheapest)}</div>
+            {info.delta !== 0 && <PriceChange deltaCents={info.delta} {...money} />}
+          </>
+        ) : (
+          <span className="muted text-sm">{t(`catalog.units.${item.unit}`)}</span>
+        )}
+      </div>
+    </Link>
   );
 }

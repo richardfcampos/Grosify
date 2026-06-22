@@ -340,6 +340,7 @@ export default {
     history: {
       title: 'Historique des achats',
       empty: 'Aucun achat finalisé.',
+      accumulatedSavings: 'Économies cumulées',
     },
     members: {
       title: 'Membres',

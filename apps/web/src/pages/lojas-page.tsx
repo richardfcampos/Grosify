@@ -3,6 +3,7 @@ import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { db, type LocalStore } from '../db/dexie.js';
 import { createStore, deleteStore, updateStore } from '../db/repositories.js';
+import { Icon } from '../features/ui/index.js';
 import { useConfirm } from '../lib/confirm.js';
 import { usePlacesSearch, type PlaceResult } from '../lib/use-places-search.js';
 
@@ -20,39 +21,39 @@ export function LojasPage() {
   );
 
   return (
-    <main className="flex flex-col gap-4 px-5 py-6">
-      <h1 className="text-2xl font-bold text-zinc-900">{t('catalog.storesTitle')}</h1>
+    <main className="screen-in flex flex-col gap-4 px-[18px] py-6">
+      <h1 className="text-2xl font-bold tracking-tight">{t('catalog.storesTitle')}</h1>
 
       {stores.length === 0 ? (
-        <p className="mt-6 text-center text-zinc-500">{t('catalog.noStores')}</p>
+        <p className="muted mt-6 text-center">{t('catalog.noStores')}</p>
       ) : (
-        <ul className="flex flex-col gap-2">
+        <div className="card row-sep" style={{ padding: 0, overflow: 'hidden' }}>
           {[...stores]
             .sort((a, b) => a.name.localeCompare(b.name))
             .map((store) => (
-              <li key={store.id}>
-                <button
-                  onClick={() => setEditing(store)}
-                  className="flex w-full items-center justify-between rounded-2xl border border-zinc-200 p-4 text-left active:bg-zinc-50"
-                >
-                  <div>
-                    <p className="font-medium text-zinc-900">{store.name}</p>
-                    {(store.neighborhood || store.city) && (
-                      <p className="text-sm text-zinc-500">
-                        {[store.neighborhood, store.city].filter(Boolean).join(', ')}
-                      </p>
-                    )}
-                  </div>
-                  <span className="text-zinc-400">›</span>
-                </button>
-              </li>
+              <button
+                key={store.id}
+                onClick={() => setEditing(store)}
+                className="tap flex w-full items-center gap-3 px-4 py-3.5 text-left"
+              >
+                <Icon name="store" size={20} className="flex-none text-[var(--app-gray)]" />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-semibold">{store.name}</p>
+                  {(store.neighborhood || store.city) && (
+                    <p className="muted truncate text-[12.5px]">
+                      {[store.neighborhood, store.city].filter(Boolean).join(' · ')}
+                    </p>
+                  )}
+                </div>
+                <Icon name="chev" size={18} className="flex-none text-[var(--app-gray)]" />
+              </button>
             ))}
-        </ul>
+        </div>
       )}
 
       <button
         onClick={() => setEditing('new')}
-        className="fixed bottom-24 left-1/2 flex h-14 w-14 -translate-x-1/2 items-center justify-center rounded-full bg-green-600 text-3xl text-white shadow-lg active:bg-green-700"
+        className="fixed bottom-24 left-1/2 flex h-14 w-14 -translate-x-1/2 items-center justify-center rounded-full bg-[var(--gro-green)] text-3xl text-white shadow-lg active:scale-95"
         aria-label={t('catalog.newStore')}
       >
         +

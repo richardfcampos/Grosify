@@ -1,6 +1,7 @@
 import { useNavigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Badge, Icon, SectionTitle } from '../features/ui/index.js';
 import { useConfirm } from '../lib/confirm.js';
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3010';
@@ -61,47 +62,59 @@ export function MembrosPage() {
   }
 
   return (
-    <main className="flex flex-col gap-4 px-5 py-6 pb-24">
-      <header className="flex items-center gap-3">
-        <button onClick={() => navigate({ to: '/ajustes' })} className="text-sm text-zinc-500">
-          ← {t('common.back')}
-        </button>
-        <h1 className="text-2xl font-bold text-zinc-900">{t('members.title')}</h1>
-      </header>
+    <main className="screen-in flex flex-col gap-4 px-[18px] py-6 pb-24">
+      <button
+        onClick={() => navigate({ to: '/ajustes' })}
+        className="muted flex items-center gap-1 text-sm font-semibold"
+      >
+        <Icon name="back" size={17} /> {t('common.back')}
+      </button>
+      <SectionTitle title={t('members.title')} />
 
-      <ul className="flex flex-col gap-2">
+      <div className="card row-sep" style={{ padding: 0, overflow: 'hidden' }}>
         {members.map((m) => (
-          <li key={m.userId} className="flex items-center gap-3 rounded-2xl border border-zinc-200 p-3">
+          <div key={m.userId} className="flex items-center gap-3 px-4 py-3.5">
+            <div
+              className="flex flex-none items-center justify-center rounded-full"
+              style={{
+                width: 40,
+                height: 40,
+                background: 'var(--app-surface-2)',
+                border: '1px solid var(--app-border)',
+                fontFamily: 'var(--gro-font-money)',
+                fontSize: 18,
+              }}
+            >
+              {m.name.charAt(0).toUpperCase()}
+            </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate font-medium text-zinc-900">
+              <p className="truncate font-semibold">
                 {m.name}
-                {m.userId === me ? ` (${t('members.you')})` : ''}
+                {m.userId === me && <span className="muted font-normal"> · {t('members.you')}</span>}
               </p>
-              <p className="truncate text-sm text-zinc-500">{m.email}</p>
+              <p className="muted truncate text-[12.5px]">{m.email}</p>
             </div>
             {canManage && m.role !== 'owner' && m.userId !== me ? (
               <>
                 <select
                   value={m.role}
                   onChange={(e) => changeRole(m.userId, e.target.value)}
-                  className="rounded-lg border border-zinc-300 px-2 py-1 text-sm"
+                  className="rounded-lg border border-[var(--app-border)] bg-transparent px-2 py-1 text-sm"
                 >
                   <option value="admin">{t('members.roles.admin')}</option>
                   <option value="member">{t('members.roles.member')}</option>
                   <option value="viewer">{t('members.roles.viewer')}</option>
                 </select>
-                <button onClick={() => remove(m)} className="text-red-600" aria-label={t('members.remove')}>
+                <button onClick={() => remove(m)} className="text-[var(--gro-red)]" aria-label={t('members.remove')}>
                   🗑
                 </button>
               </>
             ) : (
-              <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-600">
-                {t(`members.roles.${m.role}`)}
-              </span>
+              <Badge tone="neutral">{t(`members.roles.${m.role}`)}</Badge>
             )}
-          </li>
+          </div>
         ))}
-      </ul>
+      </div>
     </main>
   );
 }
