@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { db } from '../../db/dexie.js';
 import { createBrand, deleteBrand, setBrandPreferred } from '../../db/repositories.js';
 import { useConfirm } from '../../lib/confirm.js';
+import { Button } from '../ui/index.js';
 
 /** Seção de marcas de um item (modo edição): listar, adicionar e remover. */
 export function BrandsSection({ itemId }: { itemId: string }) {
@@ -35,10 +36,10 @@ export function BrandsSection({ itemId }: { itemId: string }) {
 
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-sm font-medium text-zinc-600">{t('brands.title')}</span>
-      <p className="text-xs text-zinc-400">{t('brands.hint')}</p>
+      <span className="muted text-sm font-medium">{t('brands.title')}</span>
+      <p className="muted text-xs">{t('brands.hint')}</p>
       {brands.length === 0 ? (
-        <p className="text-sm text-zinc-400">{t('brands.empty')}</p>
+        <p className="muted text-sm">{t('brands.empty')}</p>
       ) : (
         <ul className="flex flex-col gap-1.5">
           {[...brands]
@@ -46,7 +47,8 @@ export function BrandsSection({ itemId }: { itemId: string }) {
             .map((b) => (
               <li
                 key={b.id}
-                className="flex items-center gap-2 rounded-xl bg-zinc-100 px-3 py-2"
+                className="flex items-center gap-2 rounded-xl px-3 py-2"
+                style={{ background: 'var(--app-surface-2)' }}
               >
                 <button
                   type="button"
@@ -56,11 +58,12 @@ export function BrandsSection({ itemId }: { itemId: string }) {
                 >
                   {b.isPreferred ? '⭐' : '☆'}
                 </button>
-                <span className="min-w-0 flex-1 truncate text-sm text-zinc-800">{b.name}</span>
+                <span className="min-w-0 flex-1 truncate text-sm">{b.name}</span>
                 <button
                   type="button"
                   onClick={() => remove(b.id, b.name)}
-                  className="shrink-0 text-sm text-red-600"
+                  className="shrink-0 text-sm"
+                  style={{ color: 'var(--gro-red)' }}
                 >
                   {t('common.delete')}
                 </button>
@@ -74,16 +77,11 @@ export function BrandsSection({ itemId }: { itemId: string }) {
           onChange={(e) => setName(e.target.value)}
           placeholder={t('brands.newPlaceholder')}
           maxLength={80}
-          className="min-h-11 flex-1 rounded-xl border border-zinc-300 px-4 py-2.5 text-base"
+          className="gro-field"
         />
-        <button
-          type="button"
-          onClick={add}
-          disabled={!name.trim()}
-          className="shrink-0 rounded-xl border border-green-600 px-4 text-sm font-semibold text-green-700 disabled:opacity-40"
-        >
+        <Button variant="secondary" size="md" type="button" onClick={add} disabled={!name.trim()} className="shrink-0">
           {t('common.add')}
-        </button>
+        </Button>
       </div>
     </div>
   );

@@ -151,7 +151,7 @@ function NewListSheet({ onClose }: { onClose: () => void }) {
               type="button"
               onClick={() => setIcon(icon === ic ? null : ic)}
               className={`flex h-10 w-10 items-center justify-center rounded-xl text-xl ${
-                icon === ic ? 'bg-green-100 ring-2 ring-green-500' : 'bg-zinc-100'
+                icon === ic ? 'bg-[var(--app-surface-2)] ring-2 ring-[var(--gro-green)]' : 'bg-[var(--app-surface-2)]'
               }`}
             >
               {ic}

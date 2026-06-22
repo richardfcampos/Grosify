@@ -270,7 +270,7 @@ function QtyInput({
 
   return (
     <div className="flex flex-col items-end gap-0.5">
-      <span className="text-[10px] uppercase tracking-wide text-zinc-400">{label}</span>
+      <span className="text-[10px] uppercase tracking-wide text-[var(--app-gray)]">{label}</span>
       <div className="flex items-center gap-1">
         <input
           value={local}
@@ -287,7 +287,7 @@ function QtyInput({
           className="gro-field gro-field--mono text-center"
           style={{ padding: '6px 8px', width: '3.5rem' }}
         />
-        <span className="w-7 text-xs text-zinc-400">{unit}</span>
+        <span className="w-7 text-xs text-[var(--app-gray)]">{unit}</span>
       </div>
     </div>
   );

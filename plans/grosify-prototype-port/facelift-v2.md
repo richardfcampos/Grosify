@@ -26,11 +26,18 @@ Sub-rotas (lista-detail, historico, analise, membros, lojas, item-form) continua
 |---|------|--------|
 | A | Shell responsivo: rail desktop (logo G + nav + "Casa · Plano") + bottom nav mobile, IA nova, content max-w 760 desktop | ✅ verificado no browser (desktop rail + mobile bottom nav). Bug corrigido: `.botnav` vazava no desktop (vencia `lg:hidden` por ordem de fonte) → `@media(min-width:1024px){.botnav{display:none}}` |
 | B | Início: hero economia + cards reposição (emoji, "Hoje é dia", PriceTag melhor preço) + barra identidade | ◑ código feito (2 stats hero + best-deal real), falta QA com dados |
-| C | Preços: rota `/precos` dedicada (busca, PriceChange, sparkline, compara loja) | ⬜ |
-| D | Estoque: parity inventário (seg, needed-qty Anton, scanner) | ⬜ |
-| E | Ajustes hub → Histórico / Análise / Casa (membros+lojas) parity | ⬜ |
-| F | ItemForm, Lista detail, Auth, Onboarding parity (revisão) | ⬜ |
+| C | Preços (itens-page já era superset): SectionTitle "Preços"+kicker, "mais barato em {loja}" na row | ✅ (typecheck+build) |
+| D | Estoque (inventario): kicker+título "Inventário", botão "Novo item". Badges status **neutros** (DESIGN.md: cor só em dinheiro — protótipo usa vermelho/amarelo, mantive a regra aprovada) | ✅ (typecheck+build) |
+| E | Ajustes vira hub no design system (era zinc/antigo): SectionTitle, profile card, seções kicker, .card row-sep (Histórico/Análise/Membros/Lojas/Categorias/Atividades) + dados + conta | ✅ verificado no browser (desktop) |
+| F | Auth/ItemForm/lista-detail/listas já portados (fase 6). **Categorias + Atividades** portados agora. Pendente: onboarding (polish), household-pages (criar casa/loading), privacidade (texto legal), sub-componentes (comments/brands/scanner-modal/price-scan/category-picker/star-rating) | ◑ parcial |
 | — | Compra/Recibo + sheets | ✅ (feito antes) |
+
+## Conflito de marca pendente (decisão do usuário)
+Protótipo usa Badge **vermelho/amarelo** pro status de estoque (Zerado/Acabando) e
+amarelo pro "Plano Pro". DESIGN.md diz **cor só em evento de dinheiro**. Mantive
+status de estoque **neutro** (regra aprovada); "Plano Pro" usa amarelo (oferta) como
+no protótipo. Se quiser bater 100% com o protótipo (estoque colorido), é trocar os
+`Badge tone`.
 
 ## Verificação
 Cada fase: typecheck + build verdes; QA visual no browser **desktop e mobile** (3 direções × light/dark quando relevante).

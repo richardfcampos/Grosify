@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { db } from '../../db/dexie.js';
 import { createCategory } from '../../db/repositories.js';
+import { Button } from '../ui/index.js';
 
 const NEW = '__new__';
 
@@ -10,8 +11,6 @@ interface Props {
   value: string | null;
   onChange: (cat: { id: string; name: string } | null) => void;
 }
-
-const base = 'min-h-12 w-full rounded-xl border border-zinc-300 px-4 py-3 text-base';
 
 /** Seletor de categoria (entidade) com "+ nova categoria" inline. */
 export function CategoryPicker({ value, onChange }: Props) {
@@ -46,15 +45,11 @@ export function CategoryPicker({ value, onChange }: Props) {
           onChange={(e) => setName(e.target.value)}
           placeholder={t('catalog.newCategory')}
           maxLength={100}
-          className={base}
+          className="gro-field"
         />
-        <button
-          type="button"
-          onClick={confirmNew}
-          className="shrink-0 rounded-xl bg-green-600 px-4 font-semibold text-white"
-        >
+        <Button variant="primary" size="md" type="button" onClick={confirmNew} className="shrink-0">
           {t('common.add')}
-        </button>
+        </Button>
       </div>
     );
   }
@@ -69,7 +64,7 @@ export function CategoryPicker({ value, onChange }: Props) {
           onChange(c ? { id: c.id, name: c.name } : null);
         }
       }}
-      className={base}
+      className="gro-field"
     >
       <option value="">{t('catalog.noCategory')}</option>
       {sorted.map((c) => (

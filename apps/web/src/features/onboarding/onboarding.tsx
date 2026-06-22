@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { seedCommonItems } from '../catalog/seed-items.js';
 import { markOnboardingDone } from '../../lib/onboarding.js';
+import { Button } from '../ui/index.js';
 
 /**
  * Primeira execução: 3 passos explicando o valor central (listas, preços, modo compra)
@@ -41,23 +42,24 @@ export function Onboarding({
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-between px-6 py-10">
+    <main className="screen-in mx-auto flex min-h-dvh w-full max-w-md flex-col justify-between px-6 py-10">
       <div className="flex flex-1 flex-col items-center justify-center gap-5 text-center">
         <div className="text-6xl">{s.icon}</div>
-        <h1 className="text-2xl font-bold text-zinc-900">{t(`onboarding.${s.title}`)}</h1>
-        <p className="max-w-xs text-zinc-600">{t(`onboarding.${s.body}`)}</p>
+        <h1 className="text-2xl font-bold tracking-tight">{t(`onboarding.${s.title}`)}</h1>
+        <p className="muted max-w-xs">{t(`onboarding.${s.body}`)}</p>
 
         <div className="mt-2 flex gap-1.5">
           {STEPS.map((_, i) => (
             <span
               key={i}
-              className={`h-1.5 w-6 rounded-full ${i === step ? 'bg-green-600' : 'bg-zinc-200'}`}
+              className="h-1.5 w-6 rounded-full"
+              style={{ background: i === step ? 'var(--gro-green)' : 'var(--app-border)' }}
             />
           ))}
         </div>
 
         {isLast && (
-          <label className="mt-4 flex items-center gap-2 text-sm text-zinc-600">
+          <label className="muted mt-4 flex items-center gap-2 text-sm">
             <input type="checkbox" checked={seed} onChange={(e) => setSeed(e.target.checked)} />
             {t('onboarding.seedItems')}
           </label>
@@ -70,17 +72,18 @@ export function Onboarding({
             markOnboardingDone(householdId);
             onDone();
           }}
-          className="text-sm font-medium text-zinc-400"
+          className="muted text-sm font-medium"
         >
           {t('onboarding.skip')}
         </button>
-        <button
+        <Button
+          variant="primary"
+          size="lg"
           onClick={() => (isLast ? void finish() : setStep((n) => n + 1))}
           disabled={busy}
-          className="min-h-12 rounded-xl bg-green-600 px-6 font-semibold text-white active:bg-green-700 disabled:opacity-60"
         >
           {isLast ? t('onboarding.start') : t('onboarding.next')}
-        </button>
+        </Button>
       </div>
     </main>
   );

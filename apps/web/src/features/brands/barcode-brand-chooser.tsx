@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { addBarcode } from '../../db/repositories.js';
 import { BrandPicker } from './brand-picker.js';
+import { Button } from '../ui/index.js';
 
 interface Props {
   itemId: string;
@@ -26,22 +27,15 @@ export function BarcodeBrandChooser({ itemId, code, onDone }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end bg-black/40" onClick={onDone}>
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="mx-auto flex w-full max-w-md flex-col gap-3 rounded-t-3xl bg-white p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]"
-      >
-        <h2 className="text-lg font-bold text-zinc-900">{t('brands.forBarcode')}</h2>
-        <p className="font-mono text-sm text-zinc-500">{code}</p>
+    <div className="gro-sheet-backdrop" onClick={onDone}>
+      <div onClick={(e) => e.stopPropagation()} className="gro-sheet-panel flex flex-col gap-3">
+        <div className="gro-sheet-grip" />
+        <h2 className="text-lg font-bold">{t('brands.forBarcode')}</h2>
+        <p className="mono muted text-sm">{code}</p>
         <BrandPicker itemId={itemId} value={brandId} onChange={setBrandId} />
-        <button
-          type="button"
-          onClick={confirm}
-          disabled={busy}
-          className="min-h-12 rounded-xl bg-green-600 px-4 py-3 font-semibold text-white disabled:opacity-50"
-        >
+        <Button variant="primary" size="lg" fullWidth type="button" onClick={confirm} disabled={busy}>
           {busy ? t('common.saving') : t('common.add')}
-        </button>
+        </Button>
       </div>
     </div>
   );

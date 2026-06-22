@@ -6,9 +6,7 @@ import { Trans, useTranslation } from 'react-i18next';
 import { api } from '../lib/api.js';
 import { useSession } from '../lib/auth-client.js';
 import { useMembership } from '../lib/use-membership.js';
-
-const buttonClass =
-  'w-full rounded-xl bg-green-600 px-4 py-3 text-base font-semibold text-white active:bg-green-700 disabled:opacity-50';
+import { Button } from '../features/ui/index.js';
 
 export function CasaPage() {
   const { t, i18n } = useTranslation();
@@ -45,9 +43,9 @@ export function CasaPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center gap-6 px-6 py-10">
-      <h1 className="text-center text-2xl font-bold text-zinc-900">{t('household.createTitle')}</h1>
-      <p className="text-center text-zinc-600">{t('household.createSubtitle')}</p>
+    <main className="screen-in mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center gap-6 px-6 py-10">
+      <h1 className="text-center text-2xl font-bold tracking-tight">{t('household.createTitle')}</h1>
+      <p className="muted text-center">{t('household.createSubtitle')}</p>
       <form onSubmit={onSubmit} className="flex flex-col gap-3">
         <input
           name="name"
@@ -55,14 +53,15 @@ export function CasaPage() {
           maxLength={100}
           placeholder={t('household.namePlaceholder')}
           aria-label={t('household.namePlaceholder')}
-          className="w-full rounded-xl border border-zinc-300 px-4 py-3 text-base outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100"
+          className="gro-field"
         />
-        <label className="flex flex-col gap-1 text-sm font-medium text-zinc-600">
+        <label className="muted flex flex-col gap-1 text-sm font-medium">
           {t('household.currency')}
           <select
             value={currency}
             onChange={(e) => setCurrency(e.target.value)}
-            className="min-h-12 w-full rounded-xl border border-zinc-300 bg-white px-3 py-3 text-base font-normal text-zinc-900"
+            className="gro-field font-normal"
+            style={{ color: 'var(--app-ink)' }}
           >
             {listCurrencies().map((code) => (
               <option key={code} value={code}>
@@ -71,12 +70,16 @@ export function CasaPage() {
             ))}
           </select>
         </label>
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <button type="submit" disabled={create.isPending} className={buttonClass}>
+        {error && (
+          <p className="text-sm" style={{ color: 'var(--gro-red)' }}>
+            {error}
+          </p>
+        )}
+        <Button variant="primary" size="lg" fullWidth type="submit" disabled={create.isPending}>
           {create.isPending ? t('household.creating') : t('household.create')}
-        </button>
+        </Button>
       </form>
-      <p className="text-center text-sm text-zinc-500">{t('household.inviteHint')}</p>
+      <p className="muted text-center text-sm">{t('household.inviteHint')}</p>
     </main>
   );
 }
@@ -109,19 +112,23 @@ export function ConvitePage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center gap-6 px-6 py-10 text-center">
-      <h1 className="text-2xl font-bold text-zinc-900">{t('household.inviteTitle')}</h1>
-      <p className="text-zinc-600">
+    <main className="screen-in mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center gap-6 px-6 py-10 text-center">
+      <h1 className="text-2xl font-bold tracking-tight">{t('household.inviteTitle')}</h1>
+      <p className="muted">
         <Trans
           i18nKey="household.inviteText"
           values={{ code }}
-          components={{ 1: <span className="font-mono font-semibold" /> }}
+          components={{ 1: <span className="mono font-semibold" /> }}
         />
       </p>
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      <button onClick={() => join.mutate()} disabled={join.isPending} className={buttonClass}>
+      {error && (
+        <p className="text-sm" style={{ color: 'var(--gro-red)' }}>
+          {error}
+        </p>
+      )}
+      <Button variant="primary" size="lg" fullWidth onClick={() => join.mutate()} disabled={join.isPending}>
         {join.isPending ? t('household.joining') : t('household.join')}
-      </button>
+      </Button>
     </main>
   );
 }
@@ -129,7 +136,7 @@ export function ConvitePage() {
 export function Loading() {
   const { t } = useTranslation();
   return (
-    <main className="flex min-h-dvh items-center justify-center text-zinc-500">
+    <main className="muted flex min-h-dvh items-center justify-center">
       {t('common.loading')}
     </main>
   );
