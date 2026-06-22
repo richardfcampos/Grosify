@@ -10,6 +10,7 @@ import {
   updateCategory,
 } from '../db/repositories.js';
 import { useConfirm } from '../lib/confirm.js';
+import { Button, Icon, SectionTitle } from '../features/ui/index.js';
 
 const CAT_ICONS = ['🥦', '🥩', '🥛', '🍞', '🍎', '🧽', '🧴', '🐶', '🍷', '🧊', '🍫', '📦'];
 const CAT_COLORS = ['#15803D', '#DC2626', '#CA8A04', '#2563EB', '#7C3AED', '#0D9488', '#DB2777'];
@@ -43,16 +44,31 @@ export function CategoriasPage() {
   }
 
   return (
-    <main className="flex flex-col gap-4 px-5 py-6 pb-28">
-      <header className="flex items-center gap-3">
-        <button onClick={() => navigate({ to: '/ajustes' })} className="text-sm text-zinc-500">
-          ← {t('common.back')}
-        </button>
-        <h1 className="text-2xl font-bold text-zinc-900">{t('categories.title')}</h1>
-      </header>
+    <main className="screen-in flex flex-col gap-4 px-[18px] py-6 pb-28">
+      <button
+        onClick={() => navigate({ to: '/ajustes' })}
+        className="muted flex items-center gap-1 text-sm font-semibold"
+      >
+        <Icon name="back" size={17} /> {t('common.back')}
+      </button>
+      <SectionTitle title={t('categories.title')} />
+
+      <div className="flex gap-2">
+        <input
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && add()}
+          placeholder={t('categories.newPlaceholder')}
+          maxLength={100}
+          className="gro-field"
+        />
+        <Button variant="primary" size="md" onClick={add} disabled={!newName.trim()} className="shrink-0">
+          {t('common.add')}
+        </Button>
+      </div>
 
       {sorted.length === 0 ? (
-        <p className="mt-4 text-center text-zinc-500">{t('categories.empty')}</p>
+        <p className="muted mt-4 text-center">{t('categories.empty')}</p>
       ) : (
         <ul className="flex flex-col gap-2">
           {sorted.map((cat, i) => (
@@ -67,23 +83,6 @@ export function CategoriasPage() {
           ))}
         </ul>
       )}
-
-      <div className="fixed inset-x-0 bottom-20 mx-auto flex max-w-md gap-2 px-5">
-        <input
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          placeholder={t('categories.newPlaceholder')}
-          maxLength={100}
-          className="min-h-12 flex-1 rounded-xl border border-zinc-300 bg-white px-4 py-3 text-base shadow-sm"
-        />
-        <button
-          onClick={add}
-          disabled={!newName.trim()}
-          className="min-h-12 rounded-xl bg-green-600 px-5 font-semibold text-white disabled:opacity-40"
-        >
-          {t('common.add')}
-        </button>
-      </div>
     </main>
   );
 }
@@ -118,18 +117,20 @@ function CategoryRow({
 
   return (
     <li
-      className="rounded-2xl border border-zinc-200 p-3"
-      style={cat.color ? { borderLeftColor: cat.color, borderLeftWidth: 4 } : undefined}
+      className="card"
+      style={{ padding: 12, ...(cat.color ? { borderLeftColor: cat.color, borderLeftWidth: 4 } : {}) }}
     >
       <div className="flex items-center gap-2">
         <span className="text-xl">{cat.icon ?? '📦'}</span>
-        <span className={`min-w-0 flex-1 truncate font-medium ${cat.isHidden ? 'text-zinc-400 line-through' : 'text-zinc-900'}`}>
+        <span
+          className={`min-w-0 flex-1 truncate font-medium ${cat.isHidden ? 'muted line-through' : ''}`}
+        >
           {cat.name}
         </span>
-        <button onClick={onUp} disabled={first} className="px-1 text-zinc-400 disabled:opacity-30" aria-label="↑">
+        <button onClick={onUp} disabled={first} className="muted px-1 disabled:opacity-30" aria-label="↑">
           ▲
         </button>
-        <button onClick={onDown} disabled={last} className="px-1 text-zinc-400 disabled:opacity-30" aria-label="↓">
+        <button onClick={onDown} disabled={last} className="muted px-1 disabled:opacity-30" aria-label="↓">
           ▼
         </button>
         <button
@@ -142,27 +143,30 @@ function CategoryRow({
         <button onClick={() => setEditing((v) => !v)} className="px-1 text-lg" aria-label={t('common.edit')}>
           ✏️
         </button>
-        <button onClick={onDelete} className="px-1 text-red-600" aria-label={t('common.delete')}>
+        <button
+          onClick={onDelete}
+          className="px-1"
+          style={{ color: 'var(--gro-red)' }}
+          aria-label={t('common.delete')}
+        >
           🗑
         </button>
       </div>
 
       {editing && (
-        <div className="mt-3 flex flex-col gap-2 border-t border-zinc-100 pt-3">
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            maxLength={100}
-            className="min-h-11 rounded-xl border border-zinc-300 px-3 text-base"
-          />
+        <div className="mt-3 flex flex-col gap-2" style={{ borderTop: '1px solid var(--app-line)', paddingTop: 12 }}>
+          <input value={name} onChange={(e) => setName(e.target.value)} maxLength={100} className="gro-field" />
           <div className="flex flex-wrap gap-1.5">
             {CAT_ICONS.map((ic) => (
               <button
                 key={ic}
                 onClick={() => updateCategory(cat.id, { icon: cat.icon === ic ? null : ic })}
-                className={`flex h-9 w-9 items-center justify-center rounded-lg text-lg ${
-                  cat.icon === ic ? 'bg-green-100 ring-2 ring-green-500' : 'bg-zinc-100'
-                }`}
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-lg"
+                style={
+                  cat.icon === ic
+                    ? { background: 'var(--app-surface-2)', boxShadow: '0 0 0 2px var(--gro-green)' }
+                    : { background: 'var(--app-surface-2)' }
+                }
               >
                 {ic}
               </button>
@@ -173,20 +177,27 @@ function CategoryRow({
               <button
                 key={co}
                 onClick={() => updateCategory(cat.id, { color: cat.color === co ? null : co })}
-                style={{ backgroundColor: co }}
-                className={`h-7 w-7 rounded-full ${cat.color === co ? 'ring-2 ring-offset-2 ring-zinc-900' : ''}`}
+                style={{
+                  backgroundColor: co,
+                  ...(cat.color === co
+                    ? { boxShadow: '0 0 0 2px var(--app-surface), 0 0 0 4px var(--app-ink)' }
+                    : {}),
+                }}
+                className="h-7 w-7 rounded-full"
               />
             ))}
           </div>
-          <button
+          <Button
+            variant="primary"
+            size="md"
+            fullWidth
             onClick={() => {
               if (name.trim() && name.trim() !== cat.name) updateCategory(cat.id, { name: name.trim() });
               setEditing(false);
             }}
-            className="min-h-11 rounded-xl bg-green-600 font-semibold text-white"
           >
             {t('common.save')}
-          </button>
+          </Button>
         </div>
       )}
     </li>
