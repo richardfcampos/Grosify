@@ -9,6 +9,7 @@ import { householdsRoute } from './routes/households.js';
 import { meRoute } from './routes/me.js';
 import { shoppingRoute } from './routes/shopping.js';
 import { syncRoute } from './routes/sync.js';
+import { uploadsRoute } from './routes/uploads.js';
 import { isAllowedOrigin } from './origins.js';
 
 const app = new Hono()
@@ -29,7 +30,8 @@ const app = new Hono()
   .route('/catalog', catalogRoute)
   .route('/shopping', shoppingRoute)
   .route('/sync', syncRoute)
-  .route('/me', meRoute);
+  .route('/me', meRoute)
+  .route('/uploads', uploadsRoute);
 
 export type AppType = typeof app;
 

@@ -13,6 +13,7 @@ import {
 } from '../db/repositories.js';
 import { resizeToWebp } from '../lib/resize-image.js';
 import { useConfirm } from '../lib/confirm.js';
+import { useHydrateItemPhoto } from '../lib/use-hydrate-photo.js';
 import { useObjectUrl } from '../lib/use-object-url.js';
 import { ScannerModal } from '../features/scanner/scanner-modal.js';
 import { BrandsSection } from '../features/brands/brands-section.js';
@@ -83,6 +84,12 @@ export function ItemFormPage() {
       setPhotoBlob(existing.photoBlob ?? null);
     }
   }, [editingId, existing]);
+
+  // foto remota (R2): baixa pro cache; quando chega e o usuário não mexeu, mostra
+  useHydrateItemPhoto(editingId ?? '', existing?.photoKey, existing?.photoBlob);
+  useEffect(() => {
+    if (!photoTouched && existing?.photoBlob) setPhotoBlob(existing.photoBlob);
+  }, [existing?.photoBlob, photoTouched]);
 
   const photoUrl = useObjectUrl(photoBlob);
   const barcodes = editingId ? existingBarcodes.map((b) => b.barcode) : pendingBarcodes;

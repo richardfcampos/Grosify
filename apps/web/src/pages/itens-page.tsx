@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { db, type LocalItem } from '../db/dexie.js';
 import { seedCommonItems } from '../features/catalog/seed-items.js';
+import { useHydrateItemPhoto } from '../lib/use-hydrate-photo.js';
 import { useLocalPref } from '../lib/use-local-pref.js';
 import { useObjectUrl } from '../lib/use-object-url.js';
 
@@ -218,6 +219,7 @@ export function ItensPage() {
 
 function ItemRow({ item, compact }: { item: LocalItem; compact: boolean }) {
   const { t } = useTranslation();
+  useHydrateItemPhoto(item.id, item.photoKey, item.photoBlob);
   const photoUrl = useObjectUrl(item.photoBlob);
   const size = compact ? 'h-9 w-9 text-base' : 'h-12 w-12 text-xl';
   return (

@@ -6,6 +6,7 @@ import {
   type LocalSession,
   type OutboxEntry,
 } from '../db/dexie.js';
+import { storageDisabled, uploadBlob } from '../lib/uploads.js';
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3010';
 const CURSOR_KEY = 'syncCursor';
@@ -154,6 +155,38 @@ function numSessionItem(row: unknown): unknown {
   return r;
 }
 
+/**
+ * Sobe pro R2 fotos que estão só locais (blob presente, key ainda null) e
+ * enfileira o PATCH com a key — assim os outros membros recebem via sync e
+ * baixam sob demanda. Cobre fotos tiradas offline (ex.: recibo no mercado).
+ * No-op se R2 está desligado no servidor (501) ou offline.
+ */
+async function drainPhotoUploads(): Promise<void> {
+  if (storageDisabled()) return;
+
+  const items = await db.items
+    .filter((i) => i.deletedAt === null && i.photoKey == null && i.photoBlob != null)
+    .toArray();
+  for (const it of items) {
+    const key = await uploadBlob('item', it.id, it.photoBlob as Blob);
+    if (key === null) return; // R2 off ou falha de rede → tenta no próximo ciclo
+    const ts = new Date().toISOString();
+    await db.items.update(it.id, { photoKey: key, updatedAt: ts });
+    await db.outbox.add({ method: 'PATCH', path: `/catalog/items/${it.id}`, body: { photoKey: key }, rowId: it.id });
+  }
+
+  const sessions = await db.sessions
+    .filter((s) => s.deletedAt === null && s.receiptKey == null && s.receiptBlob != null)
+    .toArray();
+  for (const s of sessions) {
+    const key = await uploadBlob('receipt', s.id, s.receiptBlob as Blob);
+    if (key === null) return;
+    const ts = new Date().toISOString();
+    await db.sessions.update(s.id, { receiptKey: key, updatedAt: ts });
+    await db.outbox.add({ method: 'PATCH', path: `/shopping/sessions/${s.id}`, body: { receiptKey: key }, rowId: s.id });
+  }
+}
+
 /** Puxa mudanças do servidor e aplica no Dexie, sem clobrar pendências locais nem fotos. */
 async function pull(): Promise<boolean> {
   const cursor = await getCursor();
@@ -254,8 +287,11 @@ export async function syncNow(): Promise<void> {
   setSyncState('syncing');
   try {
     const okDrain = await drainOutbox();
+    // sobe fotos locais sem key e enfileira o PATCH; segundo drain manda essas keys
+    if (okDrain) await drainPhotoUploads();
+    const okDrain2 = (await db.outbox.count()) ? await drainOutbox() : okDrain;
     const okPull = await pull();
-    setSyncState(okDrain && okPull ? 'synced' : 'error');
+    setSyncState(okDrain && okDrain2 && okPull ? 'synced' : 'error');
   } finally {
     syncing = false;
   }

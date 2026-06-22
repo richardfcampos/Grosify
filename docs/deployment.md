@@ -60,9 +60,19 @@ O cookie de sessão (Better Auth) só é enviado do web pra API se forem **same-
 - [ ] Se login não persistir: verificar same-site/`CROSS_SITE_COOKIES` e `WEB_ORIGIN` no CORS
 - [ ] Testar offline (DevTools offline) → criar item → reconectar → sincroniza
 
-## Fotos (R2) — quando ligar (fase futura)
+## Fotos (R2) — só falta a credencial
 
-Hoje fotos são blob local no Dexie (não sobem). Pra ativar upload:
-1. Cria bucket R2 `grosify-photos`.
-2. Variáveis na API: `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`.
-3. Implementar rota de presigned URL + trocar `photoBlob` local por upload no `createItem`/`updateItem`.
+O código de upload/download via presigned URL **já está pronto** (servidor + client),
+gated em env: sem as 4 variáveis abaixo a API responde `501 storage_disabled` e o app
+segue com o blob local no Dexie (sem quebrar). Pra ligar de verdade:
+
+1. **Ativar R2** no dashboard Cloudflare (R2 → Enable; 10GB grátis, pode pedir cartão).
+2. **Criar bucket** `grosify-photos`.
+3. **Criar credencial S3** (R2 → Manage R2 API Tokens → Create → Object Read & Write).
+   Anota `access_key_id`, `secret_access_key` e o Account ID.
+4. **Setar na API** (Railway): `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`,
+   `R2_BUCKET=grosify-photos`. Reinicia.
+
+Com isso liga sozinho: o sweep do sync sobe fotos locais que ainda não têm key
+(inclui fotos tiradas offline, ex.: recibo no mercado) e os outros membros baixam
+sob demanda. Bucket é privado; URLs de download expiram (re-presign no display).
