@@ -128,6 +128,10 @@ export default {
       inventoryHint: 'Count what you have; we compute how much to buy.',
     },
     prices: {
+      title: 'Prices',
+      intelKicker: 'Price intelligence',
+      intelSub: 'Where it’s cheapest and how it moved',
+      cheapestStore: 'Cheapest at {{store}}',
       record: 'Record price',
       rating: 'Rating',
       history: 'Price history',
@@ -312,6 +316,7 @@ export default {
       hide: 'Hide',
     },
     inventory: {
+      title: 'Inventory',
       count: 'Count',
       consume: 'Use',
       adjust: 'Adjust',

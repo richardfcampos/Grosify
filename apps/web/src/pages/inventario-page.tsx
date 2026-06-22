@@ -82,14 +82,23 @@ export function InventarioPage() {
       >
         <Icon name="back" size={17} /> {t('common.back')}
       </button>
-      <SectionTitle title={t('lists.inventoryTitle')} sub={t('lists.inventoryHint')} />
+      <SectionTitle
+        kicker={t('lists.inventoryTitle')}
+        title={t('inventory.title')}
+        sub={t('lists.inventoryHint')}
+      />
 
-      <div className="seg self-start">
-        {FILTERS.map((f) => (
-          <button key={f} aria-pressed={filter === f} onClick={() => setFilter(f)}>
-            {t(`inventory.filter.${f}`)}
-          </button>
-        ))}
+      <div className="flex flex-wrap items-center justify-between gap-2.5">
+        <div className="seg">
+          {FILTERS.map((f) => (
+            <button key={f} aria-pressed={filter === f} onClick={() => setFilter(f)}>
+              {t(`inventory.filter.${f}`)}
+            </button>
+          ))}
+        </div>
+        <Button variant="ghost" size="sm" onClick={() => navigate({ to: '/itens/novo' })}>
+          <Icon name="plus" size={16} /> {t('catalog.newItem')}
+        </Button>
       </div>
 
       {rows.length === 0 ? (

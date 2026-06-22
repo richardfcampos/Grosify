@@ -128,6 +128,10 @@ export default {
       inventoryHint: 'Zähle, was du hast; wir berechnen, wie viel zu kaufen ist.',
     },
     prices: {
+      title: 'Preise',
+      intelKicker: 'Preis-Intelligenz',
+      intelSub: 'Wo es am günstigsten ist und wie es sich änderte',
+      cheapestStore: 'Am günstigsten bei {{store}}',
       record: 'Preis erfassen',
       rating: 'Bewertung',
       history: 'Preisverlauf',
@@ -312,6 +316,7 @@ export default {
       hide: 'Ausblenden',
     },
     inventory: {
+      title: 'Inventar',
       count: 'Zählung',
       consume: 'Verbrauch',
       adjust: 'Korrektur',

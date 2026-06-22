@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { db, type LocalItem } from '../db/dexie.js';
 import { seedCommonItems } from '../features/catalog/seed-items.js';
-import { Button, Icon, PriceChange, Sparkline, useMoneyParts } from '../features/ui/index.js';
+import { Button, Icon, PriceChange, SectionTitle, Sparkline, useMoneyParts } from '../features/ui/index.js';
 import { useFormatMoney } from '../lib/use-currency.js';
 import { useHydrateItemPhoto } from '../lib/use-hydrate-photo.js';
 import { useLocalPref } from '../lib/use-local-pref.js';
@@ -19,9 +19,10 @@ interface SavedFilter {
   status: StatusFilter;
 }
 
-/** Inteligência de preço por item: menor visto, variação e histórico. */
+/** Inteligência de preço por item: menor visto, loja, variação e histórico. */
 interface PriceInfo {
   cheapest: number;
+  cheapestStoreId: string;
   history: number[];
   delta: number;
 }
@@ -53,6 +54,9 @@ export function ItensPage() {
   const brands = useLiveQuery(() => db.brands.filter((b) => b.deletedAt === null).toArray(), [], []);
   const inventory = useLiveQuery(() => db.inventory.filter((i) => i.deletedAt === null).toArray(), [], []);
   const prices = useLiveQuery(() => db.prices.filter((p) => p.deletedAt === null).toArray(), [], [] as PriceRecord[]);
+  const stores = useLiveQuery(() => db.stores.filter((s) => s.deletedAt === null).toArray(), [], []);
+
+  const storeName = useMemo(() => new Map(stores.map((s) => [s.id, s.name])), [stores]);
 
   const brandsByItem = useMemo(() => {
     const m = new Map<string, string[]>();
@@ -69,11 +73,18 @@ export function ItensPage() {
   const priceInfo = useMemo(() => {
     const sorted = [...prices].sort((a, b) => a.recordedAt.localeCompare(b.recordedAt));
     const hist = new Map<string, number[]>();
-    for (const p of sorted) hist.set(p.itemId, [...(hist.get(p.itemId) ?? []), p.priceCents]);
+    const cheapestRec = new Map<string, { price: number; storeId: string }>();
+    for (const p of sorted) {
+      hist.set(p.itemId, [...(hist.get(p.itemId) ?? []), p.priceCents]);
+      const cur = cheapestRec.get(p.itemId);
+      if (!cur || p.priceCents < cur.price) cheapestRec.set(p.itemId, { price: p.priceCents, storeId: p.storeId });
+    }
     const m = new Map<string, PriceInfo>();
     for (const [itemId, h] of hist) {
+      const cr = cheapestRec.get(itemId)!;
       m.set(itemId, {
-        cheapest: Math.min(...h),
+        cheapest: cr.price,
+        cheapestStoreId: cr.storeId,
         history: h,
         delta: h.length >= 2 ? h[h.length - 1]! - h[h.length - 2]! : 0,
       });
@@ -137,7 +148,12 @@ export function ItensPage() {
 
   return (
     <main className="screen-in flex flex-col gap-3 px-[18px] py-6">
-      <h1 className="text-2xl font-bold tracking-tight">{t('catalog.itemsTitle')}</h1>
+      <SectionTitle
+        kicker={t('prices.intelKicker')}
+        title={t('prices.title')}
+        sub={t('prices.intelSub')}
+      />
+
 
       <div className="card flex items-center gap-2.5" style={{ padding: '12px 14px' }}>
         <Icon name="search" size={18} className="text-[var(--app-gray)]" />
@@ -230,7 +246,13 @@ export function ItensPage() {
       ) : (
         <div className="card row-sep" style={{ padding: 0, overflow: 'hidden' }}>
           {filtered.map((item) => (
-            <ItemRow key={item.id} item={item} compact={compact} info={priceInfo.get(item.id)} />
+            <ItemRow
+              key={item.id}
+              item={item}
+              compact={compact}
+              info={priceInfo.get(item.id)}
+              storeName={storeName}
+            />
           ))}
         </div>
       )}
@@ -246,13 +268,26 @@ export function ItensPage() {
   );
 }
 
-function ItemRow({ item, compact, info }: { item: LocalItem; compact: boolean; info?: PriceInfo }) {
+function ItemRow({
+  item,
+  compact,
+  info,
+  storeName,
+}: {
+  item: LocalItem;
+  compact: boolean;
+  info?: PriceInfo;
+  storeName: Map<string, string>;
+}) {
   const { t } = useTranslation();
   const fmt = useFormatMoney();
   const money = useMoneyParts();
   useHydrateItemPhoto(item.id, item.photoKey, item.photoBlob);
   const photoUrl = useObjectUrl(item.photoBlob);
   const size = compact ? 'h-9 w-9 text-base' : 'h-11 w-11 text-xl';
+  // subtítulo: "mais barato em {loja}" quando há preço; senão categoria
+  const cheapStore = info?.cheapestStoreId ? storeName.get(info.cheapestStoreId) : undefined;
+  const subtitle = cheapStore ? t('prices.cheapestStore', { store: cheapStore }) : item.category;
   return (
     <Link
       to="/itens/$id"
@@ -268,7 +303,7 @@ function ItemRow({ item, compact, info }: { item: LocalItem; compact: boolean; i
       )}
       <div className="min-w-0 flex-1">
         <p className="truncate font-semibold">{item.name}</p>
-        {!compact && item.category && <p className="muted truncate text-sm">{item.category}</p>}
+        {!compact && subtitle && <p className="muted truncate text-sm">{subtitle}</p>}
       </div>
       {info && info.history.length >= 2 && <Sparkline data={info.history} />}
       <div className="text-right">
