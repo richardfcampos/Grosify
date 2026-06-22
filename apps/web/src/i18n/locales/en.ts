@@ -1,5 +1,20 @@
 export default {
   translation: {
+    appearance: {
+      title: 'Appearance',
+      theme: 'Theme',
+      light: 'Light',
+      dark: 'Dark',
+      direction: 'Visual direction',
+      dir: {
+        painel: 'Dashboard',
+        painelTag: 'Money manager — calm, data first.',
+        mercado: 'Market',
+        mercadoTag: 'Flyer vernacular — giant money, tags and stamps.',
+        recibo: 'Receipt',
+        reciboTag: 'Auditable ledger — tabular mono, thin rules, sober.',
+      },
+    },
     auth: {
       networkError: 'No connection to the server. Try again.',
       loginTitle: 'Sign in to Grosify',
@@ -48,6 +63,9 @@ export default {
     restock: {
       noLists: 'Create a recurring list to generate restock.',
       missingCount: '{{count}} items missing',
+      savedIn: 'You saved in {{month}}',
+      noPrice: '{{count}} without price',
+      estimated: 'estimated',
       title: 'Monthly restock',
       subtitle: 'To buy, based on your stock',
       dueToday: 'Time to shop today',
@@ -61,6 +79,7 @@ export default {
     },
     nav: {
       home: 'Home',
+      shop: 'Shop',
       lists: 'Lists',
       items: 'Items',
       stores: 'Stores',
@@ -231,6 +250,12 @@ export default {
     shopping: {
       share: 'Share receipt',
       receiptTag: 'monthly shopping',
+      savedLabel: 'You saved',
+      overLabel: 'Over estimate',
+      vsEstimated: 'vs. {{amount}} estimated',
+      receiptTotal: 'TOTAL',
+      receiptSavings: 'SAVINGS',
+      toHome: 'Home',
       start: 'Start shopping',
       title: 'Shopping mode',
       current: 'In cart',
@@ -347,6 +372,18 @@ export default {
       notFound: 'Could not read it. Get closer and try again.',
       cameraError: 'Camera unavailable.',
       hint: 'Frame the price on the tag and capture.',
+    },
+    onboarding: {
+      skip: 'Skip',
+      next: 'Next',
+      start: 'Get started',
+      seedItems: 'Add common everyday items',
+      s1Title: 'Your lists, your way',
+      s1Body: 'Create monthly or one-off lists (barbecue, party). The app works out what you still need.',
+      s2Title: 'Right price, right store',
+      s2Body: 'Log prices and see where it is cheapest. The app warns you when a price goes up.',
+      s3Title: 'Shop offline, stress-free',
+      s3Body: 'At the store, scan and check off. See the running total live — works with no internet.',
     },
     common: {
       confirm: 'Confirm',

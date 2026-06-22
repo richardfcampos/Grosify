@@ -1,5 +1,20 @@
 export default {
   translation: {
+    appearance: {
+      title: 'Aspetto',
+      theme: 'Tema',
+      light: 'Chiaro',
+      dark: 'Scuro',
+      direction: 'Direzione visiva',
+      dir: {
+        painel: 'Pannello',
+        painelTag: 'Gestore del denaro — calmo, dati in primo piano.',
+        mercado: 'Mercato',
+        mercadoTag: 'Linguaggio da volantino — soldi giganti, etichette e timbri.',
+        recibo: 'Ricevuta',
+        reciboTag: 'Registro verificabile — mono tabellare, righe sottili, sobrio.',
+      },
+    },
     auth: {
       networkError: 'Nessuna connessione al server. Riprova.',
       loginTitle: 'Accedi a Grosify',
@@ -48,6 +63,9 @@ export default {
     restock: {
       noLists: 'Crea una lista ricorrente per generare il rifornimento.',
       missingCount: '{{count}} articoli mancanti',
+      savedIn: 'Hai risparmiato a {{month}}',
+      noPrice: '{{count}} senza prezzo',
+      estimated: 'stimato',
       title: 'Rifornimento del mese',
       subtitle: 'Da comprare, in base alle scorte',
       dueToday: 'Oggi è giorno di spesa',
@@ -61,6 +79,7 @@ export default {
     },
     nav: {
       home: 'Home',
+      shop: 'Compra',
       lists: 'Liste',
       items: 'Articoli',
       stores: 'Negozi',
@@ -231,6 +250,12 @@ export default {
     shopping: {
       share: 'Condividi ricevuta',
       receiptTag: 'spesa del mese',
+      savedLabel: 'Hai risparmiato',
+      overLabel: 'Oltre la stima',
+      vsEstimated: 'vs. {{amount}} stimato',
+      receiptTotal: 'TOTALE',
+      receiptSavings: 'RISPARMIO',
+      toHome: 'Inizio',
       start: 'Inizia spesa',
       title: 'Modalità spesa',
       current: 'Nel carrello',
@@ -347,6 +372,18 @@ export default {
       notFound: 'Non sono riuscito a leggere. Avvicinati e riprova.',
       cameraError: 'Fotocamera non disponibile.',
       hint: 'Inquadra il prezzo sull’etichetta e cattura.',
+    },
+    onboarding: {
+      skip: 'Salta',
+      next: 'Avanti',
+      start: 'Inizia',
+      seedItems: 'Aggiungi articoli comuni di tutti i giorni',
+      s1Title: 'Le tue liste, a modo tuo',
+      s1Body: 'Crea liste mensili o singole (grigliata, festa). L’app calcola cosa manca da comprare.',
+      s2Title: 'Prezzo giusto, negozio giusto',
+      s2Body: 'Registra i prezzi e scopri dov’è più conveniente. L’app ti avvisa quando un prezzo sale.',
+      s3Title: 'Fai la spesa offline, senza stress',
+      s3Body: 'Al negozio, scansiona e spunta. Vedi il totale in tempo reale — funziona senza internet.',
     },
     common: {
       confirm: 'Conferma',

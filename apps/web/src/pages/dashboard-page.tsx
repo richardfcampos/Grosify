@@ -9,7 +9,8 @@ import { Link, Navigate, useNavigate } from '@tanstack/react-router';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { db, type LocalList } from '../db/dexie.js';
+import { db, type LocalList, type LocalSession, type LocalSessionItem } from '../db/dexie.js';
+import { Badge, Button, Icon, MoneyValue, SectionTitle, useMoneyParts } from '../features/ui/index.js';
 import { useSession } from '../lib/auth-client.js';
 import { useFormatMoney } from '../lib/use-currency.js';
 import { useMembership } from '../lib/use-membership.js';
@@ -17,12 +18,15 @@ import { Loading } from './household-pages.js';
 
 /**
  * Home = reposição por lista recorrente: cada lista mostra o que falta comprar
- * (qty recomendada da entrada − estoque) e total estimado.
+ * (qty recomendada da entrada − estoque) e total estimado. No topo, o "preço
+ * protagonista": quanto a casa economizou no mês (estimado − pago nas compras
+ * concluídas) — só aparece quando há economia real.
  */
 export function DashboardPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const fmt = useFormatMoney();
+  const money = useMoneyParts();
   const { data: session, isPending } = useSession();
   const membership = useMembership(!!session);
 
@@ -46,6 +50,16 @@ export function DashboardPage() {
     [],
     [] as PriceRecord[],
   );
+  const sessions = useLiveQuery(
+    () => db.sessions.filter((s) => s.deletedAt === null && s.status === 'completed').toArray(),
+    [],
+    [] as LocalSession[],
+  );
+  const sessionItems = useLiveQuery(
+    () => db.sessionItems.filter((s) => s.deletedAt === null && s.checkedAt != null).toArray(),
+    [],
+    [] as LocalSessionItem[],
+  );
 
   const onHand = useMemo(() => new Map(inventory.map((i) => [i.itemId, i.qtyOnHand])), [inventory]);
   const priceOf = useMemo(() => {
@@ -57,7 +71,7 @@ export function DashboardPage() {
     };
   }, [prices]);
 
-  // por lista recorrente: itens faltando (recomendado − estoque) + total estimado
+  // por lista recorrente: itens faltando (recomendado − estoque), quantos sem preço e total estimado
   const perList = useMemo(
     () =>
       lists.map((list) => {
@@ -65,78 +79,135 @@ export function DashboardPage() {
         const needed = listEntries
           .map((e) => ({ itemId: e.itemId, need: neededQty(e.qty, onHand.get(e.itemId) ?? 0) }))
           .filter((x) => x.need > 0);
+        const noPrice = needed.filter((n) => priceOf(n.itemId) === null).length;
         const total = estimateTotal(
           needed.map((n) => ({ qty: n.need, unitPriceCents: priceOf(n.itemId) })),
         ).totalCents;
-        return { list, missing: needed.length, total };
+        const due = isRecurrenceDue(list.recurrence, list.recurrenceDay, new Date());
+        return { list, missing: needed.length, noPrice, total, due };
       }),
     [lists, entries, onHand, priceOf],
   );
+
+  // economia do mês: soma de (estimado − pago) × qty nas linhas concluídas das compras deste mês
+  const savedThisMonth = useMemo(() => {
+    const now = new Date();
+    const ym = `${now.getFullYear()}-${now.getMonth()}`;
+    const monthSessions = new Set(
+      sessions
+        .filter((s) => {
+          if (!s.completedAt) return false;
+          const d = new Date(s.completedAt);
+          return `${d.getFullYear()}-${d.getMonth()}` === ym;
+        })
+        .map((s) => s.id),
+    );
+    let saved = 0;
+    for (const si of sessionItems) {
+      if (!monthSessions.has(si.sessionId)) continue;
+      if (si.estimatedUnitPriceCents == null || si.actualUnitPriceCents == null || si.actualQty == null)
+        continue;
+      saved += Math.round((si.estimatedUnitPriceCents - si.actualUnitPriceCents) * Number(si.actualQty));
+    }
+    return saved;
+  }, [sessions, sessionItems]);
+
+  const monthLabel = new Date().toLocaleDateString(i18n.resolvedLanguage, { month: 'long' });
+  // lista alvo do "Iniciar compra": a do dia com pendência, senão a primeira pendente, senão a primeira
+  const target =
+    perList.find((p) => p.due && p.missing > 0) ??
+    perList.find((p) => p.missing > 0) ??
+    perList[0];
 
   if (isPending || (session && membership.isLoading)) return <Loading />;
   if (!session) return <Navigate to="/entrar" search={{ redirect: '/' }} />;
   if (!membership.data) return <Navigate to="/casa" />;
 
   return (
-    <main className="flex flex-col gap-5 px-5 py-6">
-      <header className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <img src="/icon.svg" alt="" className="h-9 w-9" />
-          <h1 className="text-lg font-bold text-zinc-900">{membership.data.name}</h1>
-        </div>
-        <Link to="/ajustes" aria-label={t('settings.title')} className="text-2xl text-zinc-500">
-          ⚙
+    <main className="screen-in flex flex-col gap-5 px-[18px] py-6">
+      <header className="flex items-center gap-2.5">
+        <img src="/icon.svg" alt="" className="h-[30px] w-[30px] flex-none" />
+        <span className="text-[17px] font-bold tracking-tight">{membership.data.name}</span>
+        <div className="flex-1" />
+        <Link to="/historico" aria-label={t('history.title')} className="flex p-1 text-[var(--app-gray)]">
+          <Icon name="clock" size={22} />
+        </Link>
+        <Link to="/ajustes" aria-label={t('settings.title')} className="flex p-1 text-[var(--app-gray)]">
+          <Icon name="gear" size={22} />
         </Link>
       </header>
 
-      <div>
-        <h2 className="text-xs uppercase tracking-wide text-zinc-500">{t('restock.title')}</h2>
-        <p className="text-sm text-zinc-500">{t('restock.subtitle')}</p>
-      </div>
+      {savedThisMonth > 0 && (
+        <div className="card overflow-hidden p-[26px]">
+          <div className="kicker">{t('restock.savedIn', { month: monthLabel })}</div>
+          <div className="mt-2">
+            <MoneyValue cents={savedThisMonth} size="lg" tone="positive" {...money} />
+          </div>
+        </div>
+      )}
 
-      <Link
-        to="/inventario"
-        className="rounded-xl border border-green-600 px-4 py-2.5 text-center text-sm font-semibold text-green-700"
-      >
-        {t('restock.doInventory')}
-      </Link>
+      <SectionTitle title={t('restock.title')} sub={t('restock.subtitle')} />
 
       {lists.length === 0 ? (
-        <p className="mt-4 text-center text-sm text-zinc-500">{t('restock.noLists')}</p>
+        <p className="muted mt-2 text-center text-sm">{t('restock.noLists')}</p>
       ) : (
-        <ul className="flex flex-col gap-3">
-          {perList.map(({ list, missing, total }) => (
-            <li key={list.id} className="flex flex-col gap-3 rounded-2xl border border-zinc-200 p-4">
-              <div className="flex items-start justify-between">
-                <Link to="/listas/$id" params={{ id: list.id }} className="min-w-0">
-                  <p className="truncate font-semibold text-zinc-900">
-                    {list.icon ? `${list.icon} ` : ''}
-                    {list.name}
-                  </p>
-                  {isRecurrenceDue(list.recurrence, list.recurrenceDay, new Date()) && (
-                    <span className="mt-0.5 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
-                      {t('restock.dueToday')}
-                    </span>
-                  )}
-                  <p className="text-sm text-zinc-500">
-                    {missing > 0
-                      ? t('restock.missingCount', { count: missing })
-                      : t('restock.nothing')}
-                  </p>
-                </Link>
-                <span className="font-bold text-zinc-900">{fmt(total)}</span>
-              </div>
-              {missing > 0 && (
-                <button
-                  onClick={() => navigate({ to: '/listas/$id/comprar', params: { id: list.id } })}
-                  className="min-h-11 rounded-xl bg-green-600 text-sm font-bold text-white active:bg-green-700"
-                >
-                  {t('restock.startShopping')}
-                </button>
+        <div className="flex flex-col gap-3">
+          {perList.map(({ list, missing, noPrice, total, due }) => (
+            <Link
+              key={list.id}
+              to="/listas/$id"
+              params={{ id: list.id }}
+              className="card tap flex items-center gap-3.5 p-4"
+            >
+              {list.icon && (
+                <span className="flex-none text-[26px] leading-none">{list.icon}</span>
               )}
-            </li>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="truncate text-base font-semibold">{list.name}</span>
+                  {due && (
+                    <Badge tone="oferta" style={{ fontSize: 10 }}>
+                      {t('restock.dueToday')}
+                    </Badge>
+                  )}
+                </div>
+                <div className="muted mt-0.5 text-[13px]">
+                  {missing > 0 ? t('restock.missingCount', { count: missing }) : t('restock.nothing')}
+                  {noPrice > 0 && ` · ${t('restock.noPrice', { count: noPrice })}`}
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="kicker muted mb-0.5">{t('restock.estimated')}</div>
+                <div className="mono text-[15px] font-semibold">{fmt(total)}</div>
+              </div>
+              <Icon name="chev" size={18} className="flex-none text-[var(--app-gray)]" />
+            </Link>
           ))}
-        </ul>
+        </div>
+      )}
+
+      {lists.length > 0 && (
+        <div className="flex gap-2.5">
+          <Button
+            variant="primary"
+            size="lg"
+            fullWidth
+            disabled={!target || target.missing === 0}
+            onClick={() =>
+              target &&
+              navigate({ to: '/listas/$id/comprar', params: { id: target.list.id } })
+            }
+          >
+            {t('restock.startShopping')}
+          </Button>
+          <Link
+            to="/inventario"
+            className="gro-btn gro-btn--secondary gro-btn--lg flex-none"
+            style={{ whiteSpace: 'nowrap' }}
+          >
+            {t('restock.doInventory')}
+          </Link>
+        </div>
       )}
     </main>
   );

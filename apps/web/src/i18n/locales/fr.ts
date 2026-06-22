@@ -1,5 +1,20 @@
 export default {
   translation: {
+    appearance: {
+      title: 'Apparence',
+      theme: 'Thème',
+      light: 'Clair',
+      dark: 'Sombre',
+      direction: 'Direction visuelle',
+      dir: {
+        painel: 'Tableau',
+        painelTag: 'Gestionnaire d’argent — calme, données en avant.',
+        mercado: 'Marché',
+        mercadoTag: 'Style prospectus — gros montants, étiquettes et tampons.',
+        recibo: 'Reçu',
+        reciboTag: 'Registre vérifiable — mono tabulaire, lignes fines, sobre.',
+      },
+    },
     auth: {
       networkError: 'Pas de connexion au serveur. Réessayez.',
       loginTitle: 'Se connecter à Grosify',
@@ -48,6 +63,9 @@ export default {
     restock: {
       noLists: 'Créez une liste récurrente pour générer le réassort.',
       missingCount: '{{count}} articles manquants',
+      savedIn: 'Économisé en {{month}}',
+      noPrice: '{{count}} sans prix',
+      estimated: 'estimé',
       title: 'Réassort du mois',
       subtitle: 'À acheter, selon votre stock',
       dueToday: 'C’est le jour des courses',
@@ -61,6 +79,7 @@ export default {
     },
     nav: {
       home: 'Accueil',
+      shop: 'Acheter',
       lists: 'Listes',
       items: 'Articles',
       stores: 'Magasins',
@@ -231,6 +250,12 @@ export default {
     shopping: {
       share: 'Partager le reçu',
       receiptTag: 'courses du mois',
+      savedLabel: 'Économisé',
+      overLabel: 'Au-dessus de l’estimation',
+      vsEstimated: 'vs. {{amount}} estimé',
+      receiptTotal: 'TOTAL',
+      receiptSavings: 'ÉCONOMIE',
+      toHome: 'Accueil',
       start: 'Commencer les courses',
       title: 'Mode courses',
       current: 'Dans le panier',
@@ -347,6 +372,18 @@ export default {
       notFound: 'Lecture impossible. Rapprochez-vous et réessayez.',
       cameraError: 'Caméra indisponible.',
       hint: 'Cadrez le prix sur l’étiquette et capturez.',
+    },
+    onboarding: {
+      skip: 'Passer',
+      next: 'Suivant',
+      start: 'Commencer',
+      seedItems: 'Ajouter des articles courants du quotidien',
+      s1Title: 'Vos listes, à votre façon',
+      s1Body: 'Créez des listes du mois ou ponctuelles (barbecue, fête). L’appli calcule ce qu’il vous manque.',
+      s2Title: 'Bon prix, bon magasin',
+      s2Body: 'Enregistrez les prix et voyez où c’est le moins cher. L’appli vous alerte quand un prix augmente.',
+      s3Title: 'Faites vos courses hors ligne, sans stress',
+      s3Body: 'En magasin, scannez et cochez. Voyez le total en direct — fonctionne sans internet.',
     },
     common: {
       confirm: 'Confirmer',

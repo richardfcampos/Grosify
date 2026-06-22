@@ -1,5 +1,20 @@
 export default {
   translation: {
+    appearance: {
+      title: 'Darstellung',
+      theme: 'Farbschema',
+      light: 'Hell',
+      dark: 'Dunkel',
+      direction: 'Visuelle Richtung',
+      dir: {
+        painel: 'Übersicht',
+        painelTag: 'Geldverwalter — ruhig, Daten zuerst.',
+        mercado: 'Markt',
+        mercadoTag: 'Prospekt-Stil — riesige Beträge, Etiketten und Stempel.',
+        recibo: 'Beleg',
+        reciboTag: 'Prüfbares Register — tabellarisch mono, dünne Linien, schlicht.',
+      },
+    },
     auth: {
       networkError: 'Keine Verbindung zum Server. Erneut versuchen.',
       loginTitle: 'Bei Grosify anmelden',
@@ -48,6 +63,9 @@ export default {
     restock: {
       noLists: 'Erstelle eine wiederkehrende Liste, um die Liste zu erzeugen.',
       missingCount: '{{count}} Artikel fehlen',
+      savedIn: 'Gespart im {{month}}',
+      noPrice: '{{count}} ohne Preis',
+      estimated: 'geschätzt',
       title: 'Monatliches Auffüllen',
       subtitle: 'Zu kaufen, je nach Bestand',
       dueToday: 'Heute einkaufen',
@@ -61,6 +79,7 @@ export default {
     },
     nav: {
       home: 'Start',
+      shop: 'Einkaufen',
       lists: 'Listen',
       items: 'Artikel',
       stores: 'Läden',
@@ -231,6 +250,12 @@ export default {
     shopping: {
       share: 'Beleg teilen',
       receiptTag: 'Monatseinkauf',
+      savedLabel: 'Gespart',
+      overLabel: 'Über Schätzung',
+      vsEstimated: 'vs. {{amount}} geschätzt',
+      receiptTotal: 'GESAMT',
+      receiptSavings: 'ERSPARNIS',
+      toHome: 'Start',
       start: 'Einkauf starten',
       title: 'Einkaufsmodus',
       current: 'Im Wagen',
@@ -347,6 +372,18 @@ export default {
       notFound: 'Konnte nicht lesen. Näher rangehen und erneut versuchen.',
       cameraError: 'Kamera nicht verfügbar.',
       hint: 'Den Preis auf dem Etikett einrahmen und aufnehmen.',
+    },
+    onboarding: {
+      skip: 'Überspringen',
+      next: 'Weiter',
+      start: 'Loslegen',
+      seedItems: 'Häufige Alltagsartikel hinzufügen',
+      s1Title: 'Deine Listen, dein Stil',
+      s1Body: 'Erstelle Monats- oder Einzellisten (Grillen, Party). Die App berechnet, was noch fehlt.',
+      s2Title: 'Richtiger Preis, richtiger Laden',
+      s2Body: 'Erfasse Preise und sieh, wo es am günstigsten ist. Die App warnt bei Preiserhöhungen.',
+      s3Title: 'Offline einkaufen, ohne Stress',
+      s3Body: 'Im Laden scannen und abhaken. Sieh die Summe live — funktioniert ohne Internet.',
     },
     common: {
       confirm: 'Bestätigen',

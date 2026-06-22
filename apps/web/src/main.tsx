@@ -4,7 +4,10 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './i18n/index.js';
 import './index.css';
+import '@grosify/ui/style.css';
+import './features/ui/theme.css';
 import { ConfirmProvider } from './lib/confirm.js';
+import { ThemeProvider } from './features/ui/theme-provider.js';
 import { router } from './router.js';
 
 const queryClient = new QueryClient({
@@ -16,9 +19,11 @@ const queryClient = new QueryClient({
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <ConfirmProvider>
-        <RouterProvider router={router} />
-      </ConfirmProvider>
+      <ThemeProvider>
+        <ConfirmProvider>
+          <RouterProvider router={router} />
+        </ConfirmProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   </StrictMode>,
 );

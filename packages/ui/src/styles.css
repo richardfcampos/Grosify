@@ -1,0 +1,156 @@
+@import url('https://fonts.googleapis.com/css2?family=Anton&family=Lexend:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+/* Design System "Mercado Inteligente" — tokens do DESIGN.md */
+:root {
+  --gro-green: #15803d;
+  --gro-green-fg: #ffffff;
+  --gro-red: #dc2626;
+  --gro-yellow: #facc15;
+  --gro-yellow-fg: #1c1917;
+  --gro-stamp: #1d4ed8;
+  --gro-ink: #1c1917;
+  --gro-gray: #78716c;
+  --gro-border: #e7e5e4;
+  --gro-bg: #fafaf7;
+  --gro-surface: #ffffff;
+
+  --gro-font-ui: 'Lexend', system-ui, -apple-system, sans-serif;
+  --gro-font-money: 'Anton', 'Lexend', sans-serif;
+  --gro-font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --gro-radius: 0.75rem;
+}
+
+/* ---------- Button ---------- */
+.gro-btn {
+  font-family: var(--gro-font-ui);
+  font-weight: 600;
+  border: 1px solid transparent;
+  border-radius: var(--gro-radius);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  line-height: 1.2;
+  transition: filter 0.12s ease, background 0.12s ease;
+}
+.gro-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.gro-btn--sm { min-height: 2.25rem; padding: 0 0.875rem; font-size: 14px; }
+.gro-btn--md { min-height: 3rem; padding: 0 1.25rem; font-size: 15px; }
+.gro-btn--lg { min-height: 3.5rem; padding: 0 1.75rem; font-size: 18px; }
+.gro-btn--block { width: 100%; }
+.gro-btn--primary { background: var(--gro-green); color: var(--gro-green-fg); }
+.gro-btn--primary:not(:disabled):active { filter: brightness(0.92); }
+.gro-btn--secondary { background: var(--gro-surface); color: var(--gro-ink); border-color: var(--gro-border); }
+.gro-btn--secondary:not(:disabled):active { background: var(--gro-bg); }
+.gro-btn--ghost { background: transparent; color: var(--gro-green); }
+.gro-btn--ghost:not(:disabled):active { background: rgba(21, 128, 61, 0.08); }
+
+/* ---------- Badge ---------- */
+.gro-badge {
+  font-family: var(--gro-font-ui);
+  font-weight: 600;
+  font-size: 12px;
+  line-height: 1;
+  padding: 0.3rem 0.55rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  white-space: nowrap;
+}
+.gro-badge--economia { background: rgba(21, 128, 61, 0.12); color: var(--gro-green); }
+.gro-badge--subiu { background: rgba(220, 38, 38, 0.12); color: var(--gro-red); }
+.gro-badge--oferta { background: var(--gro-yellow); color: var(--gro-yellow-fg); }
+.gro-badge--neutral { background: rgba(120, 113, 108, 0.14); color: var(--gro-gray); }
+
+/* ---------- MoneyValue ---------- */
+.gro-money {
+  font-family: var(--gro-font-money);
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  display: inline-flex;
+  align-items: flex-start;
+  color: var(--gro-ink);
+}
+.gro-money--positive { color: var(--gro-green); }
+.gro-money--negative { color: var(--gro-red); }
+.gro-money__symbol { font-size: 0.5em; margin-right: 0.12em; align-self: flex-start; margin-top: 0.18em; }
+.gro-money__cents { font-size: 0.5em; align-self: flex-start; margin-top: 0.1em; margin-left: 0.04em; }
+.gro-money--sm { font-size: 24px; }
+.gro-money--md { font-size: 38px; }
+.gro-money--lg { font-size: 56px; }
+
+/* ---------- PriceTag (etiqueta) ---------- */
+.gro-pricetag {
+  font-family: var(--gro-font-ui);
+  font-weight: 800;
+  background: var(--gro-yellow);
+  color: var(--gro-yellow-fg);
+  padding: 0.4rem 0.7rem;
+  display: inline-block;
+  transform: rotate(-3deg);
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.22);
+  border-radius: 3px;
+  font-size: 15px;
+  line-height: 1.1;
+}
+
+/* ---------- Stamp (carimbo) ---------- */
+.gro-stamp {
+  font-family: var(--gro-font-ui);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gro-stamp);
+  border: 2px solid var(--gro-stamp);
+  border-radius: 6px;
+  padding: 0.3rem 0.6rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  transform: rotate(-6deg);
+  font-size: 14px;
+  background: rgba(29, 78, 216, 0.06);
+}
+
+/* ---------- PriceChange ---------- */
+.gro-pricechange {
+  font-family: var(--gro-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+.gro-pricechange--down { color: var(--gro-green); }
+.gro-pricechange--up { color: var(--gro-red); }
+
+/* ---------- Card ---------- */
+.gro-card {
+  font-family: var(--gro-font-ui);
+  background: var(--gro-surface);
+  border: 1px solid var(--gro-border);
+  border-radius: 1rem;
+  padding: 1rem;
+  color: var(--gro-ink);
+}
+.gro-card--elevated { box-shadow: 0 1px 3px rgba(28, 25, 23, 0.08), 0 4px 12px rgba(28, 25, 23, 0.06); border-color: transparent; }
+
+/* ---------- Chip (status de sync) ---------- */
+.gro-chip {
+  font-family: var(--gro-font-ui);
+  font-weight: 500;
+  font-size: 12px;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.gro-chip--default { background: rgba(28, 25, 23, 0.9); color: #fff; }
+.gro-chip--synced { background: var(--gro-green); color: #fff; }
+.gro-chip--error { background: var(--gro-red); color: #fff; }
+.gro-chip--muted { background: var(--gro-border); color: var(--gro-gray); }

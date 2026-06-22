@@ -10,6 +10,8 @@ import { useHouseholdPlan } from '../lib/use-currency.js';
 import { clearLocalData, getSyncState, subscribeSync, syncNow } from '../sync/engine.js';
 import { exportPricesCsv, importBackup } from '../lib/backup.js';
 import { useRef, useSyncExternalStore } from 'react';
+import { Icon } from '../features/ui/icon.js';
+import { useTheme, DIRECTIONS } from '../features/ui/theme-provider.js';
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3010';
 
@@ -23,6 +25,7 @@ export function AjustesPage() {
   const [copied, setCopied] = useState(false);
   const syncState = useSyncExternalStore(subscribeSync, getSyncState);
   const restoreRef = useRef<HTMLInputElement>(null);
+  const { mode, dir, setMode, setDir } = useTheme();
 
   async function onRestore(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -108,6 +111,45 @@ export function AjustesPage() {
             </option>
           ))}
         </select>
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+          {t('appearance.title')}
+        </h2>
+        <div className="card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontWeight: 600, fontSize: 15 }}>{t('appearance.theme')}</span>
+            <div className="seg">
+              <button aria-pressed={mode === 'light'} onClick={() => setMode('light')}>
+                <Icon name="sun" size={15} /> {t('appearance.light')}
+              </button>
+              <button aria-pressed={mode === 'dark'} onClick={() => setMode('dark')}>
+                <Icon name="moon" size={15} /> {t('appearance.dark')}
+              </button>
+            </div>
+          </div>
+          <div style={{ borderTop: '1px solid var(--app-line)', paddingTop: 14 }}>
+            <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 4 }}>
+              {t('appearance.direction')}
+            </div>
+            <div className="muted" style={{ fontSize: 12.5, marginBottom: 10 }}>
+              {t(`appearance.dir.${dir}Tag`)}
+            </div>
+            <div className="seg" style={{ width: '100%' }}>
+              {DIRECTIONS.map((d) => (
+                <button
+                  key={d.id}
+                  aria-pressed={dir === d.id}
+                  onClick={() => setDir(d.id)}
+                  style={{ flex: 1, justifyContent: 'center' }}
+                >
+                  {t(`appearance.dir.${d.id}`)}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
       </section>
 
       <section className="flex flex-col gap-2 rounded-2xl border border-zinc-200 p-4">

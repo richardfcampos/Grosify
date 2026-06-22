@@ -15,14 +15,38 @@ import {
 import { CheckItemSheet } from '../features/shopping/check-item-sheet.js';
 import { UnknownBarcodeSheet } from '../features/brands/unknown-barcode-sheet.js';
 import { ScannerModal } from '../features/scanner/scanner-modal.js';
+import { Button, Icon, MoneyValue, Stamp, useMoneyParts } from '../features/ui/index.js';
 import { resizeToWebp } from '../lib/resize-image.js';
+import { useHydrateReceipt } from '../lib/use-hydrate-photo.js';
 import { useObjectUrl } from '../lib/use-object-url.js';
 import { useFormatMoney } from '../lib/use-currency.js';
+
+/** Tokens dark forçados no Modo Compra — DESIGN.md: contexto de mercado é sempre escuro,
+ *  independente do tema do app (amarelo/verde sobre preto = legibilidade de relance). */
+const DARK_VARS = {
+  '--app-bg': '#0c0a09',
+  '--app-surface': '#1c1917',
+  '--app-surface-2': '#231f1d',
+  '--app-ink': '#fafaf7',
+  '--app-gray': '#a8a29e',
+  '--app-border': '#292524',
+  '--app-line': '#241f1d',
+  '--gro-surface': '#1c1917',
+  '--gro-ink': '#fafaf7',
+  '--gro-gray': '#a8a29e',
+  '--gro-border': '#292524',
+  '--gro-green': '#4ade80',
+  '--gro-red': '#f87171',
+  '--gro-stamp': '#93c5fd',
+  '--gro-yellow': '#facc15',
+  '--app-elev': '0 1px 3px #00000059, 0 16px 40px -18px #000000b3',
+} as React.CSSProperties;
 
 export function CompraPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const fmt = useFormatMoney();
+  const money = useMoneyParts();
   const { id } = useParams({ from: '/app/compra/$id' });
 
   const session = useLiveQuery(() => db.sessions.get(id), [id]);
@@ -126,36 +150,46 @@ export function CompraPage() {
   }
 
   return (
-    <div className="min-h-dvh bg-stone-950 text-stone-50">
-      <header className="sticky top-0 z-10 bg-stone-900 px-5 pb-4 pt-3">
+    <div className="flex min-h-dvh flex-col" style={{ background: '#0c0a09', color: '#fafaf7', ...DARK_VARS }}>
+      <header
+        className="sticky top-0 z-10 flex-none px-[18px] pb-3.5 pt-3"
+        style={{ background: '#161311', borderBottom: '1px solid #2a2622' }}
+      >
         <button
           onClick={() => navigate({ to: '/' })}
-          className="mb-2 text-sm text-stone-400"
+          className="mb-2 flex items-center gap-1 text-[13px]"
+          style={{ color: '#a8a29e' }}
         >
-          ← {t('shopping.back')}
+          <Icon name="back" size={16} /> {t('shopping.back')}
         </button>
-        <div className="flex items-center justify-between">
+        <div className="flex items-end justify-between">
           <div>
-            <p className="text-xs uppercase tracking-wide text-stone-400">{t('shopping.current')}</p>
-            <p className="font-['Anton'] text-2xl" style={{ color: over ? '#F87171' : '#4ADE80' }}>
-              {fmt(current)}
-            </p>
+            <div className="kicker" style={{ color: '#a8a29e' }}>
+              {t('shopping.current')}
+            </div>
+            <MoneyValue cents={current} size="md" tone={over ? 'negative' : 'positive'} {...money} />
           </div>
           <div className="text-right">
-          <p className="text-xs uppercase tracking-wide text-stone-400">{t('shopping.estimated')}</p>
-          <p className="font-mono text-sm text-stone-300">{fmt(estimated)}</p>
-          {current > 0 && (
-            <p className="font-mono text-xs" style={{ color: over ? '#F87171' : '#4ADE80' }}>
-              {over ? '▲' : '▼'} {fmt(Math.abs(estimated - current))} {over ? t('shopping.above') : t('shopping.below')}
-            </p>
-          )}
+            <div className="kicker" style={{ color: '#a8a29e' }}>
+              {t('shopping.estimated')}
+            </div>
+            <div className="mono text-base" style={{ color: '#d6d3d1' }}>
+              {fmt(estimated)}
+            </div>
+            {current > 0 && (
+              <div className="mono mt-0.5 text-xs" style={{ color: over ? '#f87171' : '#4ade80' }}>
+                {over ? '▲' : '▼'} {fmt(Math.abs(estimated - current))}{' '}
+                {over ? t('shopping.above') : t('shopping.below')}
+              </div>
+            )}
           </div>
         </div>
         {stores.length > 0 && (
           <select
             value={activeStoreId ?? ''}
             onChange={(e) => setSessionStore(id, e.target.value)}
-            className="mt-3 min-h-11 w-full rounded-xl border border-stone-700 bg-stone-800 px-3 py-2 text-sm text-stone-50 outline-none focus:border-yellow-400"
+            className="mono mt-3 min-h-11 w-full rounded-xl px-3 py-2 text-sm outline-none"
+            style={{ border: '1px solid #44403c', background: '#231f1d', color: '#fafaf7' }}
             aria-label={t('shopping.activeStore')}
           >
             <option value="" disabled>
@@ -168,48 +202,61 @@ export function CompraPage() {
             ))}
           </select>
         )}
-        <div className="mt-2 flex items-center justify-between text-xs text-stone-400">
-          <span>
-            {checkedCount}/{sessionItems.length}
-          </span>
-          <button
-            onClick={() => setHideBought((v) => !v)}
-            className="rounded-full bg-stone-800 px-3 py-1 font-medium text-stone-200"
-          >
-            {hideBought ? t('shopping.showBought') : t('shopping.hideBought')}
-          </button>
-        </div>
         {budget && list?.budgetCents != null && (
-          <div className="mt-2">
-            <div className="flex justify-between text-xs text-stone-400">
-              <span>{t('shopping.budget')}</span>
-              <span style={{ color: budget.level === 'over' ? '#F87171' : budget.level === 'warn' ? '#FACC15' : '#9CA3AF' }}>
-                {fmt(current)} / {fmt(list.budgetCents)} · {budget.pct}%
+          <div className="mt-3">
+            <div
+              className="mono mb-1.5 flex justify-between text-[11px]"
+              style={{ color: '#a8a29e' }}
+            >
+              <span>
+                {t('shopping.budget')} {fmt(list.budgetCents)}
+              </span>
+              <span
+                style={{
+                  color:
+                    budget.level === 'over' ? '#f87171' : budget.level === 'warn' ? '#facc15' : '#4ade80',
+                }}
+              >
+                {budget.pct}%
               </span>
             </div>
-            <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-stone-800">
-              <div
-                className="h-full rounded-full"
+            <div className="bar" style={{ background: '#2a2622' }}>
+              <i
                 style={{
                   width: `${Math.min(budget.pct, 100)}%`,
-                  backgroundColor: budget.level === 'over' ? '#F87171' : budget.level === 'warn' ? '#FACC15' : '#4ADE80',
+                  background:
+                    budget.level === 'over' ? '#f87171' : budget.level === 'warn' ? '#facc15' : '#4ade80',
                 }}
               />
             </div>
           </div>
         )}
+        <div className="mt-3 flex items-center justify-between">
+          <span className="mono text-xs" style={{ color: '#a8a29e' }}>
+            {checkedCount}/{sessionItems.length}
+          </span>
+          <button
+            onClick={() => setHideBought((v) => !v)}
+            className="pill"
+            style={{ background: '#2a2622', color: '#e7e5e4', border: 0 }}
+          >
+            {hideBought ? t('shopping.showBought') : t('shopping.hideBought')}
+          </button>
+        </div>
       </header>
 
-      <main className="px-5 py-4 pb-32">
+      <main className="flex-1 overflow-auto px-3.5 py-2 pb-32">
         {sessionItems.length === 0 ? (
-          <p className="mt-8 text-center text-stone-400">{t('shopping.emptySession')}</p>
+          <p className="mt-8 text-center" style={{ color: '#a8a29e' }}>
+            {t('shopping.emptySession')}
+          </p>
         ) : (
           groups.map(([cat, rows]) => (
-            <section key={cat} className="mb-2">
-              <h2 className="py-1 text-xs font-semibold uppercase tracking-wide text-stone-500">
+            <section key={cat} className="mt-3.5">
+              <div className="kicker px-1 pb-2" style={{ color: '#78716c' }}>
                 {cat || t('catalog.noCategory')}
-              </h2>
-              <ul className="flex flex-col">
+              </div>
+              <ul className="flex flex-col gap-2">
                 {rows.map((si) => {
                   const item = itemById.get(si.itemId);
                   if (!item) return null;
@@ -221,18 +268,36 @@ export function CompraPage() {
                       onCheck={() => setActive(si)}
                       onUncheck={() => uncheckSessionItem(si.id)}
                     >
-                      <div className={`min-w-0 flex-1 ${done ? 'opacity-40' : ''}`}>
-                        <p className="font-medium">{item.name}</p>
-                        <p className="font-mono text-xs text-stone-400">
+                      <div className="min-w-0 flex-1">
+                        <div
+                          className="text-base font-semibold"
+                          style={{
+                            textDecoration: done ? 'line-through' : 'none',
+                            opacity: done ? 0.55 : 1,
+                          }}
+                        >
+                          {item.name}
+                        </div>
+                        <div className="mono mt-0.5 text-[12.5px]" style={{ color: '#a8a29e' }}>
                           {si.checkedAt && si.actualUnitPriceCents
                             ? `${si.actualQty} × ${fmt(si.actualUnitPriceCents)}`
                             : `${si.neededQty} ${t(`catalog.units.${item.unit}`)}`}
-                        </p>
+                        </div>
                       </div>
-                      {done && (
-                        <span className="absolute right-3 -rotate-[8deg] rounded-md border-[2.5px] border-blue-300 px-2.5 py-0.5 text-xs font-extrabold tracking-wider text-blue-300">
-                          ✓ {t('shopping.bought')}
+                      {done ? (
+                        <span key={si.checkedAt} className="stamp-in flex-none">
+                          <Stamp label={t('shopping.bought')} />
                         </span>
+                      ) : (
+                        <span
+                          className="flex-none"
+                          style={{
+                            width: 26,
+                            height: 26,
+                            borderRadius: 8,
+                            border: '2px solid #44403c',
+                          }}
+                        />
                       )}
                     </ShoppingRow>
                   );
@@ -243,29 +308,38 @@ export function CompraPage() {
         )}
       </main>
 
-      <div className="fixed inset-x-0 bottom-0 z-10 mx-auto flex max-w-md items-center gap-3 bg-stone-900 px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-        <button
-          onClick={() => setScannerOpen(true)}
-          className="flex h-12 w-12 items-center justify-center rounded-full bg-yellow-400 text-xl"
-        >
-          ▦
-        </button>
+      <button
+        className="fab"
+        style={{ right: 20, bottom: 92 }}
+        onClick={() => setScannerOpen(true)}
+        aria-label={t('shopping.scanToCheck')}
+      >
+        <Icon name="scan" size={26} stroke={2} />
+      </button>
+
+      <div
+        className="fixed inset-x-0 bottom-0 z-10 mx-auto flex max-w-md items-center gap-3 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+        style={{ background: '#161311', borderTop: '1px solid #2a2622' }}
+      >
         <button
           onClick={() => setQuickAdd(true)}
           aria-label={t('shopping.quickAdd')}
-          className="flex h-12 w-12 items-center justify-center rounded-full bg-stone-700 text-2xl text-white"
+          className="flex h-12 w-12 flex-none items-center justify-center rounded-full text-white"
+          style={{ background: '#2a2622' }}
         >
-          +
+          <Icon name="plus" size={22} />
         </button>
-        <button
+        <Button
+          variant="primary"
+          size="lg"
+          className="flex-1"
+          disabled={checkedCount === 0}
           onClick={async () => {
             await completeSession(id);
           }}
-          disabled={checkedCount === 0}
-          className="min-h-12 flex-1 rounded-xl bg-green-600 font-bold text-white disabled:opacity-40"
         >
-          {t('shopping.finish')}
-        </button>
+          {t('shopping.finish')} · {fmt(current)}
+        </Button>
       </div>
 
       {active && (
@@ -332,7 +406,14 @@ function ShoppingRow({
   }
   return (
     <li
-      className="relative flex min-h-16 items-center gap-3 border-b border-stone-800 py-2"
+      className="tap relative flex items-center gap-3"
+      style={{
+        minHeight: 64,
+        border: '1px solid #2a2622',
+        background: done ? '#161311' : '#1c1917',
+        borderRadius: 14,
+        padding: '12px 16px',
+      }}
       onClick={() => (done ? onUncheck() : onCheck())}
       onTouchStart={(e) => (startX.current = e.touches[0]!.clientX)}
       onTouchEnd={onTouchEnd}
@@ -409,12 +490,33 @@ function Summary({
   estimated: number;
   current: number;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const fmt = useFormatMoney();
+  const money = useMoneyParts();
+  const list = useLiveQuery(
+    () => (session.listId ? db.lists.get(session.listId) : undefined),
+    [session.listId],
+  );
+  const store = useLiveQuery(
+    () => (session.storeId ? db.stores.get(session.storeId) : undefined),
+    [session.storeId],
+  );
   const saved = estimated - current;
   const boughtItems = sessionItems.filter((si) => si.checkedAt);
+  useHydrateReceipt(session.id, session.receiptKey, session.receiptBlob);
   const receiptUrl = useObjectUrl(session.receiptBlob ?? null);
+
+  const receiptHeader = [list?.name, store?.name]
+    .filter(Boolean)
+    .map((s) => s!.toUpperCase())
+    .join(' · ');
+  const receiptDate = session.completedAt
+    ? new Date(session.completedAt).toLocaleString(i18n.resolvedLanguage, {
+        dateStyle: 'short',
+        timeStyle: 'short',
+      })
+    : '';
 
   async function onReceiptPick(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -451,41 +553,143 @@ function Summary({
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col items-center justify-center gap-4 bg-stone-950 px-6 text-center text-stone-50">
-      <h1 className="text-2xl font-bold">{t('shopping.summary')}</h1>
-      <p className="font-['Anton'] text-4xl" style={{ color: saved >= 0 ? '#4ADE80' : '#F87171' }}>
-        {fmt(current)}
-      </p>
-      <p className="text-stone-300">{t('shopping.itemsBought', { count: boughtItems.length })}</p>
-      <p className="text-lg font-semibold" style={{ color: saved >= 0 ? '#4ADE80' : '#F87171' }}>
-        {saved >= 0
-          ? t('shopping.savedVsEstimate', { amount: fmt(saved) })
-          : t('shopping.overEstimate', { amount: fmt(-saved) })}
-      </p>
-      <label className="mt-2 flex cursor-pointer flex-col items-center gap-2">
+    <main
+      className="screen-in flex min-h-dvh flex-col items-center gap-[18px] px-[18px] py-6"
+      style={{ background: 'var(--app-bg)', color: 'var(--app-ink)' }}
+    >
+      {/* hero verde — economia (preço protagonista) */}
+      <div
+        className="card w-full overflow-hidden text-center"
+        style={{ padding: 22, background: 'var(--gro-green)', color: '#fff', border: 0 }}
+      >
+        <div className="kicker" style={{ color: '#ffffffcc' }}>
+          {saved >= 0 ? t('shopping.savedLabel') : t('shopping.overLabel')}
+        </div>
+        <div
+          className="mt-1.5 flex justify-center"
+          style={{ ['--gro-ink' as string]: '#fff' } as React.CSSProperties}
+        >
+          <MoneyValue cents={Math.abs(saved)} size="lg" {...money} />
+        </div>
+        <div className="mt-1.5 text-[13px]" style={{ color: '#ffffffcc' }}>
+          {t('shopping.vsEstimated', { amount: fmt(estimated) })}
+        </div>
+      </div>
+
+      {/* recibo térmico */}
+      <div
+        className="receipt w-full"
+        style={{ maxWidth: 360, boxShadow: 'var(--app-elev)', fontFamily: 'var(--gro-font-mono)' }}
+      >
+        <div className="receipt-edge" />
+        <div style={{ padding: '4px 22px 22px' }}>
+          <div className="text-center" style={{ borderBottom: '1px dashed #00000040', paddingBottom: 12 }}>
+            <div
+              style={{
+                fontFamily: 'var(--gro-font-ui)',
+                fontWeight: 800,
+                fontSize: 18,
+                letterSpacing: '-.01em',
+              }}
+            >
+              GROSIFY
+            </div>
+            {receiptHeader && (
+              <div style={{ fontSize: 11, color: '#57534e', marginTop: 4 }}>{receiptHeader}</div>
+            )}
+            {receiptDate && <div style={{ fontSize: 11, color: '#57534e' }}>{receiptDate}</div>}
+          </div>
+          <div style={{ padding: '12px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {boughtItems.map((si) => {
+              const name = itemById.get(si.itemId)?.name ?? '';
+              const lineTotal =
+                si.actualQty && si.actualUnitPriceCents
+                  ? Math.round(si.actualQty * si.actualUnitPriceCents)
+                  : 0;
+              return (
+                <div key={si.id} style={{ fontSize: 12.5, color: '#1c1917' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span
+                      style={{
+                        maxWidth: 200,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {name}
+                    </span>
+                    <span style={{ fontWeight: 600 }}>{fmt(lineTotal)}</span>
+                  </div>
+                  {si.actualQty != null && si.actualUnitPriceCents != null && (
+                    <div style={{ color: '#78716c', fontSize: 11 }}>
+                      {si.actualQty} × {fmt(si.actualUnitPriceCents)}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <div
+            style={{
+              borderTop: '1px dashed #00000040',
+              paddingTop: 12,
+              display: 'flex',
+              justifyContent: 'space-between',
+              fontWeight: 700,
+              fontSize: 15,
+              color: '#1c1917',
+            }}
+          >
+            <span>{t('shopping.receiptTotal')}</span>
+            <span>{fmt(current)}</span>
+          </div>
+          {saved >= 0 && (
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                fontSize: 12,
+                color: '#15803d',
+                marginTop: 6,
+              }}
+            >
+              <span>{t('shopping.receiptSavings')}</span>
+              <span>{fmt(saved)}</span>
+            </div>
+          )}
+        </div>
+        <div className="receipt-edge" style={{ transform: 'rotate(180deg)' }} />
+      </div>
+
+      <label className="flex cursor-pointer flex-col items-center gap-2">
         {receiptUrl ? (
           <img src={receiptUrl} alt="" className="h-24 w-24 rounded-xl object-cover" />
         ) : (
-          <span className="flex h-24 w-24 items-center justify-center rounded-xl border-2 border-dashed border-stone-700 text-3xl text-stone-500">
+          <span
+            className="flex h-24 w-24 items-center justify-center rounded-xl text-3xl"
+            style={{ border: '2px dashed var(--app-border)', color: 'var(--app-gray)' }}
+          >
             🧾
           </span>
         )}
-        <span className="text-sm text-stone-400">{t('shopping.attachReceipt')}</span>
+        <span className="muted text-sm">{t('shopping.attachReceipt')}</span>
         <input type="file" accept="image/*" capture="environment" onChange={onReceiptPick} className="hidden" />
       </label>
 
-      <button
-        onClick={onShare}
-        className="mt-2 min-h-12 w-full rounded-xl bg-green-600 px-8 font-bold text-white"
-      >
-        {t('shopping.share')}
-      </button>
-      <button
-        onClick={() => navigate({ to: '/listas' })}
-        className="min-h-12 w-full rounded-xl bg-yellow-400 px-8 font-bold text-stone-900"
-      >
-        {t('shopping.back')}
-      </button>
+      <div className="flex w-full gap-2.5" style={{ maxWidth: 360 }}>
+        <Button variant="primary" size="lg" fullWidth onClick={onShare}>
+          <Icon name="share" size={18} /> {t('shopping.share')}
+        </Button>
+        <Button
+          variant="secondary"
+          size="lg"
+          style={{ flex: 'none' }}
+          onClick={() => navigate({ to: '/' })}
+        >
+          {t('shopping.toHome')}
+        </Button>
+      </div>
     </main>
   );
 }

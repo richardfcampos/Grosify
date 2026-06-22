@@ -36,7 +36,7 @@
 
 ## Limitações conhecidas (fase 6)
 - Logout com mutações pendentes na outbox perde os não-sincronizados (clearLocalData zera a fila). Avisar/forçar sync antes do logout no futuro.
-- Privacy policy é só endpoint de dados; falta o TEXTO da política (página estática) pra lançamento.
+- ~~Falta o TEXTO da política~~ → feito: `privacidade-page.tsx` (rota `/privacidade`), texto pt-BR (mercado primário, não i18n por ora).
 
 ## Limitações conhecidas (fase 3)
 - Sessão/membership exigem API online: navegação com page-load fresca offline cai no login. Uso real (já logado, fica offline mid-sessão via SPA nav) funciona — verificado. App shell offline via Workbox precache (build gera SW; testar em prod build).
@@ -53,11 +53,13 @@
 
 - **Deploy**: configs prontas (Dockerfile, _redirects, docs/deployment.md). Usuário vai executar seguindo a doc (criar Neon+Railway+CF Pages). Eu de plantão.
 - **Billing Mercado Pago**: integração (checkout/preapproval/webhooks) aguarda credenciais MP do usuário (access token + public key).
+- **Fotos R2**: código pronto (env-gated, 501 quando off). Aguarda usuário ativar R2 + criar credencial S3 no dashboard Cloudflare (MCP não ativa R2 nem cria token — gate de conta). Passos em `docs/deployment.md`.
 
 | 2026-06-12 | i18n com react-i18next: 6 idiomas (pt fallback, en, es, it, de, fr), detecção localStorage→navigator, seletor no dashboard; API retorna códigos de erro | Pedido do usuário; barato agora (5 telas), caro depois da fase 1 |
 | 2026-06-12 | Multi-moeda via Intl nativo (`Intl.supportedValuesOf('currency')` + `NumberFormat`), SEM lib externa; moeda por household (`households.currency`, ISO 4217); valores em unidades mínimas da moeda (JPY=0, BHD=3 casas) | Pedido do usuário; Intl cobre listagem+formatação+casas decimais de graça |
 | 2026-06-12 | Múltiplas listas de compras: `shopping_lists` (nome + `isRecurring`) + `shopping_list_entries`; substitui `recurring_list_entries`. Recorrente → ciclo inventário/needed-qty; avulsa (churrasco, festa) → qty direta. Sessão de compra referencia `listId` | Pedido do usuário (ex.: lista do mês, churrasco, aniversário) |
 
+| 2026-06-20 | Fotos R2 reais (código pronto, gated em env): presign via `aws4fetch` (não aws-sdk), rota `/uploads` household-scoped (key montada do `householdId` da sessão, viewer não sobe), client `lib/uploads.ts` + sweep no engine (sobe blob local sem key no sync; cobre foto offline tipo recibo) + `hydratePhoto` baixa sob demanda pra membro sem blob. Sem `R2_*` no env → 501 → cai no blob local. **Só falta a credencial** (ativar R2 + token S3 no dashboard — MCP da Cloudflare não ativa R2 nem cria token: gate de conta). Onboarding (first-run, 3 passos + seed opcional, flag localStorage por household) — estrutura; visual no facelift | Escopo travado pelo usuário: privacidade (já existia), onboarding, fotos R2. Provei via MCP que R2 não está ativado (10042) e o token não cria credencial (9109) — premissa "destrava via MCP" corrigida pra "código pronto, espera credencial" |
 | 2026-06-18 | Programa "grocify-parity" (10 fases): scanner QR/lanterna/OFF; sync observável; alerta de preço 10%/média 90d; item notas/marca preferida/conversão de unidades; listas ícone/cor/recorrência + preferências de exibição; **categorias como entidade** (migração texto→tabela); modo compra (repõe estoque, agrupa, quick-add, swipe, orçamento); inventário com **ledger de movimentos** (mínimo/low-stock/consumo/ajuste/contagem); **orçamento por lista** + **analytics Recharts** + foto recibo + rating; revisão de compra + badge "dia de comprar" + histórico; **colaboração** (papéis owner/admin/member/viewer + viewer read-only, membros, feed de atividades, comentários sincronizados, atribuição, **SSE poke**); busca avançada (marca/categoria/filtros/recentes/salvos) + export CSV/PDF(print) + restore. Migrações 0012–0017 | Pedido do usuário: paridade com features do plano do "Grocify" (itens 1,2,3,5,6,7,8,9,10 + gaps menores). Decisões: SSE poke (não WebSocket), Recharts, categorias entidade completa, OpenFoodFacts com fallback. Push notifications ficaram fora |
 
 ## TODOs / ideias adiadas
@@ -68,7 +70,7 @@
 - packages/ui compartilhado (só quando Expo existir)
 - Multi-foto por item
 - Conversão entre moedas (câmbio) — moeda é fixa por household; sem conversão por ora
-- Upload da foto pro R2 (hoje foto é blob local-only no Dexie; não compartilha entre devices até R2)
+- ~~Upload da foto pro R2~~ → código pronto (env-gated); só falta a credencial R2 (ver deployment.md)
 
 ## Preferências
 

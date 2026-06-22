@@ -5,6 +5,7 @@ import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { db, type LocalList } from '../db/dexie.js';
 import { createList } from '../db/repositories.js';
+import { Badge, Button, Empty, Icon } from '../features/ui/index.js';
 import { useHouseholdCurrency } from '../lib/use-currency.js';
 
 const LIST_ICONS = ['🛒', '🔥', '🎉', '🥩', '🧺', '🍎', '🧽', '🎂', '🍷', '🐶'];
@@ -29,48 +30,56 @@ export function ListasPage() {
   for (const e of entries) countByList.set(e.listId, (countByList.get(e.listId) ?? 0) + 1);
 
   return (
-    <main className="flex flex-col gap-4 px-5 py-6">
-      <h1 className="text-2xl font-bold text-zinc-900">{t('lists.title')}</h1>
+    <main className="screen-in flex flex-col gap-4 px-[18px] py-6">
+      <h1 className="text-2xl font-bold tracking-tight">{t('lists.title')}</h1>
 
       {lists.length === 0 ? (
-        <p className="mt-6 text-center text-zinc-500">{t('lists.noLists')}</p>
+        <div className="card" style={{ padding: 0 }}>
+          <Empty
+            icon="list"
+            title={t('lists.title')}
+            body={t('lists.noLists')}
+            action={
+              <Button variant="primary" size="md" onClick={() => setCreating(true)}>
+                <Icon name="plus" size={18} /> {t('lists.newList')}
+              </Button>
+            }
+          />
+        </div>
       ) : (
-        <ul className="flex flex-col gap-2">
+        <div className="card row-sep" style={{ padding: 0, overflow: 'hidden' }}>
           {[...lists]
             .sort((a, b) => a.name.localeCompare(b.name))
             .map((list) => (
-              <li key={list.id}>
-                <Link
-                  to="/listas/$id"
-                  params={{ id: list.id }}
-                  className="flex items-center gap-3 rounded-2xl border border-zinc-200 p-4 active:bg-zinc-50"
-                  style={list.color ? { borderLeftColor: list.color, borderLeftWidth: 4 } : undefined}
-                >
-                  {list.icon && <span className="text-2xl">{list.icon}</span>}
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium text-zinc-900">{list.name}</p>
-                    <p className="text-sm text-zinc-500">
-                      {countByList.get(list.id) ?? 0} {t('nav.items').toLowerCase()}
-                    </p>
-                  </div>
-                  <span
-                    className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${
-                      list.isRecurring ? 'bg-green-100 text-green-700' : 'bg-zinc-100 text-zinc-500'
-                    }`}
-                  >
-                    {list.isRecurring
-                      ? t(`lists.recurrenceTag.${list.recurrence ?? 'monthly'}`)
-                      : t('lists.oneTimeTag')}
-                  </span>
-                </Link>
-              </li>
+              <Link
+                key={list.id}
+                to="/listas/$id"
+                params={{ id: list.id }}
+                className="tap flex items-center gap-3 px-4 py-3.5"
+                style={
+                  list.color ? { borderLeft: `4px solid ${list.color}` } : undefined
+                }
+              >
+                {list.icon && <span className="flex-none text-2xl">{list.icon}</span>}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-semibold">{list.name}</p>
+                  <p className="muted text-sm">
+                    {countByList.get(list.id) ?? 0} {t('nav.items').toLowerCase()}
+                  </p>
+                </div>
+                <Badge tone="neutral" className="shrink-0">
+                  {list.isRecurring
+                    ? t(`lists.recurrenceTag.${list.recurrence ?? 'monthly'}`)
+                    : t('lists.oneTimeTag')}
+                </Badge>
+              </Link>
             ))}
-        </ul>
+        </div>
       )}
 
       <button
         onClick={() => setCreating(true)}
-        className="fixed bottom-24 left-1/2 flex h-14 w-14 -translate-x-1/2 items-center justify-center rounded-full bg-green-600 text-3xl text-white shadow-lg active:bg-green-700"
+        className="fixed bottom-24 left-1/2 flex h-14 w-14 -translate-x-1/2 items-center justify-center rounded-full bg-[var(--gro-green)] text-3xl text-white shadow-lg active:scale-95"
         aria-label={t('lists.newList')}
       >
         +

@@ -1,0 +1,9 @@
+{
+  "projectId": "cde7049d-df22-41d7-9ac1-c34ac9ffcf34",
+  "pkg": "@grosify/ui",
+  "globalName": "GrosifyUI",
+  "shape": "package",
+  "buildCmd": "pnpm --filter @grosify/ui build",
+  "cssEntry": "dist/ui.css",
+  "readmeHeader": ".design-sync/conventions.md"
+}

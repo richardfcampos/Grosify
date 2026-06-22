@@ -1,4 +1,6 @@
 import { Link, Outlet, useLocation } from '@tanstack/react-router';
+import { Chip } from '@grosify/ui';
+import { Icon, type IconName } from '../ui/icon.js';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -12,15 +14,17 @@ import {
 } from '../../sync/engine.js';
 import { useSession } from '../../lib/auth-client.js';
 import { useMembership } from '../../lib/use-membership.js';
+import { isOnboardingDone } from '../../lib/onboarding.js';
+import { Onboarding } from '../onboarding/onboarding.js';
 import { Loading } from '../../pages/household-pages.js';
 import { Navigate } from '@tanstack/react-router';
 
 const NAV = [
-  { to: '/', key: 'home', icon: '🏠' },
-  { to: '/listas', key: 'lists', icon: '📋' },
-  { to: '/itens', key: 'items', icon: '🛒' },
-  { to: '/lojas', key: 'stores', icon: '🏬' },
-] as const;
+  { to: '/', key: 'home', icon: 'home' },
+  { to: '/listas', key: 'lists', icon: 'list' },
+  { to: '/itens', key: 'items', icon: 'box' },
+  { to: '/lojas', key: 'stores', icon: 'store' },
+] as const satisfies readonly { to: string; key: string; icon: IconName }[];
 
 /** Casca das telas autenticadas: guarda sessão+casa, faz pull do catálogo, nav inferior. */
 export function AppLayout() {
@@ -31,6 +35,7 @@ export function AppLayout() {
   const [online, setOnline] = useState(navigator.onLine);
   const pending = useLiveQuery(() => pendingCount(), [], 0);
   const syncState = useSyncExternalStore(subscribeSync, getSyncState);
+  const [onbDone, setOnbDone] = useState(false); // marcado nesta sessão após terminar/pular
 
   useEffect(() => {
     if (membership.data) {
@@ -64,6 +69,13 @@ export function AppLayout() {
   if (!session) return <Navigate to="/entrar" search={{ redirect: location.pathname }} />;
   if (!membership.data) return <Navigate to="/casa" />;
 
+  // primeira execução nesta casa/dispositivo: mostra onboarding antes do app
+  if (!onbDone && !isOnboardingDone(membership.data.householdId)) {
+    return (
+      <Onboarding householdId={membership.data.householdId} onDone={() => setOnbDone(true)} />
+    );
+  }
+
   // Modo compra é fullscreen — sem nav inferior.
   const fullscreen = location.pathname.startsWith('/compra');
 
@@ -72,22 +84,45 @@ export function AppLayout() {
       <div className={fullscreen ? 'flex-1' : 'flex-1 pb-20'}>
         <Outlet />
       </div>
-      <nav
-        className={`fixed inset-x-0 bottom-0 mx-auto flex max-w-md border-t border-zinc-200 bg-white ${
-          fullscreen ? 'hidden' : ''
-        }`}
-      >
-        {NAV.map((n) => {
+      <nav className={`botnav fixed inset-x-0 bottom-0 mx-auto max-w-md ${fullscreen ? 'hidden' : ''}`}>
+        {NAV.slice(0, 2).map((n) => {
           const active = n.to === '/' ? location.pathname === '/' : location.pathname.startsWith(n.to);
           return (
-            <Link
-              key={n.to}
-              to={n.to}
-              className={`flex flex-1 flex-col items-center gap-0.5 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] text-xs font-semibold ${
-                active ? 'text-green-700' : 'text-zinc-400'
-              }`}
-            >
-              <span className="text-xl">{n.icon}</span>
+            <Link key={n.to} to={n.to} aria-current={active}>
+              <Icon name={n.icon} size={23} className="ic" stroke={active ? 2.1 : 1.8} />
+              {t(`nav.${n.key}`)}
+            </Link>
+          );
+        })}
+        <Link
+          to="/listas"
+          aria-label={t('nav.shop')}
+          style={{ flex: 'none', justifyContent: 'flex-start', paddingTop: 4, color: 'var(--gro-green)' }}
+        >
+          <span
+            style={{
+              width: 50,
+              height: 50,
+              borderRadius: 16,
+              background: 'var(--gro-green)',
+              color: '#fff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 6px 16px -6px var(--gro-green)',
+            }}
+          >
+            <Icon name="cart" size={24} stroke={2} />
+          </span>
+          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--gro-green)', marginTop: 2 }}>
+            {t('nav.shop')}
+          </span>
+        </Link>
+        {NAV.slice(2).map((n) => {
+          const active = location.pathname.startsWith(n.to);
+          return (
+            <Link key={n.to} to={n.to} aria-current={active}>
+              <Icon name={n.icon} size={23} className="ic" stroke={active ? 2.1 : 1.8} />
               {t(`nav.${n.key}`)}
             </Link>
           );
@@ -117,35 +152,37 @@ function SyncChip({
 }) {
   const { t } = useTranslation();
   let label: string | null = null;
-  let cls = 'bg-zinc-900/90 text-white';
+  let tone: 'default' | 'synced' | 'error' | 'muted' = 'default';
   let onClick: (() => void) | undefined;
 
   if (!online) {
     label = t('sync.offline');
+    tone = 'muted';
   } else if (state === 'syncing') {
     label = t('sync.syncing');
   } else if (state === 'error') {
     label = t('sync.error');
-    cls = 'bg-red-600 text-white';
+    tone = 'error';
     onClick = () => void syncNow();
   } else if (pending > 0) {
     label = t('sync.pending', { count: pending });
     onClick = () => void syncNow();
   } else if (showSynced) {
     label = t('sync.synced');
-    cls = 'bg-green-600 text-white';
+    tone = 'synced';
   }
 
   if (!label) return null;
   return (
-    <button
-      onClick={onClick}
-      disabled={!onClick}
-      className={`fixed right-3 top-3 rounded-full px-2.5 py-1 text-xs font-medium ${cls} ${
-        onClick ? '' : 'pointer-events-none'
-      }`}
-    >
-      {label}
-    </button>
+    <div className="fixed right-3 top-3 z-50">
+      <Chip
+        tone={tone}
+        role={onClick ? 'button' : undefined}
+        onClick={onClick}
+        style={{ cursor: onClick ? 'pointer' : 'default' }}
+      >
+        {label}
+      </Chip>
+    </div>
   );
 }

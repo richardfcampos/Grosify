@@ -12,6 +12,7 @@ import {
   setListEntry,
 } from '../db/repositories.js';
 import { PrecoSheet } from '../features/prices/preco-sheet.js';
+import { Badge, Button, Empty, Icon, MoneyValue, useMoneyParts } from '../features/ui/index.js';
 import { useConfirm } from '../lib/confirm.js';
 import { useFormatMoney } from '../lib/use-currency.js';
 
@@ -25,6 +26,7 @@ export function ListaDetailPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const fmt = useFormatMoney();
+  const money = useMoneyParts();
   const confirm = useConfirm();
   const { id } = useParams({ from: '/app/listas/$id' });
 
@@ -72,48 +74,59 @@ export function ListaDetailPage() {
   if (!list) return null;
 
   return (
-    <main className="flex flex-col gap-4 px-5 py-6">
+    <main className="screen-in flex flex-col gap-4 px-[18px] py-6">
       <header className="flex items-center justify-between">
-        <button onClick={() => navigate({ to: '/listas' })} className="text-sm text-zinc-500">
-          ← {t('common.back')}
+        <button
+          onClick={() => navigate({ to: '/listas' })}
+          className="muted flex items-center gap-1 text-sm font-semibold"
+        >
+          <Icon name="back" size={17} /> {t('common.back')}
         </button>
-        <div className="flex items-center gap-2">
-          <span
-            className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-              list.isRecurring ? 'bg-green-100 text-green-700' : 'bg-zinc-100 text-zinc-500'
-            }`}
-          >
-            {list.isRecurring ? t('lists.recurringTag') : t('lists.oneTimeTag')}
-          </span>
-          <button
-            onClick={async () => {
-              const ok = await confirm({
-                title: t('lists.deleteList'),
-                message: t('lists.deleteListConfirm', { name: list.name }),
-                confirmLabel: t('common.delete'),
-                danger: true,
-              });
-              if (!ok) return;
-              await deleteList(id);
-              navigate({ to: '/listas' });
-            }}
-            aria-label={t('lists.deleteList')}
-            className="p-1 text-base text-zinc-300 active:text-red-600"
-          >
-            🗑
-          </button>
-        </div>
+        <button
+          onClick={async () => {
+            const ok = await confirm({
+              title: t('lists.deleteList'),
+              message: t('lists.deleteListConfirm', { name: list.name }),
+              confirmLabel: t('common.delete'),
+              danger: true,
+            });
+            if (!ok) return;
+            await deleteList(id);
+            navigate({ to: '/listas' });
+          }}
+          aria-label={t('lists.deleteList')}
+          className="p-1 text-base text-[var(--app-gray)] active:text-[var(--gro-red)]"
+        >
+          🗑
+        </button>
       </header>
 
-      <h1 className="text-2xl font-bold text-zinc-900">{list.name}</h1>
+      <div className="flex items-center gap-3">
+        {list.icon && <span className="text-3xl">{list.icon}</span>}
+        <div className="flex-1">
+          <h1 className="text-2xl font-bold tracking-tight">{list.name}</h1>
+          <div className="mt-1.5 flex gap-1.5">
+            <Badge tone="neutral">
+              {list.isRecurring ? t('lists.recurringTag') : t('lists.oneTimeTag')}
+            </Badge>
+            {list.budgetCents != null && list.budgetCents > 0 && (
+              <Badge tone="neutral">
+                {t('lists.budget')} {fmt(list.budgetCents)}
+              </Badge>
+            )}
+          </div>
+        </div>
+      </div>
 
-      <div className="rounded-2xl bg-zinc-900 px-5 py-4 text-white">
-        <p className="text-xs uppercase tracking-wide text-zinc-400">{t('lists.estimatedTotal')}</p>
-        <p className="text-3xl font-bold">{fmt(estimate.totalCents)}</p>
+      <div className="card flex items-center justify-between p-[18px]">
+        <div>
+          <div className="kicker mb-1.5">{t('lists.estimatedTotal')}</div>
+          <MoneyValue cents={estimate.totalCents} size="md" {...money} />
+        </div>
         {estimate.missingPriceLines > 0 && (
-          <p className="mt-1 text-xs text-zinc-400">
+          <span className="muted mono text-xs">
             {t('lists.missingPrices', { count: estimate.missingPriceLines })}
-          </p>
+          </span>
         )}
       </div>
 
@@ -121,39 +134,49 @@ export function ListaDetailPage() {
         {list.isRecurring && (
           <Link
             to="/inventario"
-            className="flex-1 rounded-xl border border-green-600 px-4 py-2.5 text-center text-sm font-semibold text-green-700"
+            className="gro-btn gro-btn--secondary gro-btn--md flex-1"
           >
             {t('lists.inventory')}
           </Link>
         )}
         {entries.length > 0 && (
-          <button
+          <Button
+            variant="primary"
+            size="md"
+            className="flex-1"
             onClick={() => navigate({ to: '/listas/$id/comprar', params: { id } })}
-            className="flex-1 rounded-xl bg-green-600 px-4 py-2.5 text-center text-sm font-bold text-white active:bg-green-700"
           >
-            {t('shopping.start')}
-          </button>
+            <Icon name="cart" size={20} /> {t('shopping.start')}
+          </Button>
         )}
       </div>
 
       {entries.length === 0 ? (
-        <p className="mt-4 text-center text-zinc-500">{t('lists.empty')}</p>
+        <div className="card" style={{ padding: 0 }}>
+          <Empty
+            icon="list"
+            title={t('lists.empty')}
+            action={
+              <Button variant="primary" size="md" onClick={() => setAdding(true)}>
+                <Icon name="plus" size={18} /> {t('lists.addItem')}
+              </Button>
+            }
+          />
+        </div>
       ) : (
-        <ul className="flex flex-col gap-2">
+        <div className="card row-sep" style={{ padding: 0, overflow: 'hidden' }}>
           {entries.map((entry) => {
             const item = itemById.get(entry.itemId);
             if (!item) return null;
             const price = unitPrice(prices, entry.itemId);
             return (
-              <li
-                key={entry.id}
-                className="flex items-center gap-3 rounded-2xl border border-zinc-200 p-3"
-              >
+              <div key={entry.id} className="flex items-center gap-3 px-4 py-3">
+                <Icon name="box" size={16} className="flex-none text-[var(--app-gray)]" />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium text-zinc-900">{item.name}</p>
+                  <p className="truncate font-semibold">{item.name}</p>
                   <button
                     onClick={() => setPriceItem({ id: item.id, name: item.name })}
-                    className="text-sm text-green-700"
+                    className="mono text-sm text-[var(--gro-green)]"
                   >
                     {price !== null ? fmt(price) : t('prices.record')}
                   </button>
@@ -164,7 +187,7 @@ export function ListaDetailPage() {
                         const m = members.find((x) => x.userId === e.target.value);
                         assignListEntry(id, entry.itemId, m?.userId ?? null, m?.name ?? null);
                       }}
-                      className="mt-1 block w-full rounded-lg border border-zinc-200 px-2 py-1 text-xs text-zinc-600"
+                      className="muted mt-1 block w-full rounded-lg border border-[var(--app-border)] bg-transparent px-2 py-1 text-xs"
                     >
                       <option value="">{t('lists.unassigned')}</option>
                       {members.map((m) => (
@@ -190,23 +213,22 @@ export function ListaDetailPage() {
                     });
                     if (ok) removeListEntry(entry.id);
                   }}
-                  className="ml-1 px-1 text-zinc-300"
+                  className="ml-1 px-1 text-[var(--app-gray)]"
                   aria-label={t('lists.remove')}
                 >
                   ✕
                 </button>
-              </li>
+              </div>
             );
           })}
-        </ul>
+        </div>
       )}
 
-      <button
-        onClick={() => setAdding(true)}
-        className="min-h-12 rounded-xl border border-green-600 px-4 py-3 text-sm font-semibold text-green-700"
-      >
-        {t('lists.addItem')}
-      </button>
+      {entries.length > 0 && (
+        <Button variant="ghost" size="md" fullWidth onClick={() => setAdding(true)}>
+          <Icon name="plus" size={18} /> {t('lists.addItem')}
+        </Button>
+      )}
 
       {priceItem && (
         <PrecoSheet itemId={priceItem.id} itemName={priceItem.name} onClose={() => setPriceItem(null)} />

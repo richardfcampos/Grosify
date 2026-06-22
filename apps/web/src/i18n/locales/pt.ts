@@ -1,5 +1,20 @@
 export default {
   translation: {
+    appearance: {
+      title: 'Aparência',
+      theme: 'Tema',
+      light: 'Claro',
+      dark: 'Escuro',
+      direction: 'Direção visual',
+      dir: {
+        painel: 'Painel',
+        painelTag: 'Gestor de dinheiro — calmo, dados à frente.',
+        mercado: 'Mercado',
+        mercadoTag: 'Vernáculo de encarte — dinheiro gigante, etiqueta e carimbo.',
+        recibo: 'Recibo',
+        reciboTag: 'Registro auditável — mono tabular, linhas finas, sobriedade.',
+      },
+    },
     auth: {
       networkError: 'Sem conexão com o servidor. Tente de novo.',
       loginTitle: 'Entrar no Grosify',
@@ -48,6 +63,9 @@ export default {
     restock: {
       noLists: 'Crie uma lista recorrente pra gerar a reposição.',
       missingCount: '{{count}} itens faltando',
+      savedIn: 'Você economizou em {{month}}',
+      noPrice: '{{count}} sem preço',
+      estimated: 'estimado',
       title: 'Reposição do mês',
       subtitle: 'Falta comprar, segundo seu estoque',
       dueToday: 'Hoje é dia de comprar',
@@ -61,6 +79,7 @@ export default {
     },
     nav: {
       home: 'Início',
+      shop: 'Comprar',
       lists: 'Listas',
       items: 'Itens',
       stores: 'Lojas',
@@ -231,6 +250,12 @@ export default {
     shopping: {
       share: 'Compartilhar recibo',
       receiptTag: 'compra do mês',
+      savedLabel: 'Você economizou',
+      overLabel: 'Acima do estimado',
+      vsEstimated: 'vs. {{amount}} estimado',
+      receiptTotal: 'TOTAL',
+      receiptSavings: 'ECONOMIA',
+      toHome: 'Início',
       start: 'Iniciar compra',
       title: 'Modo compra',
       current: 'No carrinho',
@@ -347,6 +372,18 @@ export default {
       notFound: 'Não consegui ler. Aproxime e tente de novo.',
       cameraError: 'Câmera indisponível.',
       hint: 'Enquadre o valor na etiqueta e capture.',
+    },
+    onboarding: {
+      skip: 'Pular',
+      next: 'Próximo',
+      start: 'Começar',
+      seedItems: 'Adicionar itens comuns do dia a dia',
+      s1Title: 'Suas listas, do seu jeito',
+      s1Body: 'Crie listas do mês ou avulsas (churrasco, festa). O app calcula o que falta comprar.',
+      s2Title: 'Preço certo, loja certa',
+      s2Body: 'Registre preços e veja onde está mais barato. O app avisa quando um preço sobe.',
+      s3Title: 'Compre offline, sem stress',
+      s3Body: 'No mercado, escaneie e marque. Veja o total em tempo real — funciona sem internet.',
     },
     common: {
       confirm: 'Confirmar',
