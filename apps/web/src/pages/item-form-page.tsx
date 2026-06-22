@@ -20,10 +20,10 @@ import { BrandsSection } from '../features/brands/brands-section.js';
 import { BarcodeBrandChooser } from '../features/brands/barcode-brand-chooser.js';
 import { CategoryPicker } from '../features/catalog/category-picker.js';
 import { CommentsSection } from '../features/catalog/comments-section.js';
+import { Button, Icon } from '../features/ui/index.js';
 
-const labelClass = 'text-sm font-medium text-zinc-600';
-const inputClass =
-  'min-h-12 w-full rounded-xl border border-zinc-300 px-4 py-3 text-base outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100';
+const labelClass = 'kicker mb-1 block';
+const inputClass = 'gro-field';
 
 export function ItemFormPage() {
   const { t } = useTranslation();
@@ -178,12 +178,15 @@ export function ItemFormPage() {
   }
 
   return (
-    <main className="flex flex-col gap-5 px-5 py-6">
+    <main className="screen-in flex flex-col gap-5 px-[18px] py-6">
       <header className="flex items-center justify-between">
-        <button onClick={() => navigate({ to: '/itens' })} className="text-sm text-zinc-500">
-          ← {t('common.back')}
+        <button
+          onClick={() => navigate({ to: '/itens' })}
+          className="muted flex items-center gap-1 text-sm font-semibold"
+        >
+          <Icon name="back" size={17} /> {t('common.back')}
         </button>
-        <h1 className="text-lg font-bold text-zinc-900">
+        <h1 className="text-lg font-bold tracking-tight">
           {editingId ? t('catalog.editItem') : t('catalog.newItem')}
         </h1>
         <span className="w-12" />
@@ -194,7 +197,8 @@ export function ItemFormPage() {
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
-            className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-zinc-300 bg-zinc-50 text-sm text-zinc-500"
+            className="muted flex h-28 w-28 items-center justify-center overflow-hidden rounded-2xl text-sm"
+            style={{ border: '2px dashed var(--app-border)', background: 'var(--app-surface-2)' }}
           >
             {photoUrl ? (
               <img src={photoUrl} alt="" className="h-full w-full object-cover" />
@@ -209,7 +213,8 @@ export function ItemFormPage() {
                 setPhotoBlob(null);
                 setPhotoTouched(true);
               }}
-              className="text-xs text-red-600"
+              className="text-xs"
+              style={{ color: 'var(--gro-red)' }}
             >
               {t('catalog.removePhoto')}
             </button>
@@ -277,7 +282,7 @@ export function ItemFormPage() {
         <div className="flex flex-col gap-2">
           <span className={labelClass}>{t('catalog.barcodes')}</span>
           {barcodes.length === 0 ? (
-            <p className="text-sm text-zinc-400">{t('catalog.noBarcodes')}</p>
+            <p className="muted text-sm">{t('catalog.noBarcodes')}</p>
           ) : (
             <ul className="flex flex-col gap-1.5">
               {barcodes.map((code) => {
@@ -285,18 +290,18 @@ export function ItemFormPage() {
                 return (
                   <li
                     key={code}
-                    className="flex items-center justify-between rounded-xl bg-zinc-100 px-3 py-2"
+                    className="flex items-center justify-between rounded-xl px-3 py-2"
+                    style={{ background: 'var(--app-surface-2)' }}
                   >
                     <span className="min-w-0 truncate">
-                      <span className="font-mono text-sm">{code}</span>
-                      {brandId && (
-                        <span className="ml-2 text-xs text-zinc-500">{brandNameById.get(brandId)}</span>
-                      )}
+                      <span className="mono text-sm">{code}</span>
+                      {brandId && <span className="muted ml-2 text-xs">{brandNameById.get(brandId)}</span>}
                     </span>
                     <button
                       type="button"
                       onClick={() => onRemoveBarcode(code)}
-                      className="shrink-0 text-sm text-red-600"
+                      className="shrink-0 text-sm"
+                      style={{ color: 'var(--gro-red)' }}
                     >
                       {t('common.delete')}
                     </button>
@@ -305,31 +310,23 @@ export function ItemFormPage() {
               })}
             </ul>
           )}
-          <button
-            type="button"
-            onClick={() => setScannerOpen(true)}
-            className="min-h-11 rounded-xl border border-green-600 px-4 py-2.5 text-sm font-semibold text-green-700"
-          >
-            {t('catalog.scan')}
-          </button>
+          <Button type="button" variant="secondary" size="md" onClick={() => setScannerOpen(true)}>
+            <Icon name="scan" size={18} /> {t('catalog.scan')}
+          </Button>
         </div>
 
         {editingId && <BrandsSection itemId={editingId} />}
 
         {editingId && <CommentsSection itemId={editingId} />}
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm" style={{ color: 'var(--gro-red)' }}>{error}</p>}
 
-        <button
-          type="submit"
-          disabled={busy || !name.trim()}
-          className="min-h-12 w-full rounded-xl bg-green-600 px-4 py-3 text-base font-semibold text-white active:bg-green-700 disabled:opacity-50"
-        >
+        <Button variant="primary" size="lg" fullWidth type="submit" disabled={busy || !name.trim()}>
           {busy ? t('common.saving') : t('common.save')}
-        </button>
+        </Button>
 
         {editingId && (
-          <button type="button" onClick={onDelete} className="min-h-11 text-sm font-medium text-red-600">
+          <button type="button" onClick={onDelete} className="min-h-11 text-sm font-medium" style={{ color: 'var(--gro-red)' }}>
             {t('catalog.deleteItem')}
           </button>
         )}
