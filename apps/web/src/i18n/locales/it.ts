@@ -18,6 +18,7 @@ export default {
     auth: {
       networkError: 'Nessuna connessione al server. Riprova.',
       loginTitle: 'Accedi a Grosify',
+      subtitle: 'La tua lista, scorte e prezzi, su qualsiasi dispositivo.',
       signupTitle: 'Crea account',
       email: 'E-mail',
       password: 'Password',

@@ -7,7 +7,7 @@ import { db, type LocalItem } from '../db/dexie.js';
 import { adjustInventory, logConsumption, resolveBarcode, setInventory } from '../db/repositories.js';
 import { ScannerModal } from '../features/scanner/scanner-modal.js';
 import { UnknownBarcodeSheet } from '../features/brands/unknown-barcode-sheet.js';
-import { Badge, Icon, SectionTitle } from '../features/ui/index.js';
+import { Badge, Button, Icon, SectionTitle } from '../features/ui/index.js';
 
 type StockStatus = 'ok' | 'low' | 'out';
 type Filter = 'all' | 'low' | 'out';
@@ -216,33 +216,28 @@ function InventorySheet({
   }
 
   const MODES: Mode[] = ['count', 'consume', 'adjust'];
-  const inputCls = 'min-h-12 w-full rounded-xl border border-zinc-300 px-4 py-3 text-lg';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end bg-black/40" onClick={onClose}>
-      <form
-        onClick={(e) => e.stopPropagation()}
-        onSubmit={onSubmit}
-        className="mx-auto flex max-h-[88dvh] w-full max-w-md flex-col gap-3 overflow-y-auto rounded-t-3xl bg-white p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]"
-      >
-        <h2 className="text-lg font-bold text-zinc-900">{item.name}</h2>
+    <div className="gro-sheet-backdrop" onClick={onClose}>
+      <form onClick={(e) => e.stopPropagation()} onSubmit={onSubmit} className="gro-sheet-panel flex flex-col gap-3">
+        <div className="gro-sheet-grip" />
+        <h2 className="text-lg font-bold">{item.name}</h2>
 
-        <div className="flex gap-1 rounded-xl bg-zinc-100 p-1">
+        <div className="seg" style={{ width: '100%' }}>
           {MODES.map((m) => (
             <button
               key={m}
               type="button"
+              aria-pressed={mode === m}
               onClick={() => setMode(m)}
-              className={`flex-1 rounded-lg py-2 text-sm font-medium ${
-                mode === m ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500'
-              }`}
+              style={{ flex: 1, justifyContent: 'center' }}
             >
               {t(`inventory.${m}`)}
             </button>
           ))}
         </div>
 
-        <label className="text-sm text-zinc-600">
+        <label className="muted text-sm">
           {mode === 'consume' ? t('inventory.used') : t('lists.onHand')}
         </label>
         <input
@@ -250,7 +245,7 @@ function InventorySheet({
           value={value}
           onChange={(e) => setValue(e.target.value.replace(/[^\d.,]/g, ''))}
           inputMode="decimal"
-          className={inputCls}
+          className="gro-field gro-field--mono text-lg"
         />
         {mode === 'adjust' && (
           <input
@@ -258,30 +253,27 @@ function InventorySheet({
             onChange={(e) => setReason(e.target.value)}
             placeholder={t('inventory.reason')}
             maxLength={200}
-            className="min-h-11 w-full rounded-xl border border-zinc-300 px-4 text-base"
+            className="gro-field"
           />
         )}
 
-        <button
-          type="submit"
-          className="min-h-12 rounded-xl bg-green-600 font-semibold text-white active:bg-green-700"
-        >
+        <Button variant="primary" size="lg" fullWidth type="submit">
           {t('common.save')}
-        </button>
+        </Button>
 
         <div className="mt-1 flex flex-col gap-1">
-          <h3 className="text-sm font-semibold text-zinc-600">{t('inventory.history')}</h3>
+          <h3 className="kicker">{t('inventory.history')}</h3>
           {history.length === 0 ? (
-            <p className="text-sm text-zinc-400">{t('inventory.noMovements')}</p>
+            <p className="muted text-sm">{t('inventory.noMovements')}</p>
           ) : (
             <ul className="flex flex-col gap-1">
               {history.map((m) => (
                 <li key={m.id} className="flex justify-between text-sm">
-                  <span className="text-zinc-600">
+                  <span className="muted">
                     {t(`inventory.move.${m.type}`)} · {fmtDate(m.movedAt)}
                     {m.reason ? ` · ${m.reason}` : ''}
                   </span>
-                  <span className={`font-mono ${m.qty < 0 ? 'text-red-600' : 'text-green-700'}`}>
+                  <span className="mono" style={{ color: m.qty < 0 ? 'var(--gro-red)' : 'var(--gro-green)' }}>
                     {m.qty > 0 ? '+' : ''}
                     {m.qty} → {m.balanceAfter}
                   </span>

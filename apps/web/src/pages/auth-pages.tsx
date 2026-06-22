@@ -1,24 +1,75 @@
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
-import { useState, type FormEvent } from 'react';
+import { useState, type FormEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Button } from '../features/ui/index.js';
 import { signIn, signUp } from '../lib/auth-client.js';
 
-function AuthShell({ title, children }: { title: string; children: React.ReactNode }) {
+function AuthShell({ title, children }: { title: string; children: ReactNode }) {
+  const { t } = useTranslation();
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center gap-6 px-6 py-10">
-      <div className="flex flex-col items-center gap-2">
-        <img src="/icon.svg" alt="" className="h-14 w-14" />
-        <h1 className="text-2xl font-bold text-zinc-900">{title}</h1>
+    <main
+      className="screen-in mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-6 py-10"
+      style={{ background: 'var(--app-bg)', color: 'var(--app-ink)' }}
+    >
+      <div className="mb-6 flex items-center gap-3">
+        <span
+          style={{
+            width: 38,
+            height: 38,
+            borderRadius: 11,
+            background: 'var(--gro-green)',
+            color: '#fff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontWeight: 800,
+            fontFamily: 'var(--gro-font-money)',
+            fontSize: 22,
+          }}
+        >
+          G
+        </span>
+        <span className="text-2xl font-extrabold tracking-tight">Grosify</span>
       </div>
+      <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
+      <p className="muted mb-6 mt-1.5 text-sm">{t('auth.subtitle')}</p>
       {children}
     </main>
   );
 }
 
-const inputClass =
-  'w-full rounded-xl border border-zinc-300 px-4 py-3 text-base outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100';
-const buttonClass =
-  'w-full rounded-xl bg-green-600 px-4 py-3 text-base font-semibold text-white active:bg-green-700 disabled:opacity-50';
+/** Campo com rótulo kicker + input no estilo do design system. */
+function Field({
+  label,
+  name,
+  type = 'text',
+  placeholder,
+  mono,
+  required,
+  minLength,
+}: {
+  label: string;
+  name: string;
+  type?: string;
+  placeholder?: string;
+  mono?: boolean;
+  required?: boolean;
+  minLength?: number;
+}) {
+  return (
+    <label className="block">
+      <span className="kicker mb-1.5 block">{label}</span>
+      <input
+        name={name}
+        type={type}
+        placeholder={placeholder}
+        required={required}
+        minLength={minLength}
+        className={`gro-field${mono ? ' gro-field--mono' : ''}`}
+      />
+    </label>
+  );
+}
 
 /** Evita redirecionar de volta pra telas de auth (loop). */
 function safeRedirect(redirect: string | undefined): string {
@@ -49,7 +100,6 @@ export function EntrarPage() {
       }
       navigate({ to: safeRedirect(search.redirect) });
     } catch {
-      // erro de rede/servidor (CORS, API fora do ar) — não retorna {error}, lança
       setError(t('auth.networkError'));
     } finally {
       setBusy(false);
@@ -58,33 +108,21 @@ export function EntrarPage() {
 
   return (
     <AuthShell title={t('auth.loginTitle')}>
-      <form onSubmit={onSubmit} className="flex flex-col gap-3">
-        <input
-          name="email"
-          type="email"
-          required
-          placeholder={t('auth.email')}
-          className={inputClass}
-        />
-        <input
-          name="password"
-          type="password"
-          required
-          minLength={8}
-          placeholder={t('auth.password')}
-          className={inputClass}
-        />
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <button type="submit" disabled={busy} className={buttonClass}>
+      <form onSubmit={onSubmit} className="flex flex-col gap-3.5">
+        <Field label={t('auth.email')} name="email" type="email" placeholder="voce@email.com" mono required />
+        <Field label={t('auth.password')} name="password" type="password" placeholder="••••••••" mono required minLength={8} />
+        {error && <p className="text-sm" style={{ color: 'var(--gro-red)' }}>{error}</p>}
+        <Button variant="primary" size="lg" fullWidth type="submit" disabled={busy} className="mt-1.5">
           {busy ? t('auth.loggingIn') : t('auth.login')}
-        </button>
+        </Button>
       </form>
-      <p className="text-center text-sm text-zinc-600">
+      <p className="muted mt-5 text-center text-sm">
         {t('auth.noAccount')}{' '}
         <Link
           to="/cadastro"
           search={{ redirect: search.redirect }}
-          className="font-semibold text-green-700"
+          className="font-bold"
+          style={{ color: 'var(--gro-green)' }}
         >
           {t('auth.signup')}
         </Link>
@@ -125,39 +163,27 @@ export function CadastroPage() {
 
   return (
     <AuthShell title={t('auth.signupTitle')}>
-      <form onSubmit={onSubmit} className="flex flex-col gap-3">
-        <input name="name" required placeholder={t('auth.name')} className={inputClass} />
-        <input
-          name="email"
-          type="email"
-          required
-          placeholder={t('auth.email')}
-          className={inputClass}
-        />
-        <input
-          name="password"
-          type="password"
-          required
-          minLength={8}
-          placeholder={t('auth.passwordHint')}
-          className={inputClass}
-        />
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <button type="submit" disabled={busy} className={buttonClass}>
+      <form onSubmit={onSubmit} className="flex flex-col gap-3.5">
+        <Field label={t('auth.name')} name="name" placeholder="ex.: Ana Ribeiro" required />
+        <Field label={t('auth.email')} name="email" type="email" placeholder="voce@email.com" mono required />
+        <Field label={t('auth.password')} name="password" type="password" placeholder={t('auth.passwordHint')} mono required minLength={8} />
+        {error && <p className="text-sm" style={{ color: 'var(--gro-red)' }}>{error}</p>}
+        <Button variant="primary" size="lg" fullWidth type="submit" disabled={busy} className="mt-1.5">
           {busy ? t('auth.signingUp') : t('auth.signup')}
-        </button>
+        </Button>
       </form>
-      <p className="text-center text-sm text-zinc-600">
+      <p className="muted mt-5 text-center text-sm">
         {t('auth.hasAccount')}{' '}
         <Link
           to="/entrar"
           search={{ redirect: search.redirect }}
-          className="font-semibold text-green-700"
+          className="font-bold"
+          style={{ color: 'var(--gro-green)' }}
         >
           {t('auth.login')}
         </Link>
       </p>
-      <Link to="/privacidade" className="text-center text-xs text-zinc-400 underline">
+      <Link to="/privacidade" className="muted mt-3 text-center text-xs underline">
         {t('settings.privacy')}
       </Link>
     </AuthShell>

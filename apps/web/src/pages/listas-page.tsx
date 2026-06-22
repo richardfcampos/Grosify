@@ -130,23 +130,20 @@ function NewListSheet({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end bg-black/40" onClick={onClose}>
-      <form
-        onClick={(e) => e.stopPropagation()}
-        onSubmit={onSubmit}
-        className="mx-auto flex max-h-[88dvh] w-full max-w-md flex-col gap-3 overflow-y-auto rounded-t-3xl bg-white p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]"
-      >
-        <h2 className="text-lg font-bold text-zinc-900">{t('lists.newList')}</h2>
+    <div className="gro-sheet-backdrop" onClick={onClose}>
+      <form onClick={(e) => e.stopPropagation()} onSubmit={onSubmit} className="gro-sheet-panel flex flex-col gap-3">
+        <div className="gro-sheet-grip" />
+        <h2 className="text-lg font-bold">{t('lists.newList')}</h2>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
           required
           maxLength={100}
           placeholder={t('lists.listNameHint')}
-          className="min-h-12 w-full rounded-xl border border-zinc-300 px-4 py-3 text-base outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100"
+          className="gro-field"
         />
 
-        <span className="text-sm font-medium text-zinc-600">{t('lists.icon')}</span>
+        <span className="muted text-sm font-medium">{t('lists.icon')}</span>
         <div className="flex flex-wrap gap-1.5">
           {LIST_ICONS.map((ic) => (
             <button
@@ -163,17 +160,17 @@ function NewListSheet({ onClose }: { onClose: () => void }) {
         </div>
 
         <label className="flex flex-col gap-1">
-          <span className="text-sm font-medium text-zinc-600">{t('lists.budget')}</span>
+          <span className="muted text-sm font-medium">{t('lists.budget')}</span>
           <input
             value={budget}
             onChange={(e) => setBudget(e.target.value.replace(/[^\d.,]/g, ''))}
             inputMode="decimal"
             placeholder={t('lists.budgetHint')}
-            className="min-h-12 w-full rounded-xl border border-zinc-300 px-4 py-3 text-base"
+            className="gro-field gro-field--mono"
           />
         </label>
 
-        <span className="text-sm font-medium text-zinc-600">{t('lists.color')}</span>
+        <span className="muted text-sm font-medium">{t('lists.color')}</span>
         <div className="flex flex-wrap gap-2">
           {LIST_COLORS.map((co) => (
             <button
@@ -191,9 +188,10 @@ function NewListSheet({ onClose }: { onClose: () => void }) {
             type="checkbox"
             checked={isRecurring}
             onChange={(e) => setIsRecurring(e.target.checked)}
-            className="h-5 w-5 accent-green-600"
+            className="h-5 w-5"
+            style={{ accentColor: 'var(--gro-green)' }}
           />
-          <span className="text-zinc-700">{t('lists.recurring')}</span>
+          <span>{t('lists.recurring')}</span>
         </label>
 
         {isRecurring && (
@@ -206,7 +204,7 @@ function NewListSheet({ onClose }: { onClose: () => void }) {
                 const isWeekly = r === 'weekly' || r === 'biweekly';
                 setRecurrenceDay((d) => (isWeekly ? Math.min(d, 6) : Math.max(d, 1)));
               }}
-              className="min-h-11 flex-1 rounded-xl border border-zinc-300 px-3 text-base"
+              className="gro-field flex-1"
             >
               {RECURRENCES.map((r) => (
                 <option key={r} value={r}>
@@ -217,7 +215,7 @@ function NewListSheet({ onClose }: { onClose: () => void }) {
             <select
               value={recurrenceDay}
               onChange={(e) => setRecurrenceDay(Number(e.target.value))}
-              className="min-h-11 flex-1 rounded-xl border border-zinc-300 px-3 text-base"
+              className="gro-field flex-1"
             >
               {weekly
                 ? weekdays.map((label, d) => (
@@ -234,13 +232,9 @@ function NewListSheet({ onClose }: { onClose: () => void }) {
           </div>
         )}
 
-        <button
-          type="submit"
-          disabled={busy || !name.trim()}
-          className="min-h-12 w-full rounded-xl bg-green-600 px-4 py-3 font-semibold text-white active:bg-green-700 disabled:opacity-50"
-        >
+        <Button variant="primary" size="lg" fullWidth type="submit" disabled={busy || !name.trim()}>
           {busy ? t('common.saving') : t('common.save')}
-        </button>
+        </Button>
       </form>
     </div>
   );

@@ -284,7 +284,8 @@ function QtyInput({
             }
           }}
           inputMode="decimal"
-          className="w-16 rounded-lg border border-zinc-300 px-2 py-1.5 text-center text-base"
+          className="gro-field gro-field--mono text-center"
+          style={{ padding: '6px 8px', width: '3.5rem' }}
         />
         <span className="w-7 text-xs text-zinc-400">{unit}</span>
       </div>
@@ -319,18 +320,16 @@ function AddItemSheet({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end bg-black/40" onClick={onClose}>
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="mx-auto flex max-h-[80dvh] w-full max-w-md flex-col gap-2 rounded-t-3xl bg-white p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]"
-      >
-        <h2 className="text-lg font-bold text-zinc-900">{t('lists.selectItem')}</h2>
+    <div className="gro-sheet-backdrop" onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} className="gro-sheet-panel flex flex-col gap-2">
+        <div className="gro-sheet-grip" />
+        <h2 className="text-lg font-bold">{t('lists.selectItem')}</h2>
         <input
           autoFocus
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={t('catalog.searchItems')}
-          className="min-h-12 rounded-xl border border-zinc-300 px-4 py-3 text-base outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100"
+          className="gro-field"
         />
 
         <div className="flex flex-col gap-1 overflow-y-auto">
@@ -338,7 +337,8 @@ function AddItemSheet({
             <button
               onClick={onCreate}
               disabled={creating}
-              className="rounded-xl bg-green-50 px-4 py-3 text-left text-base font-medium text-green-700 active:bg-green-100 disabled:opacity-50"
+              className="rounded-xl px-4 py-3 text-left text-base font-medium disabled:opacity-50"
+              style={{ background: 'color-mix(in srgb, var(--gro-green) 12%, transparent)', color: 'var(--gro-green)' }}
             >
               + {t('lists.createItem', { name: query.trim() })}
             </button>
@@ -347,7 +347,7 @@ function AddItemSheet({
             <button
               key={item.id}
               onClick={() => onPick(item.id)}
-              className="rounded-xl px-4 py-3 text-left text-base active:bg-zinc-100"
+              className="tap rounded-xl px-4 py-3 text-left text-base"
             >
               {item.name}
             </button>

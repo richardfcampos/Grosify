@@ -17,6 +17,7 @@ import { recordPrice } from '../../db/repositories.js';
 import { BrandPicker } from '../brands/brand-picker.js';
 import { PriceScanModal } from '../scanner/price-scan-modal.js';
 import { StarRating } from './star-rating.js';
+import { Button } from '../ui/index.js';
 import { useFormatMoney, useHouseholdCurrency, useHouseholdPlan } from '../../lib/use-currency.js';
 
 interface Props {
@@ -124,14 +125,12 @@ export function PrecoSheet({ itemId, itemName, onClose }: Props) {
       {priceScan && (
         <PriceScanModal onDetect={(p) => setValue(p)} onClose={() => setPriceScan(false)} />
       )}
-      <div className="fixed inset-0 z-50 flex items-end bg-black/40" onClick={onClose}>
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="mx-auto flex max-h-[85dvh] w-full max-w-md flex-col gap-4 overflow-y-auto rounded-t-3xl bg-white p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]"
-      >
+      <div className="gro-sheet-backdrop" onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} className="gro-sheet-panel flex flex-col gap-4">
+        <div className="gro-sheet-grip" />
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-zinc-900">{itemName}</h2>
-          <button onClick={onClose} className="text-sm text-zinc-500">
+          <h2 className="text-lg font-bold">{itemName}</h2>
+          <button onClick={onClose} className="muted text-sm">
             {t('common.cancel')}
           </button>
         </div>
@@ -158,7 +157,7 @@ export function PrecoSheet({ itemId, itemName, onClose }: Props) {
               value={storeId}
               onChange={(e) => setStoreId(e.target.value)}
               required
-              className="min-h-12 rounded-xl border border-zinc-300 px-4 py-3 text-base"
+              className="gro-field"
             >
               <option value="" disabled>
                 {t('prices.selectStore')}
@@ -177,13 +176,14 @@ export function PrecoSheet({ itemId, itemName, onClose }: Props) {
                 inputMode="decimal"
                 required
                 placeholder={t('prices.price')}
-                className="min-h-12 flex-1 rounded-xl border border-zinc-300 px-4 py-3 text-base"
+                className="gro-field gro-field--mono flex-1"
               />
               <button
                 type="button"
                 onClick={() => setPriceScan(true)}
                 aria-label={t('priceScan.scan')}
-                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-zinc-100 text-xl"
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-xl"
+                style={{ background: 'var(--app-surface-2)' }}
               >
                 📷
               </button>
@@ -194,19 +194,15 @@ export function PrecoSheet({ itemId, itemName, onClose }: Props) {
               </p>
             )}
             {avg3m != null && (
-              <p className="text-xs text-zinc-500">{t('prices.avg3m', { price: fmt(avg3m) })}</p>
+              <p className="muted text-xs">{t('prices.avg3m', { price: fmt(avg3m) })}</p>
             )}
             <div className="flex items-center justify-between">
-              <span className="text-sm text-zinc-500">{t('prices.rating')}</span>
+              <span className="muted text-sm">{t('prices.rating')}</span>
               <StarRating value={rating} onChange={setRating} />
             </div>
-            <button
-              type="submit"
-              disabled={busy || !storeId || !value}
-              className="min-h-12 rounded-xl bg-green-600 px-4 py-3 font-semibold text-white active:bg-green-700 disabled:opacity-50"
-            >
+            <Button variant="primary" size="lg" fullWidth type="submit" disabled={busy || !storeId || !value}>
               {busy ? t('common.saving') : t('prices.record')}
-            </button>
+            </Button>
           </form>
         )}
 
@@ -224,20 +220,20 @@ export function PrecoSheet({ itemId, itemName, onClose }: Props) {
         )}
 
         <div className="flex flex-col gap-1.5">
-          <h3 className="text-sm font-semibold text-zinc-600">{t('prices.history')}</h3>
+          <h3 className="kicker">{t('prices.history')}</h3>
           {history.length === 0 ? (
-            <p className="text-sm text-zinc-400">{t('prices.noPrices')}</p>
+            <p className="muted text-sm">{t('prices.noPrices')}</p>
           ) : (
             <ul className="flex flex-col gap-1">
               {history.map((p) => (
                 <li key={p.id} className="flex justify-between text-sm">
-                  <span className="text-zinc-600">
+                  <span className="muted">
                     {storeName(p.storeId)}
                     {brandName(p.brandId) ? ` · ${brandName(p.brandId)}` : ''} · {fmtDate(p.recordedAt)}
                   </span>
-                  <span className="font-mono font-medium text-zinc-900">
+                  <span className="mono font-medium">
                     {fmt(p.priceCents)}
-                    {p.rating ? <span className="ml-1 text-amber-500">{'★'.repeat(p.rating)}</span> : null}
+                    {p.rating ? <span className="ml-1" style={{ color: 'var(--gro-yellow)' }}>{'★'.repeat(p.rating)}</span> : null}
                   </span>
                 </li>
               ))}

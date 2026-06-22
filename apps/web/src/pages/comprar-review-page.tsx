@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { db, type LocalItem } from '../db/dexie.js';
 import { previewSessionLines, startShoppingSessionWith, type SessionLine } from '../db/repositories.js';
+import { Button, Icon, SectionTitle } from '../features/ui/index.js';
 
 /**
  * Revisão antes de iniciar a compra: confirma o que falta (recorrente desconta
@@ -56,27 +57,28 @@ export function ComprarReviewPage() {
   const inStockCount = lines.filter((l) => l.needed <= 0).length;
 
   return (
-    <main className="flex flex-col gap-4 px-5 py-6 pb-28">
-      <header className="flex items-center gap-3">
-        <button onClick={() => navigate({ to: '/listas/$id', params: { id } })} className="text-sm text-zinc-500">
-          ← {t('common.back')}
-        </button>
-        <h1 className="text-xl font-bold text-zinc-900">{t('review.title')}</h1>
-      </header>
-      {list && <p className="text-sm text-zinc-500">{list.name}</p>}
+    <main className="screen-in flex flex-col gap-4 px-[18px] py-6 pb-28">
+      <button
+        onClick={() => navigate({ to: '/listas/$id', params: { id } })}
+        className="muted flex items-center gap-1 text-sm font-semibold"
+      >
+        <Icon name="back" size={17} /> {t('common.back')}
+      </button>
+      <SectionTitle title={t('review.title')} sub={list?.name} />
 
       {visible.length === 0 ? (
-        <p className="mt-6 text-center text-zinc-500">{t('review.empty')}</p>
+        <p className="muted mt-6 text-center">{t('review.empty')}</p>
       ) : (
-        <ul className="flex flex-col gap-2">
+        <div className="card row-sep" style={{ padding: 0, overflow: 'hidden' }}>
           {visible.map((l) => {
             const item = itemById.get(l.itemId);
             if (!item) return null;
             const off = excluded.has(l.itemId);
             return (
-              <li
+              <div
                 key={l.itemId}
-                className={`flex items-center gap-3 rounded-2xl border p-3 ${off ? 'border-zinc-200 opacity-50' : 'border-zinc-200'}`}
+                className="flex items-center gap-3 px-4 py-3"
+                style={{ opacity: off ? 0.5 : 1 }}
               >
                 <input
                   type="checkbox"
@@ -89,12 +91,13 @@ export function ComprarReviewPage() {
                       return next;
                     })
                   }
-                  className="h-5 w-5 accent-green-600"
+                  className="h-5 w-5 flex-none"
+                  style={{ accentColor: 'var(--gro-green)' }}
                 />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium text-zinc-900">{item.name}</p>
+                  <p className="truncate font-semibold">{item.name}</p>
                   {list?.isRecurring && (
-                    <p className="text-xs text-zinc-500">
+                    <p className="muted mono text-xs">
                       {t('lists.recommended')} {l.recommended} · {t('lists.onHand')} {l.onHand}
                     </p>
                   )}
@@ -105,28 +108,31 @@ export function ComprarReviewPage() {
                     setQty((p) => ({ ...p, [l.itemId]: e.target.value.replace(/[^\d.,]/g, '') }))
                   }
                   inputMode="decimal"
-                  className="w-16 rounded-lg border border-zinc-300 px-2 py-1.5 text-center text-base"
+                  className="gro-field gro-field--mono text-center"
+                  style={{ padding: '6px 8px', width: '3.5rem' }}
                 />
-                <span className="w-8 text-xs text-zinc-400">{t(`catalog.units.${item.unit}`)}</span>
-              </li>
+                <span className="muted w-8 text-xs">{t(`catalog.units.${item.unit}`)}</span>
+              </div>
             );
           })}
-        </ul>
+        </div>
       )}
 
       {inStockCount > 0 && (
-        <button onClick={() => setShowInStock((v) => !v)} className="text-sm text-green-700 underline">
+        <button
+          onClick={() => setShowInStock((v) => !v)}
+          className="text-sm underline"
+          style={{ color: 'var(--gro-green)' }}
+        >
           {showInStock ? t('review.hideInStock') : t('review.showInStock', { count: inStockCount })}
         </button>
       )}
 
-      <button
-        onClick={start}
-        disabled={busy}
-        className="fixed inset-x-5 bottom-24 mx-auto min-h-12 max-w-md rounded-xl bg-green-600 font-bold text-white disabled:opacity-50"
-      >
-        {t('review.start')}
-      </button>
+      <div className="fixed inset-x-0 bottom-0 z-10 mx-auto max-w-md px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]" style={{ background: 'var(--app-bg)' }}>
+        <Button variant="primary" size="lg" fullWidth disabled={busy} onClick={start}>
+          {t('review.start')}
+        </Button>
+      </div>
     </main>
   );
 }

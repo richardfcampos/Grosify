@@ -3,12 +3,11 @@ import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { db, type LocalStore } from '../db/dexie.js';
 import { createStore, deleteStore, updateStore } from '../db/repositories.js';
-import { Icon } from '../features/ui/index.js';
+import { Button, Icon } from '../features/ui/index.js';
 import { useConfirm } from '../lib/confirm.js';
 import { usePlacesSearch, type PlaceResult } from '../lib/use-places-search.js';
 
-const inputClass =
-  'min-h-12 w-full rounded-xl border border-zinc-300 px-4 py-3 text-base outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100';
+const inputClass = 'gro-field';
 
 export function LojasPage() {
   const { t } = useTranslation();
@@ -119,13 +118,10 @@ function StoreSheet({ store, onClose }: { store: LocalStore | null; onClose: () 
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end bg-black/40" onClick={onClose}>
-      <form
-        onClick={(e) => e.stopPropagation()}
-        onSubmit={onSubmit}
-        className="mx-auto flex w-full max-w-md flex-col gap-3 rounded-t-3xl bg-white p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]"
-      >
-        <h2 className="text-lg font-bold text-zinc-900">
+    <div className="gro-sheet-backdrop" onClick={onClose}>
+      <form onClick={(e) => e.stopPropagation()} onSubmit={onSubmit} className="gro-sheet-panel flex flex-col gap-3">
+        <div className="gro-sheet-grip" />
+        <h2 className="text-lg font-bold">
           {store ? t('catalog.editStore') : t('catalog.newStore')}
         </h2>
 
@@ -140,13 +136,16 @@ function StoreSheet({ store, onClose }: { store: LocalStore | null; onClose: () 
             className={inputClass}
           />
           {showResults && results.length > 0 && (
-            <ul className="absolute z-10 mt-1 max-h-60 w-full overflow-y-auto rounded-xl border border-zinc-200 bg-white shadow-lg">
+            <ul
+              className="absolute z-10 mt-1 max-h-60 w-full overflow-y-auto rounded-xl shadow-lg"
+              style={{ border: '1px solid var(--app-border)', background: 'var(--app-surface)' }}
+            >
               {results.map((p, i) => (
                 <li key={i}>
                   <button
                     type="button"
                     onClick={() => pickPlace(p)}
-                    className="block w-full px-4 py-2.5 text-left text-sm active:bg-zinc-100"
+                    className="tap block w-full px-4 py-2.5 text-left text-sm"
                   >
                     {p.label}
                   </button>
@@ -175,19 +174,15 @@ function StoreSheet({ store, onClose }: { store: LocalStore | null; onClose: () 
           placeholder={t('catalog.city')}
           className={inputClass}
         />
-        <button
-          type="submit"
-          disabled={busy || !name.trim()}
-          className="min-h-12 w-full rounded-xl bg-green-600 px-4 py-3 font-semibold text-white active:bg-green-700 disabled:opacity-50"
-        >
+        <Button variant="primary" size="lg" fullWidth type="submit" disabled={busy || !name.trim()}>
           {busy ? t('common.saving') : t('common.save')}
-        </button>
+        </Button>
         {store && (
-          <button type="button" onClick={onDelete} className="min-h-11 text-sm font-medium text-red-600">
+          <button type="button" onClick={onDelete} className="min-h-11 text-sm font-medium" style={{ color: 'var(--gro-red)' }}>
             {t('catalog.deleteStore')}
           </button>
         )}
-        <p className="text-center text-xs text-zinc-400">{t('catalog.poweredBy')}</p>
+        <p className="muted text-center text-xs">{t('catalog.poweredBy')}</p>
       </form>
     </div>
   );
