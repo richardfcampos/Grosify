@@ -192,6 +192,11 @@
     display: none;
   }
 }
+/* Sheet/modal aberto = a bottom nav some, senão ela cobre os campos de baixo do
+   sheet (ex.: criar item no scanner do inventário) e trava o uso. */
+body:has(.gro-sheet-backdrop) .botnav {
+  display: none;
+}
 .botnav button,
 .botnav a {
   flex: 1;
