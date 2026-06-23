@@ -27,7 +27,7 @@
 - **Neutros:** Tinta `#1C1917` · Cinza `#78716C` · Borda `#E7E5E4` · Fundo claro `#FAFAF7` (quente, não branco puro) · Superfície `#FFFFFF`.
 - **Dark mode:** Fundo `#0C0A09`, superfície `#1C1917`, borda `#292524`, texto `#FAFAF7`, cinza `#A8A29E`, info `#93C5FD`.
 - **Semantic extra:** Azul Carimbo/info `#1D4ED8` (carimbo "✓ COMPRADO", links).
-- **Regra de modo:** app segue preferência do sistema, MAS **Modo Compra é sempre escuro** (amarelo/verde sobre preto = legibilidade máxima de relance, como sinalização viária).
+- **Regra de modo:** app segue a preferência de tema (light/dark) do sistema — **incluindo o Modo Compra** (revisado em 2026-06-22; antes era sempre escuro). O recibo térmico permanece sempre claro (papel).
 
 ## Spacing
 - **Base unit:** 8px (sub-passo 4px).
@@ -49,7 +49,7 @@
 
 ## Assinaturas do produto (riscos aprovados)
 1. **Preço protagonista:** home abre com splash Anton do valor economizado no mês; ofertas como etiqueta amarela rotacionada.
-2. **Modo compra sempre escuro:** contexto de mercado = preto + amarelo/verde.
+2. **Modo compra imersivo:** tela fullscreen sem nav, carimbo + total ao vivo; segue o tema light/dark do app (revisado 2026-06-22 — antes era sempre escuro).
 3. **Carimbo + recibo:** marcar item = carimbo azul diagonal; fim da compra = recibo térmico (Plex Mono, borda serrilhada) compartilhável no WhatsApp.
 
 ## Anti-padrões (proibido)
@@ -64,3 +64,4 @@
 | Date | Decision | Rationale |
 |------|----------|-----------|
 | 2026-06-12 | Sistema criado via /design-consultation | Pesquisa visual (Bring!/AnyList/Listonic) + voz externa (subagent "Cartaz de Feira") + síntese disciplinada; usuário aprovou os 3 riscos |
+| 2026-06-22 | Modo Compra deixa de ser sempre escuro → segue o tema light/dark do app | Update do protótipo (export v2); usuário aprovou a reversão da assinatura. Recibo térmico continua claro (papel). compra-page tokenizado (DARK_VARS removido) |

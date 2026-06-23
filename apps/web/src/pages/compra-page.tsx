@@ -21,27 +21,6 @@ import { useHydrateReceipt } from '../lib/use-hydrate-photo.js';
 import { useObjectUrl } from '../lib/use-object-url.js';
 import { useFormatMoney } from '../lib/use-currency.js';
 
-/** Tokens dark forçados no Modo Compra — DESIGN.md: contexto de mercado é sempre escuro,
- *  independente do tema do app (amarelo/verde sobre preto = legibilidade de relance). */
-const DARK_VARS = {
-  '--app-bg': '#0c0a09',
-  '--app-surface': '#1c1917',
-  '--app-surface-2': '#231f1d',
-  '--app-ink': '#fafaf7',
-  '--app-gray': '#a8a29e',
-  '--app-border': '#292524',
-  '--app-line': '#241f1d',
-  '--gro-surface': '#1c1917',
-  '--gro-ink': '#fafaf7',
-  '--gro-gray': '#a8a29e',
-  '--gro-border': '#292524',
-  '--gro-green': '#4ade80',
-  '--gro-red': '#f87171',
-  '--gro-stamp': '#93c5fd',
-  '--gro-yellow': '#facc15',
-  '--app-elev': '0 1px 3px #00000059, 0 16px 40px -18px #000000b3',
-} as React.CSSProperties;
-
 export function CompraPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -150,34 +129,30 @@ export function CompraPage() {
   }
 
   return (
-    <div className="flex min-h-dvh flex-col" style={{ background: '#0c0a09', color: '#fafaf7', ...DARK_VARS }}>
+    <div className="flex min-h-dvh flex-col" style={{ background: 'var(--app-bg)', color: 'var(--app-ink)' }}>
       <header
         className="sticky top-0 z-10 flex-none px-[18px] pb-3.5 pt-3"
-        style={{ background: '#161311', borderBottom: '1px solid #2a2622' }}
+        style={{ background: 'var(--app-surface)', borderBottom: '1px solid var(--app-border)' }}
       >
         <button
           onClick={() => navigate({ to: '/' })}
-          className="mb-2 flex items-center gap-1 text-[13px]"
-          style={{ color: '#a8a29e' }}
+          className="muted mb-2 flex items-center gap-1 text-[13px]"
         >
           <Icon name="back" size={16} /> {t('shopping.back')}
         </button>
         <div className="flex items-end justify-between">
           <div>
-            <div className="kicker" style={{ color: '#a8a29e' }}>
-              {t('shopping.current')}
-            </div>
+            <div className="kicker">{t('shopping.current')}</div>
             <MoneyValue cents={current} size="md" tone={over ? 'negative' : 'positive'} {...money} />
           </div>
           <div className="text-right">
-            <div className="kicker" style={{ color: '#a8a29e' }}>
-              {t('shopping.estimated')}
-            </div>
-            <div className="mono text-base" style={{ color: '#d6d3d1' }}>
-              {fmt(estimated)}
-            </div>
+            <div className="kicker">{t('shopping.estimated')}</div>
+            <div className="mono text-base">{fmt(estimated)}</div>
             {current > 0 && (
-              <div className="mono mt-0.5 text-xs" style={{ color: over ? '#f87171' : '#4ade80' }}>
+              <div
+                className="mono mt-0.5 text-xs"
+                style={{ color: over ? 'var(--gro-red)' : 'var(--gro-green)' }}
+              >
                 {over ? '▲' : '▼'} {fmt(Math.abs(estimated - current))}{' '}
                 {over ? t('shopping.above') : t('shopping.below')}
               </div>
@@ -189,7 +164,11 @@ export function CompraPage() {
             value={activeStoreId ?? ''}
             onChange={(e) => setSessionStore(id, e.target.value)}
             className="mono mt-3 min-h-11 w-full rounded-xl px-3 py-2 text-sm outline-none"
-            style={{ border: '1px solid #44403c', background: '#231f1d', color: '#fafaf7' }}
+            style={{
+              border: '1px solid var(--app-border)',
+              background: 'var(--app-surface-2)',
+              color: 'var(--app-ink)',
+            }}
             aria-label={t('shopping.activeStore')}
           >
             <option value="" disabled>
@@ -204,41 +183,46 @@ export function CompraPage() {
         )}
         {budget && list?.budgetCents != null && (
           <div className="mt-3">
-            <div
-              className="mono mb-1.5 flex justify-between text-[11px]"
-              style={{ color: '#a8a29e' }}
-            >
+            <div className="muted mono mb-1.5 flex justify-between text-[11px]">
               <span>
                 {t('shopping.budget')} {fmt(list.budgetCents)}
               </span>
               <span
                 style={{
                   color:
-                    budget.level === 'over' ? '#f87171' : budget.level === 'warn' ? '#facc15' : '#4ade80',
+                    budget.level === 'over'
+                      ? 'var(--gro-red)'
+                      : budget.level === 'warn'
+                        ? 'var(--gro-yellow)'
+                        : 'var(--gro-green)',
                 }}
               >
                 {budget.pct}%
               </span>
             </div>
-            <div className="bar" style={{ background: '#2a2622' }}>
+            <div className="bar">
               <i
                 style={{
                   width: `${Math.min(budget.pct, 100)}%`,
                   background:
-                    budget.level === 'over' ? '#f87171' : budget.level === 'warn' ? '#facc15' : '#4ade80',
+                    budget.level === 'over'
+                      ? 'var(--gro-red)'
+                      : budget.level === 'warn'
+                        ? 'var(--gro-yellow)'
+                        : 'var(--gro-green)',
                 }}
               />
             </div>
           </div>
         )}
         <div className="mt-3 flex items-center justify-between">
-          <span className="mono text-xs" style={{ color: '#a8a29e' }}>
+          <span className="muted mono text-xs">
             {checkedCount}/{sessionItems.length}
           </span>
           <button
             onClick={() => setHideBought((v) => !v)}
             className="pill"
-            style={{ background: '#2a2622', color: '#e7e5e4', border: 0 }}
+            style={{ background: 'var(--app-surface-2)', color: 'var(--app-ink)', border: 0 }}
           >
             {hideBought ? t('shopping.showBought') : t('shopping.hideBought')}
           </button>
@@ -247,15 +231,11 @@ export function CompraPage() {
 
       <main className="flex-1 overflow-auto px-3.5 py-2 pb-32">
         {sessionItems.length === 0 ? (
-          <p className="mt-8 text-center" style={{ color: '#a8a29e' }}>
-            {t('shopping.emptySession')}
-          </p>
+          <p className="muted mt-8 text-center">{t('shopping.emptySession')}</p>
         ) : (
           groups.map(([cat, rows]) => (
             <section key={cat} className="mt-3.5">
-              <div className="kicker px-1 pb-2" style={{ color: '#78716c' }}>
-                {cat || t('catalog.noCategory')}
-              </div>
+              <div className="kicker px-1 pb-2">{cat || t('catalog.noCategory')}</div>
               <ul className="flex flex-col gap-2">
                 {rows.map((si) => {
                   const item = itemById.get(si.itemId);
@@ -278,7 +258,7 @@ export function CompraPage() {
                         >
                           {item.name}
                         </div>
-                        <div className="mono mt-0.5 text-[12.5px]" style={{ color: '#a8a29e' }}>
+                        <div className="muted mono mt-0.5 text-[12.5px]">
                           {si.checkedAt && si.actualUnitPriceCents
                             ? `${si.actualQty} × ${fmt(si.actualUnitPriceCents)}`
                             : `${si.neededQty} ${t(`catalog.units.${item.unit}`)}`}
@@ -295,7 +275,7 @@ export function CompraPage() {
                             width: 26,
                             height: 26,
                             borderRadius: 8,
-                            border: '2px solid #44403c',
+                            border: '2px solid var(--app-border)',
                           }}
                         />
                       )}
@@ -319,13 +299,13 @@ export function CompraPage() {
 
       <div
         className="fixed inset-x-0 bottom-0 z-10 mx-auto flex max-w-md items-center gap-3 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
-        style={{ background: '#161311', borderTop: '1px solid #2a2622' }}
+        style={{ background: 'var(--app-surface)', borderTop: '1px solid var(--app-border)' }}
       >
         <button
           onClick={() => setQuickAdd(true)}
           aria-label={t('shopping.quickAdd')}
-          className="flex h-12 w-12 flex-none items-center justify-center rounded-full text-white"
-          style={{ background: '#2a2622' }}
+          className="flex h-12 w-12 flex-none items-center justify-center rounded-full"
+          style={{ background: 'var(--app-surface-2)', color: 'var(--app-ink)' }}
         >
           <Icon name="plus" size={22} />
         </button>
@@ -406,12 +386,10 @@ function ShoppingRow({
   }
   return (
     <li
-      className="tap relative flex items-center gap-3"
+      className="tap card relative flex items-center gap-3"
       style={{
         minHeight: 64,
-        border: '1px solid #2a2622',
-        background: done ? '#161311' : '#1c1917',
-        borderRadius: 14,
+        background: done ? 'var(--app-surface-2)' : 'var(--app-surface)',
         padding: '12px 16px',
       }}
       onClick={() => (done ? onUncheck() : onCheck())}

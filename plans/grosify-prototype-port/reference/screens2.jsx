@@ -1,15 +1,10 @@
-/* Grosify screens — Modo Compra (sempre escuro), Recibo, Inventário, Ajustes. */
+/* Grosify screens — Modo Compra (segue o tema), Recibo, Inventário, Ajustes. */
 const Dd = window.GroData;
 const { Icon: I2, Money: M2, Sheet: Sh, Empty: E2, G: GG } = window;
 const ff = Dd.fmtBRL;
 const SectionTitle = window.SectionTitle;
 
-const DARK_VARS = {
-  '--gro-surface': '#1c1917', '--gro-ink': '#fafaf7', '--gro-border': '#33302c',
-  '--gro-gray': '#a8a29e', '--gro-green': '#4ade80', '--gro-red': '#f87171', '--gro-stamp': '#93c5fd',
-};
-
-/* ---------------- MODO COMPRA (always dark) ---------------- */
+/* ---------------- MODO COMPRA (segue o tema light/dark) ---------------- */
 function Compra({ go, route, shop, setShop }) {
   const l = Dd.LISTS.find((x) => x.id === (route.params.id || 'l1')) || Dd.LISTS[0];
   const items = Dd.listStats(l).needed;
@@ -24,7 +19,7 @@ function Compra({ go, route, shop, setShop }) {
   const over = current > estimated;
   const doneCount = Object.keys(checked).length;
   const budgetPct = l.budget ? Math.min(100, Math.round((current / l.budget) * 100)) : 0;
-  const bColor = !l.budget ? '#4ade80' : budgetPct >= 100 ? '#f87171' : budgetPct >= 80 ? '#facc15' : '#4ade80';
+  const bColor = !l.budget ? 'var(--gro-green)' : budgetPct >= 100 ? 'var(--gro-red)' : budgetPct >= 80 ? 'var(--gro-yellow)' : 'var(--gro-green)';
 
   const groups = {};
   (hideBought ? items.filter((it) => !checked[it.id]) : items).forEach((it) => {
@@ -40,32 +35,32 @@ function Compra({ go, route, shop, setShop }) {
   }
 
   return (
-    <div style={{ position: 'absolute', inset: 0, background: '#0c0a09', color: '#fafaf7', display: 'flex', flexDirection: 'column', ...DARK_VARS }}>
+    <div style={{ position: 'absolute', inset: 0, background: 'var(--app-bg)', color: 'var(--app-ink)', display: 'flex', flexDirection: 'column' }}>
       {/* sticky header */}
-      <div style={{ background: '#161311', padding: '12px 18px 14px', borderBottom: '1px solid #2a2622', flex: 'none' }}>
-        <button onClick={() => go('lista', { id: l.id })} style={{ border: 0, background: 'transparent', color: '#a8a29e', font: 'inherit', fontSize: 13, cursor: 'pointer', padding: 0, marginBottom: 8 }}>← Voltar</button>
+      <div style={{ background: 'var(--app-surface)', padding: '12px 18px 14px', borderBottom: '1px solid var(--app-border)', flex: 'none' }}>
+        <button onClick={() => go('lista', { id: l.id })} style={{ border: 0, background: 'transparent', color: 'var(--app-gray)', font: 'inherit', fontSize: 13, cursor: 'pointer', padding: 0, marginBottom: 8 }}>← Voltar</button>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
           <div>
-            <div className="kicker" style={{ color: '#a8a29e' }}>No carrinho</div>
+            <div className="kicker">No carrinho</div>
             <M2 cents={current} size="md" tone={over ? 'negative' : 'positive'} />
           </div>
           <div style={{ textAlign: 'right' }}>
-            <div className="kicker" style={{ color: '#a8a29e' }}>Estimado</div>
-            <div className="mono" style={{ fontSize: 16, color: '#d6d3d1' }}>{ff(estimated)}</div>
-            {current > 0 && <div className="mono" style={{ fontSize: 12, color: over ? '#f87171' : '#4ade80', marginTop: 2 }}>
+            <div className="kicker">Estimado</div>
+            <div className="mono" style={{ fontSize: 16, color: 'var(--app-ink)' }}>{ff(estimated)}</div>
+            {current > 0 && <div className="mono" style={{ fontSize: 12, color: over ? 'var(--gro-red)' : 'var(--gro-green)', marginTop: 2 }}>
               {over ? '▲' : '▼'} {ff(Math.abs(estimated - current))} {over ? 'acima' : 'abaixo'}</div>}
           </div>
         </div>
         {/* budget */}
         {l.budget > 0 && <div style={{ marginTop: 12 }}>
-          <div className="mono" style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#a8a29e', marginBottom: 5 }}>
+          <div className="mono" style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--app-gray)', marginBottom: 5 }}>
             <span>Orçamento {ff(l.budget)}</span><span style={{ color: bColor }}>{budgetPct}%</span>
           </div>
-          <div className="bar" style={{ background: '#2a2622' }}><i style={{ width: budgetPct + '%', background: bColor }} /></div>
+          <div className="bar"><i style={{ width: budgetPct + '%', background: bColor }} /></div>
         </div>}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
-          <span className="mono" style={{ fontSize: 12, color: '#a8a29e' }}>{doneCount}/{items.length} comprados</span>
-          <button onClick={() => setHideBought((v) => !v)} className="pill" style={{ background: '#2a2622', color: '#e7e5e4', border: 0, cursor: 'pointer', font: 'inherit', fontSize: 12 }}>
+          <span className="mono" style={{ fontSize: 12, color: 'var(--app-gray)' }}>{doneCount}/{items.length} comprados</span>
+          <button onClick={() => setHideBought((v) => !v)} className="pill" style={{ background: 'var(--app-surface-2)', color: 'var(--app-ink)', border: 0, cursor: 'pointer', font: 'inherit', fontSize: 12 }}>
             {hideBought ? 'Mostrar comprados' : 'Ocultar comprados'}
           </button>
         </div>
@@ -75,24 +70,24 @@ function Compra({ go, route, shop, setShop }) {
       <div style={{ flex: 1, overflow: 'auto', padding: '8px 14px 96px' }}>
         {Object.entries(groups).map(([cat, arr]) => (
           <div key={cat} style={{ marginTop: 14 }}>
-            <div className="kicker" style={{ color: '#78716c', padding: '0 4px 8px' }}>{cat}</div>
+            <div className="kicker" style={{ padding: '0 4px 8px' }}>{cat}</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {arr.map((it) => {
                 const ch = checked[it.id], price = Dd.cheapest(it);
                 return (
                   <button key={it.id} onClick={() => setActive(it)}
-                    className={'tap' + (slam === it.id ? ' row-bought' : '')}
-                    style={{ minHeight: 64, textAlign: 'left', border: '1px solid #2a2622', background: ch ? '#161311' : '#1c1917',
-                      borderRadius: 14, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, color: '#fafaf7', font: 'inherit', cursor: 'pointer', position: 'relative' }}>
+                    className={'tap card' + (slam === it.id ? ' row-bought' : '')}
+                    style={{ minHeight: 64, textAlign: 'left', background: ch ? 'var(--app-surface-2)' : 'var(--app-surface)',
+                      padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, color: 'var(--app-ink)', font: 'inherit', cursor: 'pointer', position: 'relative' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 600, fontSize: 16, textDecoration: ch ? 'line-through' : 'none', opacity: ch ? 0.55 : 1 }}>{it.name}</div>
-                      <div className="mono" style={{ fontSize: 12.5, color: '#a8a29e', marginTop: 3 }}>
+                      <div className="mono" style={{ fontSize: 12.5, color: 'var(--app-gray)', marginTop: 3 }}>
                         {ch ? `${ch.qty} × ${ff(ch.c)}` : `${Dd.need(it)} ${it.unit} · ${ff(price.c)}`}
                       </div>
                     </div>
                     {ch
                       ? <span className={slam === it.id ? 'stamp-in' : ''}><GG.Stamp checked label="COMPRADO" /></span>
-                      : <span style={{ width: 26, height: 26, borderRadius: 8, border: '2px solid #44403c', flex: 'none' }} />}
+                      : <span style={{ width: 26, height: 26, borderRadius: 8, border: '2px solid var(--app-border)', flex: 'none' }} />}
                   </button>
                 );
               })}
@@ -109,13 +104,13 @@ function Compra({ go, route, shop, setShop }) {
       {scanOpen && <window.Scanner onClose={() => setScanOpen(false)} onResult={(it) => { setScanOpen(false); setActive(it); }} />}
 
       {/* finish bar */}
-      <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: '12px 16px calc(12px + env(safe-area-inset-bottom))', background: '#161311', borderTop: '1px solid #2a2622' }}>
+      <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: '12px 16px calc(12px + env(safe-area-inset-bottom))', background: 'var(--app-surface)', borderTop: '1px solid var(--app-border)' }}>
         <GG.Button variant="primary" size="lg" fullWidth onClick={() => go('recibo', { id: l.id })}>
           Finalizar compra · {ff(current)}
         </GG.Button>
       </div>
 
-      <Sh open={!!active} onClose={() => setActive(null)} dark>
+      <Sh open={!!active} onClose={() => setActive(null)}>
         {active && <CheckSheet it={active} onConfirm={confirm} />}
       </Sh>
     </div>
@@ -142,13 +137,13 @@ function CheckSheet({ it, onConfirm }) {
       </div>
 
       <div className="kicker" style={{ margin: '20px 0 8px' }}>Preço pago (un)</div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, border: '1px solid #44403c', borderRadius: 12, padding: '12px 14px' }}>
-        <span className="mono" style={{ color: '#a8a29e' }}>R$</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, border: '1px solid var(--app-border)', borderRadius: 12, padding: '12px 14px' }}>
+        <span className="mono" style={{ color: 'var(--app-gray)' }}>R$</span>
         <input value={reais} onChange={(e) => setReais(e.target.value)} inputMode="decimal"
-          style={{ border: 0, background: 'transparent', outline: 'none', color: '#fafaf7', font: 'inherit', fontSize: 20, fontFamily: 'var(--gro-font-mono)', width: '100%' }} />
+          style={{ border: 0, background: 'transparent', outline: 'none', color: 'var(--app-ink)', font: 'inherit', fontSize: 20, fontFamily: 'var(--gro-font-mono)', width: '100%' }} />
         {up && <GG.Badge tone="subiu">subiu</GG.Badge>}
       </div>
-      {up && <div className="mono" style={{ fontSize: 12, color: '#f87171', marginTop: 8 }}>▲ {ff(cents - base.c)} acima do menor preço</div>}
+      {up && <div className="mono" style={{ fontSize: 12, color: 'var(--gro-red)', marginTop: 8 }}>▲ {ff(cents - base.c)} acima do menor preço</div>}
 
       <div style={{ marginTop: 22 }}>
         <GG.Button variant="primary" size="lg" fullWidth onClick={() => onConfirm(it, qty, cents)}>
@@ -158,7 +153,7 @@ function CheckSheet({ it, onConfirm }) {
     </div>
   );
 }
-const stepBtn = { width: 48, height: 48, borderRadius: 12, border: '1px solid #44403c', background: '#2a2622', color: '#fafaf7', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' };
+const stepBtn = { width: 48, height: 48, borderRadius: 12, border: '1px solid var(--app-border)', background: 'var(--app-surface-2)', color: 'var(--app-ink)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' };
 
 /* ---------------- RECIBO ---------------- */
 function Recibo({ go, route, shop }) {
