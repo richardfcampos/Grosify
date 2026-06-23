@@ -1,0 +1,13 @@
+{
+  // Web (PWA) do Grosify servido como static assets pelo Cloudflare Workers.
+  // Build: pnpm turbo build --filter=@grosify/web  →  apps/web/dist
+  // Deploy: npx wrangler deploy  (sobe os assets; sem código de Worker)
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "grosify",
+  "compatibility_date": "2025-06-01",
+  "assets": {
+    "directory": "./apps/web/dist",
+    // SPA: rota desconhecida cai no index.html (TanStack Router resolve no client)
+    "not_found_handling": "single-page-application"
+  }
+}
