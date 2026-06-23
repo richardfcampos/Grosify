@@ -44,7 +44,8 @@ O cookie de sessão (Better Auth) só é enviado do web pra API se forem **same-
 
 1. Pages → Connect to Git → este repo.
 2. Build:
-   - **Build command:** `corepack enable && pnpm install --frozen-lockfile && pnpm --filter @grosify/web build`
+   - **Build command:** `corepack enable && pnpm install --frozen-lockfile && pnpm turbo build --filter=@grosify/web`
+     (precisa do `turbo` pra buildar `@grosify/ui` antes — ele exporta `./style.css` de `dist/ui.css`; `pnpm --filter @grosify/web build` sozinho pula as deps e quebra com `failed to resolve "@grosify/ui/style.css"`)
    - **Output directory:** `apps/web/dist`
    - **Root directory:** `/` (raiz do monorepo)
 3. Variável de build:
