@@ -8,7 +8,10 @@ import '@grosify/ui/style.css';
 import './features/ui/theme.css';
 import { ConfirmProvider } from './lib/confirm.js';
 import { ThemeProvider } from './features/ui/theme-provider.js';
+import { trackKeyboardInset } from './lib/keyboard-inset.js';
 import { router } from './router.js';
+
+trackKeyboardInset();
 
 const queryClient = new QueryClient({
   defaultOptions: {

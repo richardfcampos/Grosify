@@ -489,12 +489,16 @@ body:has(.gro-sheet-backdrop) .botnav {
   display: flex;
   align-items: flex-end;
   background: #00000066;
+  /* sobe a folha acima do teclado virtual (--kb medido via VisualViewport) */
+  padding-bottom: var(--kb, 0px);
+  transition: padding-bottom 0.18s var(--ease-out);
 }
 .gro-sheet-panel {
   margin: 0 auto;
   width: 100%;
   max-width: 28rem;
-  max-height: 88dvh;
+  /* limita à área visível (acima do teclado) pra o campo/lista não ficarem escondidos */
+  max-height: min(88dvh, calc(var(--vvh, 100dvh) - 1rem));
   overflow-y: auto;
   background: var(--app-surface);
   color: var(--app-ink);

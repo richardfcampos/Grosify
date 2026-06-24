@@ -72,7 +72,10 @@ export function SearchSelect({
               placeholder={searchPlaceholder}
               className="gro-field"
             />
-            <ul className="flex flex-col gap-1 overflow-auto" style={{ maxHeight: '45vh' }}>
+            <ul
+              className="flex flex-col gap-1 overflow-auto"
+              style={{ maxHeight: 'min(45vh, calc(var(--vvh, 100vh) - 9rem))' }}
+            >
               {filtered.map((o) => (
                 <li key={o.value}>
                   <button
