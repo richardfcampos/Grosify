@@ -284,6 +284,8 @@ export default {
       activeStore: 'Loja da compra',
       selectActiveStore: 'Escolha a loja desta compra',
       bought: 'COMPRADO',
+      boughtSection: 'Comprados',
+      allBought: 'Tudo pego!',
       finish: 'Finalizar compra',
       summary: 'Resumo da compra',
       savedVsEstimate: 'Você economizou {{amount}}',

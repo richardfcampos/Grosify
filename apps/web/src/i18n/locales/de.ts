@@ -284,6 +284,8 @@ export default {
       activeStore: 'Einkaufsladen',
       selectActiveStore: 'Laden für diesen Einkauf wählen',
       bought: 'GEKAUFT',
+      boughtSection: 'Gekauft',
+      allBought: 'Alles erledigt!',
       finish: 'Einkauf beenden',
       summary: 'Einkaufsübersicht',
       savedVsEstimate: 'Du hast {{amount}} gespart',

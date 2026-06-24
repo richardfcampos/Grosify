@@ -284,6 +284,8 @@ export default {
       activeStore: 'Magasin des courses',
       selectActiveStore: 'Choisir le magasin de ces courses',
       bought: 'ACHETÉ',
+      boughtSection: 'Achetés',
+      allBought: 'Tout est pris !',
       finish: 'Terminer les courses',
       summary: 'Résumé des courses',
       savedVsEstimate: 'Vous avez économisé {{amount}}',

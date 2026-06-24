@@ -284,6 +284,8 @@ export default {
       activeStore: 'Negozio della spesa',
       selectActiveStore: 'Scegli il negozio di questa spesa',
       bought: 'COMPRATO',
+      boughtSection: 'Comprati',
+      allBought: 'Tutto preso!',
       finish: 'Concludi spesa',
       summary: 'Riepilogo spesa',
       savedVsEstimate: 'Hai risparmiato {{amount}}',

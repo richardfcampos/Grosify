@@ -284,6 +284,8 @@ export default {
       activeStore: 'Shopping store',
       selectActiveStore: 'Choose this trip’s store',
       bought: 'BOUGHT',
+      boughtSection: 'Bought',
+      allBought: 'All done!',
       finish: 'Finish shopping',
       summary: 'Shopping summary',
       savedVsEstimate: 'You saved {{amount}}',

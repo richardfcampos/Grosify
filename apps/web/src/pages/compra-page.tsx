@@ -7,6 +7,7 @@ import { db, type LocalItem, type LocalSession, type LocalSessionItem } from '..
 import {
   addSessionItem,
   completeSession,
+  createItem,
   resolveBarcode,
   setSessionReceipt,
   setSessionStore,
@@ -53,7 +54,7 @@ export function CompraPage() {
   const [scannedBrandId, setScannedBrandId] = useState<string | null>(null);
   const [unknownCode, setUnknownCode] = useState<string | null>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
-  const [hideBought, setHideBought] = useState(false);
+  const [boughtCollapsed, setBoughtCollapsed] = useState(false);
   const [quickAdd, setQuickAdd] = useState(false);
   const itemById = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
 
@@ -79,11 +80,11 @@ export function CompraPage() {
   const checkedCount = sessionItems.filter((si) => si.checkedAt).length;
   const budget = budgetStatus(current, list?.budgetCents ?? null);
 
-  // agrupa por categoria (nome desnormalizado); sem categoria vai por último
-  const groups = useMemo(() => {
-    const visible = hideBought ? sessionItems.filter((si) => !si.checkedAt) : sessionItems;
+  // Zona "falta pegar": só pendentes, agrupados por categoria (sem categoria por último).
+  const pendingGroups = useMemo(() => {
     const map = new Map<string, LocalSessionItem[]>();
-    for (const si of visible) {
+    for (const si of sessionItems) {
+      if (si.checkedAt) continue;
       const cat = itemById.get(si.itemId)?.category ?? '';
       const arr = map.get(cat) ?? [];
       arr.push(si);
@@ -92,7 +93,16 @@ export function CompraPage() {
     return [...map.entries()].sort((a, b) =>
       a[0] === '' ? 1 : b[0] === '' ? -1 : a[0].localeCompare(b[0]),
     );
-  }, [sessionItems, itemById, hideBought]);
+  }, [sessionItems, itemById]);
+
+  // Zona "comprados": afunda pro fundo, mais recente primeiro.
+  const boughtItems = useMemo(
+    () =>
+      sessionItems
+        .filter((si) => si.checkedAt)
+        .sort((a, b) => (b.checkedAt ?? '').localeCompare(a.checkedAt ?? '')),
+    [sessionItems],
+  );
 
   async function onScanned(barcode: string) {
     const resolved = await resolveBarcode(barcode);
@@ -215,17 +225,10 @@ export function CompraPage() {
             </div>
           </div>
         )}
-        <div className="mt-3 flex items-center justify-between">
+        <div className="mt-3 flex items-center">
           <span className="muted mono text-xs">
             {checkedCount}/{sessionItems.length}
           </span>
-          <button
-            onClick={() => setHideBought((v) => !v)}
-            className="pill"
-            style={{ background: 'var(--app-surface-2)', color: 'var(--app-ink)', border: 0 }}
-          >
-            {hideBought ? t('shopping.showBought') : t('shopping.hideBought')}
-          </button>
         </div>
       </header>
 
@@ -233,58 +236,71 @@ export function CompraPage() {
         {sessionItems.length === 0 ? (
           <p className="muted mt-8 text-center">{t('shopping.emptySession')}</p>
         ) : (
-          groups.map(([cat, rows]) => (
-            <section key={cat} className="mt-3.5">
-              <div className="kicker px-1 pb-2">{cat || t('catalog.noCategory')}</div>
-              <ul className="flex flex-col gap-2">
-                {rows.map((si) => {
-                  const item = itemById.get(si.itemId);
-                  if (!item) return null;
-                  const done = !!si.checkedAt;
-                  return (
-                    <ShoppingRow
-                      key={si.id}
-                      done={done}
-                      onCheck={() => setActive(si)}
-                      onUncheck={() => uncheckSessionItem(si.id)}
-                    >
-                      <div className="min-w-0 flex-1">
-                        <div
-                          className="text-base font-semibold"
-                          style={{
-                            textDecoration: done ? 'line-through' : 'none',
-                            opacity: done ? 0.55 : 1,
-                          }}
-                        >
-                          {item.name}
-                        </div>
-                        <div className="muted mono mt-0.5 text-[12.5px]">
-                          {si.checkedAt && si.actualUnitPriceCents
-                            ? `${si.actualQty} × ${fmt(si.actualUnitPriceCents)}`
-                            : `${si.neededQty} ${t(`catalog.units.${item.unit}`)}`}
-                        </div>
-                      </div>
-                      {done ? (
-                        <span key={si.checkedAt} className="stamp-in flex-none">
-                          <Stamp label={t('shopping.bought')} />
-                        </span>
-                      ) : (
-                        <span
-                          className="flex-none"
-                          style={{
-                            width: 26,
-                            height: 26,
-                            borderRadius: 8,
-                            border: '2px solid var(--app-border)',
-                          }}
+          <>
+            {/* ── Zona "falta pegar" (agrupada por categoria) ── */}
+            {pendingGroups.map(([cat, rows]) => (
+              <section key={cat} className="mt-3.5">
+                <div className="kicker px-1 pb-2">{cat || t('catalog.noCategory')}</div>
+                <ul className="flex flex-col gap-2">
+                  {rows.map((si) => {
+                    const item = itemById.get(si.itemId);
+                    if (!item) return null;
+                    return (
+                      <SessionItemRow
+                        key={si.id}
+                        si={si}
+                        item={item}
+                        fmt={fmt}
+                        onCheck={() => setActive(si)}
+                        onUncheck={() => uncheckSessionItem(si.id)}
+                      />
+                    );
+                  })}
+                </ul>
+              </section>
+            ))}
+            {pendingGroups.length === 0 && (
+              <p className="muted mt-8 text-center">{t('shopping.allBought')}</p>
+            )}
+
+            {/* ── Zona "comprados" (afundada, recolhível) ── */}
+            {boughtItems.length > 0 && (
+              <section className="mt-5">
+                <button
+                  onClick={() => setBoughtCollapsed((v) => !v)}
+                  className="kicker tap flex w-full items-center gap-1.5 px-1 pb-2"
+                >
+                  <Icon
+                    name="chev"
+                    size={14}
+                    style={{
+                      transform: boughtCollapsed ? 'none' : 'rotate(90deg)',
+                      transition: 'transform .15s',
+                    }}
+                  />
+                  {t('shopping.boughtSection')} ({boughtItems.length})
+                </button>
+                {!boughtCollapsed && (
+                  <ul className="flex flex-col gap-2">
+                    {boughtItems.map((si) => {
+                      const item = itemById.get(si.itemId);
+                      if (!item) return null;
+                      return (
+                        <SessionItemRow
+                          key={si.id}
+                          si={si}
+                          item={item}
+                          fmt={fmt}
+                          onCheck={() => setActive(si)}
+                          onUncheck={() => uncheckSessionItem(si.id)}
                         />
-                      )}
-                    </ShoppingRow>
-                  );
-                })}
-              </ul>
-            </section>
-          ))
+                      );
+                    })}
+                  </ul>
+                )}
+              </section>
+            )}
+          </>
         )}
       </main>
 
@@ -356,6 +372,12 @@ export function CompraPage() {
             if (existing) setActive(existing);
             else await addSessionItem(id, itemId);
           }}
+          onCreate={async (name) => {
+            setQuickAdd(false);
+            // cria item rápido (unidade 'un', editável depois no Estoque) e adiciona à sessão
+            const newId = await createItem({ name, unit: 'un', photoBlob: null, barcodes: [] });
+            await addSessionItem(id, newId);
+          }}
           onClose={() => setQuickAdd(false)}
         />
       )}
@@ -401,16 +423,63 @@ function ShoppingRow({
   );
 }
 
+/** Linha de item da sessão (pendente ou comprado) — usada nas duas zonas. */
+function SessionItemRow({
+  si,
+  item,
+  fmt,
+  onCheck,
+  onUncheck,
+}: {
+  si: LocalSessionItem;
+  item: LocalItem;
+  fmt: (cents: number) => string;
+  onCheck: () => void;
+  onUncheck: () => void;
+}) {
+  const { t } = useTranslation();
+  const done = !!si.checkedAt;
+  return (
+    <ShoppingRow done={done} onCheck={onCheck} onUncheck={onUncheck}>
+      <div className="min-w-0 flex-1">
+        <div
+          className="text-base font-semibold"
+          style={{ textDecoration: done ? 'line-through' : 'none', opacity: done ? 0.55 : 1 }}
+        >
+          {item.name}
+        </div>
+        <div className="muted mono mt-0.5 text-[12.5px]">
+          {si.checkedAt && si.actualUnitPriceCents
+            ? `${si.actualQty} × ${fmt(si.actualUnitPriceCents)}`
+            : `${si.neededQty} ${t(`catalog.units.${item.unit}`)}`}
+        </div>
+      </div>
+      {done ? (
+        <span key={si.checkedAt} className="stamp-in flex-none">
+          <Stamp label={t('shopping.bought')} />
+        </span>
+      ) : (
+        <span
+          className="flex-none"
+          style={{ width: 26, height: 26, borderRadius: 8, border: '2px solid var(--app-border)' }}
+        />
+      )}
+    </ShoppingRow>
+  );
+}
+
 /** Adiciona um item fora da lista durante a compra (busca no catálogo). */
 function QuickAddSheet({
   items,
   inSession,
   onPick,
+  onCreate,
   onClose,
 }: {
   items: LocalItem[];
   inSession: Set<string>;
   onPick: (itemId: string) => void;
+  onCreate: (name: string) => void;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
@@ -452,6 +521,15 @@ function QuickAddSheet({
             </li>
           ))}
         </ul>
+        {q.trim() && (
+          <button
+            onClick={() => onCreate(q.trim())}
+            className="tap flex min-h-11 w-full items-center gap-2 rounded-xl px-4 text-left text-sm font-semibold"
+            style={{ background: 'var(--app-surface-2)', color: 'var(--gro-green)' }}
+          >
+            <Icon name="plus" size={16} /> {t('lists.createItem', { name: q.trim() })}
+          </button>
+        )}
       </div>
     </div>
   );
