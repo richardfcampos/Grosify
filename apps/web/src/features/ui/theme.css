@@ -226,7 +226,9 @@ body:has(.gro-sheet-backdrop) .botnav {
 
 /* FAB scanner — yellow only here (money/scan event) */
 .fab {
-  position: absolute;
+  /* fixed (não absolute): ancora na viewport, não rola com a lista da tela de compra */
+  position: fixed;
+  z-index: 20;
   width: 60px;
   height: 60px;
   border-radius: 50%;
