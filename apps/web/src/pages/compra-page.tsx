@@ -16,7 +16,7 @@ import {
 import { CheckItemSheet } from '../features/shopping/check-item-sheet.js';
 import { UnknownBarcodeSheet } from '../features/brands/unknown-barcode-sheet.js';
 import { ScannerModal } from '../features/scanner/scanner-modal.js';
-import { Button, Icon, MoneyValue, Stamp, useMoneyParts } from '../features/ui/index.js';
+import { Button, Icon, MoneyValue, SearchSelect, Stamp, useMoneyParts } from '../features/ui/index.js';
 import { resizeToWebp } from '../lib/resize-image.js';
 import { useHydrateReceipt } from '../lib/use-hydrate-photo.js';
 import { useObjectUrl } from '../lib/use-object-url.js';
@@ -170,26 +170,15 @@ export function CompraPage() {
           </div>
         </div>
         {stores.length > 0 && (
-          <select
-            value={activeStoreId ?? ''}
-            onChange={(e) => setSessionStore(id, e.target.value)}
-            className="mono mt-3 min-h-11 w-full rounded-xl px-3 py-2 text-sm outline-none"
-            style={{
-              border: '1px solid var(--app-border)',
-              background: 'var(--app-surface-2)',
-              color: 'var(--app-ink)',
-            }}
-            aria-label={t('shopping.activeStore')}
-          >
-            <option value="" disabled>
-              {t('shopping.selectActiveStore')}
-            </option>
-            {stores.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
+          <div className="mt-3">
+            <SearchSelect
+              value={activeStoreId ?? ''}
+              options={stores.map((s) => ({ value: s.id, label: s.name }))}
+              placeholder={t('shopping.selectActiveStore')}
+              searchPlaceholder={t('prices.searchStore')}
+              onChange={(v) => setSessionStore(id, v)}
+            />
+          </div>
         )}
         {budget && list?.budgetCents != null && (
           <div className="mt-3">

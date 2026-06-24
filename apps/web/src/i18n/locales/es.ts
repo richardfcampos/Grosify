@@ -145,6 +145,7 @@ export default {
       store: 'Tienda',
       price: 'Precio',
       selectStore: 'Elige la tienda',
+      searchStore: 'Buscar tienda…',
       noStores: 'Agrega una tienda primero.',
     },
     brands: {

@@ -13,7 +13,7 @@ import { checkSessionItem } from '../../db/repositories.js';
 import { BrandPicker } from '../brands/brand-picker.js';
 import { PriceScanModal } from '../scanner/price-scan-modal.js';
 import { StarRating } from '../prices/star-rating.js';
-import { Button } from '../ui/index.js';
+import { Button, SearchSelect } from '../ui/index.js';
 import { useFormatMoney, useHouseholdCurrency } from '../../lib/use-currency.js';
 
 interface Props {
@@ -132,16 +132,13 @@ export function CheckItemSheet({
           <p className="text-sm" style={{ color: 'var(--gro-yellow)' }}>{t('prices.noStores')}</p>
         ) : (
           <>
-            <select value={storeId} onChange={(e) => setStoreId(e.target.value)} required className="gro-field">
-              <option value="" disabled>
-                {t('prices.selectStore')}
-              </option>
-              {stores.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
+            <SearchSelect
+              value={storeId}
+              options={stores.map((s) => ({ value: s.id, label: s.name }))}
+              placeholder={t('prices.selectStore')}
+              searchPlaceholder={t('prices.searchStore')}
+              onChange={setStoreId}
+            />
             <label className="flex flex-col gap-1">
               <span className="kicker">{t('brands.label')}</span>
               <BrandPicker itemId={sessionItem.itemId} value={brandId} onChange={setBrandId} />

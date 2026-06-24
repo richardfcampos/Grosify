@@ -12,3 +12,4 @@ export { SectionTitle } from './section-title.js';
 export { Empty } from './empty.js';
 export { Sparkline } from './sparkline.js';
 export { useMoneyParts } from './money-parts.js';
+export { SearchSelect, type SearchOption } from './search-select.js';

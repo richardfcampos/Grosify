@@ -145,6 +145,7 @@ export default {
       store: 'Laden',
       price: 'Preis',
       selectStore: 'Laden auswählen',
+      searchStore: 'Laden suchen…',
       noStores: 'Füge zuerst einen Laden hinzu.',
     },
     brands: {
