@@ -82,14 +82,20 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   const resolvedMode: 'light' | 'dark' = mode === 'system' ? (sysDark ? 'dark' : 'light') : mode;
 
-  // Casa o <meta theme-color> com o --app-bg do modo atual (barra de status do PWA
-  // não fica verde sobre o app off-white/escuro). Lê o token = sem hex duplicado.
+  // Casa a barra de status + o fundo do documento com o --app-bg do modo atual.
   useEffect(() => {
     const el = document.querySelector<HTMLElement>('.gro-app');
-    const meta = document.querySelector('meta[name="theme-color"]');
-    if (!el || !meta) return;
+    if (!el) return;
     const bg = getComputedStyle(el).getPropertyValue('--app-bg').trim();
-    if (bg) meta.setAttribute('content', bg);
+    if (!bg) return;
+    // overscroll/safe-area atrás de tudo (evita branco no topo/baixo no rubber-band)
+    document.documentElement.style.backgroundColor = bg;
+    // barra de status nos browsers que reagem (Chrome, iOS recente). Tira o `media` pra a
+    // escolha MANUAL valer independente do SO; iOS antigo cai nos metas media do index.html.
+    document.querySelectorAll('meta[name="theme-color"]').forEach((m) => {
+      m.removeAttribute('media');
+      m.setAttribute('content', bg);
+    });
   }, [resolvedMode]);
 
   const setMode = (next: Mode) => {

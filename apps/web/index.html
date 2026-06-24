@@ -3,8 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <!-- default = bg claro do app; o ThemeProvider ajusta por modo (claro/escuro) em runtime -->
-    <meta name="theme-color" content="#fafaf7" />
+    <!-- iOS Safari lê theme-color no load (ignora troca via JS), então usa media query pra
+         seguir o esquema do SO; o ThemeProvider ajusta p/ a escolha manual onde o browser reage -->
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#fafaf7" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0c0a09" />
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
     <title>Grosify</title>
   </head>
