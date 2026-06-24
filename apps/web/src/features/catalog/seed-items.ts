@@ -1,4 +1,5 @@
 import type { Unit } from '@grosify/shared';
+import { db } from '../../db/dexie.js';
 import { createItem } from '../../db/repositories.js';
 
 /** Itens de mercado comuns (pt-BR) pra começar a lista rápido. */
@@ -26,6 +27,9 @@ const COMMON_ITEMS: { name: string; category: string; unit: Unit }[] = [
 ];
 
 export async function seedCommonItems(): Promise<void> {
+  // Defesa: nunca semeia se a casa já tem itens — evita duplicar o catálogo
+  // (ex.: usuário existente re-vendo o onboarding, ou um futuro "rever tour").
+  if ((await db.items.count()) > 0) return;
   for (const it of COMMON_ITEMS) {
     await createItem({ name: it.name, category: it.category, unit: it.unit, barcodes: [] });
   }
