@@ -389,6 +389,43 @@ body:has(.gro-sheet-backdrop) .botnav {
   }
 }
 
+/* ── transição de telas (View Transitions API) ──
+   Conteúdo (app-content) sobe + aparece; o shell (nav/rail) é idêntico entre rotas,
+   então cross-fade rápido evita flicker. São snapshots: não afetam position:fixed. */
+::view-transition-old(app-content) {
+  animation: vtContentOut 0.16s var(--ease-in-out) both;
+}
+::view-transition-new(app-content) {
+  animation: vtContentIn 0.34s var(--ease-out) both;
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.16s;
+}
+@keyframes vtContentOut {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes vtContentIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(app-content),
+  ::view-transition-new(app-content),
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none !important;
+  }
+}
+
 /* receipt serrated edge */
 .receipt {
   background: #fffef9;

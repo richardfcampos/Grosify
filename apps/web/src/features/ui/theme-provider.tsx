@@ -82,6 +82,16 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   const resolvedMode: 'light' | 'dark' = mode === 'system' ? (sysDark ? 'dark' : 'light') : mode;
 
+  // Casa o <meta theme-color> com o --app-bg do modo atual (barra de status do PWA
+  // não fica verde sobre o app off-white/escuro). Lê o token = sem hex duplicado.
+  useEffect(() => {
+    const el = document.querySelector<HTMLElement>('.gro-app');
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (!el || !meta) return;
+    const bg = getComputedStyle(el).getPropertyValue('--app-bg').trim();
+    if (bg) meta.setAttribute('content', bg);
+  }, [resolvedMode]);
+
   const setMode = (next: Mode) => {
     setModeState(next);
     lsSet('mode', next);

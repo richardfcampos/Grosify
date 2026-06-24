@@ -16,8 +16,10 @@ export default defineConfig({
         description: 'Compras do mês organizadas: lista, preços e inventário',
         lang: 'pt-BR',
         display: 'standalone',
-        background_color: '#ffffff',
-        theme_color: '#16a34a',
+        // bg claro do app (splash + barra de status inicial no standalone, antes do JS
+        // ajustar por modo); evita a barra verde sobre o app off-white
+        background_color: '#fafaf7',
+        theme_color: '#fafaf7',
         icons: [
           {
             src: '/icon.svg',

@@ -166,7 +166,10 @@ const routeTree = rootRoute.addChildren([
   ]),
 ]);
 
-export const router = createRouter({ routeTree });
+// defaultViewTransition: cross-fade/rise nativo entre rotas (View Transitions API).
+// Pseudo-elementos (::view-transition-*) são snapshots — não afetam position:fixed dos
+// elementos reais, então é seguro com os FABs/rodapés fixos. Sem suporte = navega normal.
+export const router = createRouter({ routeTree, defaultViewTransition: true });
 
 declare module '@tanstack/react-router' {
   interface Register {

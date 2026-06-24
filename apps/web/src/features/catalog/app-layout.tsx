@@ -116,7 +116,10 @@ export function AppLayout() {
     <div className="flex min-h-dvh w-full">
       <Rail name={membership.data.name} plan={membership.data.plan} isActive={isActive} />
       <div className="relative flex min-h-dvh flex-1 flex-col">
-        <div className="mx-auto w-full max-w-md flex-1 pb-24 lg:max-w-[760px] lg:pb-12">
+        <div
+          className="mx-auto w-full max-w-md flex-1 pb-24 lg:max-w-[760px] lg:pb-12"
+          style={{ viewTransitionName: 'app-content' }}
+        >
           <Outlet />
         </div>
         <BottomNav isActive={isActive} />

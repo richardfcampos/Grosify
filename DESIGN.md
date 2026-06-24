@@ -46,6 +46,8 @@
 - **Easing:** enter ease-out · exit ease-in · move ease-in-out.
 - **Duration:** micro 50-100ms · short 150-250ms · medium 250-400ms.
 - **Momento expressivo:** carimbo "✓ COMPRADO" — slam rotacionado -8° com vibração (navigator.vibrate) ao marcar item. Sem confetti, sem bounce em mais nada.
+- **Transição de telas:** View Transitions API — o conteúdo sobe (translateY 12px) + aparece (ease-out ~0.34s); o shell (nav/rail) fica estável (cross-fade rápido). Sem suporte → fade simples (`.screen-in`). Snapshot não afeta `position:fixed`.
+- **theme-color (PWA):** a barra de status acompanha o `--app-bg` do modo (claro `#fafaf7` / escuro `#0c0a09`), nunca a cor de marca — ajustada em runtime pelo ThemeProvider.
 
 ## Assinaturas do produto (riscos aprovados)
 1. **Preço protagonista:** home abre com splash Anton do valor economizado no mês; ofertas como etiqueta amarela rotacionada.
