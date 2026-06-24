@@ -57,7 +57,7 @@ export function ComprarReviewPage() {
   const inStockCount = lines.filter((l) => l.needed <= 0).length;
 
   return (
-    <main className="screen-in flex flex-col gap-4 px-[18px] py-6 pb-28">
+    <main className="screen-in mx-auto flex w-full max-w-md flex-col gap-4 px-[18px] py-6 pb-28">
       <button
         onClick={() => navigate({ to: '/listas/$id', params: { id } })}
         className="muted flex items-center gap-1 text-sm font-semibold"

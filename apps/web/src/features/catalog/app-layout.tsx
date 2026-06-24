@@ -90,8 +90,11 @@ export function AppLayout() {
     );
   }
 
-  // Modo compra é fullscreen — sem chrome (rail/nav). A própria tela é full-bleed.
-  if (location.pathname.startsWith('/compra')) return <Outlet />;
+  // Fluxo de compra (revisar + modo compra) é fullscreen, sem chrome: a nav inferior
+  // fixa cobre/disputa o CTA fixo do rodapé ("Começar"/"Finalizar"). Cada tela tem o
+  // próprio botão de voltar.
+  if (location.pathname.startsWith('/compra') || location.pathname.endsWith('/comprar'))
+    return <Outlet />;
 
   const isActive = (to: string) =>
     to === '/' ? location.pathname === '/' : location.pathname.startsWith(to);
