@@ -18,5 +18,6 @@ COPY . .
 ENV NODE_ENV=production
 EXPOSE 3000
 # Railway/Render injetam PORT; o servidor lê de process.env.PORT (default 3000).
-# Rode as migrações no release command: pnpm --filter @grosify/api db:migrate
+# Migrações rodam automáticas no pre-deploy (ver railway.json → deploy.preDeployCommand),
+# antes de o tráfego ir pro código novo. drizzle-kit está na imagem (--prod=false acima).
 CMD ["pnpm", "--filter", "@grosify/api", "start"]

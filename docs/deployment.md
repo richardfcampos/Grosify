@@ -35,10 +35,15 @@ O cookie de sessão (Better Auth) só é enviado do web pra API se forem **same-
    CROSS_SITE_COOKIES=false                        # true só se web/API em domínios diferentes
    ```
    (Railway injeta `PORT` automaticamente — o servidor lê de `process.env.PORT`.)
-4. **Migrações** — rode no Release Command (ou uma vez manual):
-   ```
-   pnpm --filter @grosify/api db:migrate
-   ```
+4. **Migrações — automáticas.** O `railway.json` (raiz do repo) define
+   `deploy.preDeployCommand: pnpm --filter @grosify/api db:migrate`. O Railway roda isso
+   na imagem nova **antes** de trocar o tráfego; se falhar, o deploy aborta e a versão
+   antiga fica de pé (sem janela de coluna faltando → 500). Nada manual.
+   - Requisito (já atendido): `drizzle-kit` na imagem (`--prod=false` no Dockerfile) + pasta
+     `apps/api/drizzle/` copiada. `DATABASE_URL` vem do env do serviço.
+   - Confirme no dashboard que **Config-as-code** está ativo (Settings → o serviço lê
+     `railway.json`). Alternativa sem arquivo: setar o mesmo comando em Settings → Deploy →
+     Pre-deploy Command.
 
 ## 3. Web — Cloudflare Pages
 
