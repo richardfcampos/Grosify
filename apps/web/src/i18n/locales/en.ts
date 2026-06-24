@@ -5,6 +5,7 @@ export default {
       theme: 'Theme',
       light: 'Light',
       dark: 'Dark',
+      system: 'System',
       direction: 'Visual direction',
       dir: {
         painel: 'Dashboard',

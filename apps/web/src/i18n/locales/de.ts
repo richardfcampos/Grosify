@@ -5,6 +5,7 @@ export default {
       theme: 'Farbschema',
       light: 'Hell',
       dark: 'Dunkel',
+      system: 'System',
       direction: 'Visuelle Richtung',
       dir: {
         painel: 'Übersicht',

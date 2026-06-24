@@ -1,8 +1,9 @@
 import { Link, Outlet, useLocation } from '@tanstack/react-router';
 import { Chip } from '@grosify/ui';
 import { Icon, type IconName } from '../ui/icon.js';
+import { useTheme } from '../ui/theme-provider.js';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   getSyncState,
@@ -48,6 +49,18 @@ export function AppLayout() {
       void initHousehold(membership.data.householdId).then(startSync);
     }
   }, [membership.data]);
+
+  // Aplica a preferência visual salva na conta (1x por sessão): outro aparelho pega
+  // a escolha de tema/direção. localStorage segue como cache instantâneo (sem flash).
+  const { setMode, setDir } = useTheme();
+  const themeApplied = useRef(false);
+  useEffect(() => {
+    const m = membership.data;
+    if (!m || themeApplied.current) return;
+    if (m.themeMode === 'light' || m.themeMode === 'dark' || m.themeMode === 'system') setMode(m.themeMode);
+    if (m.themeDir === 'painel' || m.themeDir === 'mercado' || m.themeDir === 'recibo') setDir(m.themeDir);
+    themeApplied.current = true;
+  }, [membership.data, setMode, setDir]);
 
   useEffect(() => {
     const update = () => setOnline(navigator.onLine);

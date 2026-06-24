@@ -96,6 +96,9 @@ export const householdMembers = pgTable(
     joinedAt: timestamp('joined_at', { withTimezone: true }).notNull().defaultNow(),
     // null = ainda não viu o onboarding; setado ao terminar/pular (por membro, não por aparelho)
     onboardedAt: timestamp('onboarded_at', { withTimezone: true }),
+    // preferências visuais por membro (sincronizam entre aparelhos); null = usa default/local
+    uiThemeMode: text('ui_theme_mode'), // 'light' | 'dark' | 'system'
+    uiThemeDir: text('ui_theme_dir'), // 'painel' | 'mercado' | 'recibo'
   },
   (t) => [
     primaryKey({ columns: [t.householdId, t.userId] }),

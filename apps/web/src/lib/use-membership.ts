@@ -9,6 +9,9 @@ export interface Membership {
   currency: string;
   /** Se o membro já viu o onboarding (persistido na conta). */
   onboarded: boolean;
+  /** Preferências visuais salvas na conta (null = nunca setou; client valida). */
+  themeMode: string | null;
+  themeDir: string | null;
 }
 
 export function useMembership(enabled: boolean) {

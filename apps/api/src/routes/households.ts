@@ -31,6 +31,8 @@ async function membershipOf(userId: string) {
       plan: households.plan,
       currency: households.currency,
       onboardedAt: householdMembers.onboardedAt,
+      themeMode: householdMembers.uiThemeMode,
+      themeDir: householdMembers.uiThemeDir,
     })
     .from(householdMembers)
     .innerJoin(households, eq(households.id, householdMembers.householdId))
@@ -65,6 +67,39 @@ export const householdsRoute = new Hono<AuthEnv>()
       );
     return c.json({ ok: true });
   })
+
+  // Preferências visuais do membro (tema claro/escuro/sistema + direção visual).
+  // Persiste na conta pra sincronizar entre aparelhos; household_id vem da sessão.
+  .post(
+    '/settings',
+    zValidator(
+      'json',
+      z.object({
+        themeMode: z.enum(['light', 'dark', 'system']).optional(),
+        themeDir: z.enum(['painel', 'mercado', 'recibo']).optional(),
+      }),
+    ),
+    async (c) => {
+      const membership = await membershipOf(c.get('user').id);
+      if (!membership) return c.json({ error: 'no_household' }, 403);
+      const body = c.req.valid('json');
+      const patch: Partial<{ uiThemeMode: string; uiThemeDir: string }> = {};
+      if (body.themeMode !== undefined) patch.uiThemeMode = body.themeMode;
+      if (body.themeDir !== undefined) patch.uiThemeDir = body.themeDir;
+      if (Object.keys(patch).length > 0) {
+        await db
+          .update(householdMembers)
+          .set(patch)
+          .where(
+            and(
+              eq(householdMembers.householdId, membership.householdId),
+              eq(householdMembers.userId, c.get('user').id),
+            ),
+          );
+      }
+      return c.json({ ok: true });
+    },
+  )
 
   .post(
     '/',

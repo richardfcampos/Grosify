@@ -15,8 +15,10 @@ import {
   Button,
   Chip,
   DIRECTIONS,
+  type Direction,
   Icon,
   type IconName,
+  type Mode,
   SectionTitle,
   useTheme,
 } from '../features/ui/index.js';
@@ -38,6 +40,9 @@ export function AjustesPage() {
   const syncState = useSyncExternalStore(subscribeSync, getSyncState);
   const restoreRef = useRef<HTMLInputElement>(null);
   const { mode, dir, setMode, setDir } = useTheme();
+  // salva a preferência visual na conta (sincroniza entre aparelhos); localStorage já guardou local
+  const saveAppearance = (json: { themeMode?: Mode; themeDir?: Direction }) =>
+    void api.households.settings.$post({ json }).catch(() => {});
 
   async function onRestore(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -139,11 +144,32 @@ export function AjustesPage() {
           <div className="flex items-center justify-between gap-2.5">
             <span className="font-semibold">{t('appearance.theme')}</span>
             <div className="seg">
-              <button aria-pressed={mode === 'light'} onClick={() => setMode('light')}>
+              <button
+                aria-pressed={mode === 'light'}
+                onClick={() => {
+                  setMode('light');
+                  saveAppearance({ themeMode: 'light' });
+                }}
+              >
                 <Icon name="sun" size={15} /> {t('appearance.light')}
               </button>
-              <button aria-pressed={mode === 'dark'} onClick={() => setMode('dark')}>
+              <button
+                aria-pressed={mode === 'dark'}
+                onClick={() => {
+                  setMode('dark');
+                  saveAppearance({ themeMode: 'dark' });
+                }}
+              >
                 <Icon name="moon" size={15} /> {t('appearance.dark')}
+              </button>
+              <button
+                aria-pressed={mode === 'system'}
+                onClick={() => {
+                  setMode('system');
+                  saveAppearance({ themeMode: 'system' });
+                }}
+              >
+                {t('appearance.system')}
               </button>
             </div>
           </div>
@@ -155,7 +181,10 @@ export function AjustesPage() {
                 <button
                   key={d.id}
                   aria-pressed={dir === d.id}
-                  onClick={() => setDir(d.id)}
+                  onClick={() => {
+                    setDir(d.id);
+                    saveAppearance({ themeDir: d.id });
+                  }}
                   style={{ flex: 1, justifyContent: 'center' }}
                 >
                   {t(`appearance.dir.${d.id}`)}

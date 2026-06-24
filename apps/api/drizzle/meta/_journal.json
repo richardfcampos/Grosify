@@ -141,6 +141,13 @@
       "when": 1782267858967,
       "tag": "0019_backfill_member_onboarded",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1782331241775,
+      "tag": "0020_member_ui_settings",
+      "breakpoints": true
     }
   ]
 }

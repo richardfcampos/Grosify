@@ -5,6 +5,7 @@ export default {
       theme: 'Tema',
       light: 'Claro',
       dark: 'Escuro',
+      system: 'Sistema',
       direction: 'Direção visual',
       dir: {
         painel: 'Painel',
