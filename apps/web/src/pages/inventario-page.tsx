@@ -120,7 +120,7 @@ export function InventarioPage() {
 
       <button
         onClick={() => setScannerOpen(true)}
-        className="fab fixed bottom-24 left-1/2 -translate-x-1/2"
+        className="fab fixed bottom-[calc(6rem_+_env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2"
         style={{ position: 'fixed' }}
         aria-label={t('catalog.scan')}
       >

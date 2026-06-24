@@ -52,7 +52,7 @@ export function LojasPage() {
 
       <button
         onClick={() => setEditing('new')}
-        className="fixed bottom-24 left-1/2 flex h-14 w-14 -translate-x-1/2 items-center justify-center rounded-full bg-[var(--gro-green)] text-3xl text-white shadow-lg active:scale-95"
+        className="fixed bottom-[calc(6rem_+_env(safe-area-inset-bottom))] left-1/2 flex h-14 w-14 -translate-x-1/2 items-center justify-center rounded-full bg-[var(--gro-green)] text-3xl text-white shadow-lg active:scale-95"
         aria-label={t('catalog.newStore')}
       >
         +
