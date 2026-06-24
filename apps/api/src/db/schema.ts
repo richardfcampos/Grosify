@@ -94,6 +94,8 @@ export const householdMembers = pgTable(
       .notNull()
       .default('member'),
     joinedAt: timestamp('joined_at', { withTimezone: true }).notNull().defaultNow(),
+    // null = ainda não viu o onboarding; setado ao terminar/pular (por membro, não por aparelho)
+    onboardedAt: timestamp('onboarded_at', { withTimezone: true }),
   },
   (t) => [
     primaryKey({ columns: [t.householdId, t.userId] }),

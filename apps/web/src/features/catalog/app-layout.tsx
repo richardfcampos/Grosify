@@ -12,9 +12,10 @@ import {
   subscribeSync,
   syncNow,
 } from '../../sync/engine.js';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSession } from '../../lib/auth-client.js';
 import { useMembership } from '../../lib/use-membership.js';
-import { isOnboardingDone } from '../../lib/onboarding.js';
+import { api } from '../../lib/api.js';
 import { Onboarding } from '../onboarding/onboarding.js';
 import { Loading } from '../../pages/household-pages.js';
 import { Navigate } from '@tanstack/react-router';
@@ -36,6 +37,7 @@ export function AppLayout() {
   const location = useLocation();
   const { data: session, isPending } = useSession();
   const membership = useMembership(!!session);
+  const queryClient = useQueryClient();
   const [online, setOnline] = useState(navigator.onLine);
   const pending = useLiveQuery(() => pendingCount(), [], 0);
   const syncState = useSyncExternalStore(subscribeSync, getSyncState);
@@ -73,10 +75,18 @@ export function AppLayout() {
   if (!session) return <Navigate to="/entrar" search={{ redirect: location.pathname }} />;
   if (!membership.data) return <Navigate to="/casa" />;
 
-  // primeira execução nesta casa/dispositivo: mostra onboarding antes do app
-  if (!onbDone && !isOnboardingDone(membership.data.householdId)) {
+  // primeiro acesso do membro: mostra onboarding (estado persiste na conta, não no aparelho)
+  if (!onbDone && !membership.data.onboarded) {
     return (
-      <Onboarding householdId={membership.data.householdId} onDone={() => setOnbDone(true)} />
+      <Onboarding
+        onDone={() => {
+          setOnbDone(true); // some já nesta sessão; o servidor confirma em background
+          void api.households.onboarded
+            .$post()
+            .then(() => queryClient.invalidateQueries({ queryKey: ['membership'] }))
+            .catch(() => {}); // offline: re-tenta no próximo login (degradação aceitável)
+        }}
+      />
     );
   }
 

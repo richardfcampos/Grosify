@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { seedCommonItems } from '../catalog/seed-items.js';
-import { markOnboardingDone } from '../../lib/onboarding.js';
 import { Button } from '../ui/index.js';
 
 /**
@@ -14,13 +13,7 @@ const STEPS = [
   { icon: '🛒', title: 's3Title', body: 's3Body' },
 ] as const;
 
-export function Onboarding({
-  householdId,
-  onDone,
-}: {
-  householdId: string;
-  onDone: () => void;
-}) {
+export function Onboarding({ onDone }: { onDone: () => void }) {
   const { t } = useTranslation();
   const [step, setStep] = useState(0);
   const [seed, setSeed] = useState(true);
@@ -37,7 +30,6 @@ export function Onboarding({
         // semear é best-effort — não bloqueia o onboarding
       }
     }
-    markOnboardingDone(householdId);
     onDone();
   }
 
@@ -68,10 +60,7 @@ export function Onboarding({
 
       <div className="flex items-center justify-between gap-3">
         <button
-          onClick={() => {
-            markOnboardingDone(householdId);
-            onDone();
-          }}
+          onClick={onDone}
           className="muted text-sm font-medium"
         >
           {t('onboarding.skip')}

@@ -7,6 +7,8 @@ export interface Membership {
   name: string;
   plan: 'free' | 'pro';
   currency: string;
+  /** Se o membro já viu o onboarding (persistido na conta). */
+  onboarded: boolean;
 }
 
 export function useMembership(enabled: boolean) {

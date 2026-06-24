@@ -30,6 +30,7 @@ async function membershipOf(userId: string) {
       name: households.name,
       plan: households.plan,
       currency: households.currency,
+      onboardedAt: householdMembers.onboardedAt,
     })
     .from(householdMembers)
     .innerJoin(households, eq(households.id, householdMembers.householdId))
@@ -43,7 +44,26 @@ export const householdsRoute = new Hono<AuthEnv>()
 
   .get('/mine', async (c) => {
     const membership = await membershipOf(c.get('user').id);
-    return c.json({ membership });
+    return c.json({
+      membership: membership && { ...membership, onboarded: membership.onboardedAt != null },
+    });
+  })
+
+  // Marca que o membro viu o onboarding — persiste na conta (não no aparelho),
+  // então não reaparece em outro device nem ao limpar o cache.
+  .post('/onboarded', async (c) => {
+    const membership = await membershipOf(c.get('user').id);
+    if (!membership) return c.json({ error: 'no_household' }, 403);
+    await db
+      .update(householdMembers)
+      .set({ onboardedAt: new Date() })
+      .where(
+        and(
+          eq(householdMembers.householdId, membership.householdId),
+          eq(householdMembers.userId, c.get('user').id),
+        ),
+      );
+    return c.json({ ok: true });
   })
 
   .post(

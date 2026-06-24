@@ -127,6 +127,13 @@
       "when": 1781764465390,
       "tag": "0017_public_vector",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1782266740281,
+      "tag": "0018_daily_makkari",
+      "breakpoints": true
     }
   ]
 }
