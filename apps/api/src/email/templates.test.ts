@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SUPPORTED_EMAIL_LOCALES } from './locales.js';
-import { renderResetEmail, renderVerificationEmail } from './templates.js';
+import { renderInviteEmail, renderResetEmail, renderVerificationEmail } from './templates.js';
 
 const URL = 'https://api.grosify.app/verify-email?token=abc123';
 
@@ -32,5 +32,26 @@ describe('email templates — 6 idiomas', () => {
     const unknown = renderResetEmail('ja', { name: 'Ana', url: URL });
     const pt = renderResetEmail('pt', { name: 'Ana', url: URL });
     expect(unknown.subject).toBe(pt.subject);
+  });
+
+  describe('convite', () => {
+    const vars = { inviterName: 'Maria', householdName: 'Casa Silva', url: URL };
+
+    for (const loc of SUPPORTED_EMAIL_LOCALES) {
+      it(`[${loc}] interpola convidador, casa e url`, () => {
+        const m = renderInviteEmail(loc, vars);
+        expect(m.subject).toContain('Casa Silva');
+        expect(m.html).toContain('Maria');
+        expect(m.html).toContain('Casa Silva');
+        expect(m.html).toContain(URL);
+        expect(m.text).toContain(URL);
+      });
+    }
+
+    it('escapa HTML no nome da casa', () => {
+      const m = renderInviteEmail('pt', { inviterName: 'Maria', householdName: '<b>x</b>', url: URL });
+      expect(m.html).not.toContain('<b>x</b>');
+      expect(m.html).toContain('&lt;b&gt;');
+    });
   });
 });

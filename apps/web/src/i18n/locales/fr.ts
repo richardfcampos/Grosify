@@ -66,6 +66,13 @@ export default {
       inviteText: 'Vous êtes invité à rejoindre un foyer sur Grosify avec le code <1>{{code}}</1>.',
       join: 'Rejoindre le foyer',
       joining: 'Connexion…',
+      inviteEmailLabel: 'Inviter par e-mail',
+      inviteEmailPlaceholder: "e-mail de la personne à inviter",
+      inviteEmailCta: 'Envoyer l’invitation',
+      inviteEmailSent: 'Invitation envoyée à {{email}}.',
+      inviteByName: '{{inviter}} vous a invité',
+      inviteToHousehold: 'à rejoindre le foyer "{{household}}"',
+      inviteMismatch: 'Cette invitation concerne un autre e-mail. Connectez-vous avec l’e-mail invité pour accepter.',
     },
     dashboard: {
       planFree: 'Forfait Gratuit',
@@ -251,6 +258,7 @@ export default {
       forbidden: 'Vous n’avez pas la permission.',
       email_failed: 'Impossible d’envoyer l’e-mail pour le moment. Réessayez.',
       invalid_token: 'Lien invalide ou expiré.',
+      invite_email_mismatch: 'Cette invitation concerne un autre e-mail.',
       generic: 'Une erreur est survenue, réessayez',
     },
     billing: {

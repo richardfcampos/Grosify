@@ -1,8 +1,8 @@
 import { defaultCurrencyForLanguage, listCurrencies } from '@grosify/shared';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Navigate, useNavigate, useParams } from '@tanstack/react-router';
 import { useState, type FormEvent } from 'react';
-import { Trans, useTranslation } from 'react-i18next';
+import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api.js';
 import { useSession } from '../lib/auth-client.js';
 import { useMembership } from '../lib/use-membership.js';
@@ -91,11 +91,27 @@ export function ConvitePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
+  // token (convite por e-mail, >8 chars) vs código humano (8 chars)
+  const isToken = code.length > 8;
+
+  const preview = useQuery({
+    queryKey: ['invite', code],
+    enabled: !!session,
+    retry: false,
+    queryFn: async () => {
+      const res = await api.households.invites[':value'].$get({ param: { value: code } });
+      if (!res.ok) throw new Error('invalid');
+      return res.json();
+    },
+  });
 
   const join = useMutation({
     mutationFn: async () => {
-      const res = await api.households.join.$post({ json: { code } });
+      const res = await api.households.join.$post({
+        json: isToken ? { token: code } : { code },
+      });
       if (res.status === 409) throw new Error(t('errors.already_in_household'));
+      if (res.status === 403) throw new Error(t('errors.invite_email_mismatch'));
       if (!res.ok) throw new Error(t('errors.invalid_invite'));
       return res.json();
     },
@@ -110,25 +126,46 @@ export function ConvitePage() {
   if (!session) {
     return <Navigate to="/cadastro" search={{ redirect: `/convite/${code}` }} />;
   }
+  if (preview.isLoading) return <Loading />;
+
+  const inv = preview.data;
+  const invalid = preview.isError || !inv;
+  const mismatch = !!inv && inv.requiresEmail && !inv.emailMatches;
 
   return (
     <main className="screen-in mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center gap-6 px-6 py-10 text-center">
       <h1 className="text-2xl font-bold tracking-tight">{t('household.inviteTitle')}</h1>
-      <p className="muted">
-        <Trans
-          i18nKey="household.inviteText"
-          values={{ code }}
-          components={{ 1: <span className="mono font-semibold" /> }}
-        />
-      </p>
-      {error && (
+      {invalid ? (
         <p className="text-sm" style={{ color: 'var(--gro-red)' }}>
-          {error}
+          {t('errors.invalid_invite')}
         </p>
+      ) : (
+        <>
+          <p className="text-lg font-semibold">
+            {t('household.inviteByName', { inviter: inv.invitedByName })}
+          </p>
+          <p className="muted">{t('household.inviteToHousehold', { household: inv.householdName })}</p>
+          {mismatch && (
+            <p className="text-sm" style={{ color: 'var(--gro-red)' }}>
+              {t('household.inviteMismatch')}
+            </p>
+          )}
+          {error && (
+            <p className="text-sm" style={{ color: 'var(--gro-red)' }}>
+              {error}
+            </p>
+          )}
+          <Button
+            variant="primary"
+            size="lg"
+            fullWidth
+            onClick={() => join.mutate()}
+            disabled={join.isPending || mismatch}
+          >
+            {join.isPending ? t('household.joining') : t('household.join')}
+          </Button>
+        </>
       )}
-      <Button variant="primary" size="lg" fullWidth onClick={() => join.mutate()} disabled={join.isPending}>
-        {join.isPending ? t('household.joining') : t('household.join')}
-      </Button>
     </main>
   );
 }

@@ -7,9 +7,11 @@ import { v7 as uuidv7 } from 'uuid';
 import { z } from 'zod';
 import { db } from '../db/index.js';
 import { activities, householdInvites, householdMembers, households, user } from '../db/schema.js';
+import { renderInviteEmail, resolveLocale, sendEmail } from '../email/index.js';
 import { logActivity } from '../lib/activity.js';
 import { rateLimit } from '../middleware/rate-limit.js';
 import { requireSession, type AuthEnv } from '../middleware/session.js';
+import { webBaseUrl } from '../origins.js';
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -239,40 +241,124 @@ export const householdsRoute = new Hono<AuthEnv>()
     return c.json({ code }, 201);
   })
 
+  // Convite por e-mail: token opaco amarrado ao endereço + e-mail com o link.
+  // Mantém o código humano (share manual, confiança menor); o token é o caminho seguro.
+  .post(
+    '/invites/email',
+    rateLimit({ windowMs: 60_000, max: 5 }),
+    zValidator('json', z.object({ email: z.string().trim().toLowerCase().email() })),
+    async (c) => {
+      const membership = await membershipOf(c.get('user').id);
+      if (!membership) return c.json({ error: 'no_household' }, 403);
+      if (membership.role !== 'owner' && membership.role !== 'admin')
+        return c.json({ error: 'forbidden' }, 403);
+      const { email } = c.req.valid('json');
+      const code = inviteCode();
+      const token = randomBytes(32).toString('base64url');
+      await db.insert(householdInvites).values({
+        code,
+        token,
+        invitedEmail: email,
+        householdId: membership.householdId,
+        createdBy: c.get('user').id,
+        expiresAt: new Date(Date.now() + INVITE_TTL_MS),
+      });
+      const url = `${webBaseUrl}/convite/${token}`;
+      const { subject, html, text } = renderInviteEmail(resolveLocale(c.req.raw), {
+        inviterName: c.get('user').name,
+        householdName: membership.name,
+        url,
+      });
+      await sendEmail({ to: email, subject, html, text });
+      return c.json({ ok: true }, 201);
+    },
+  )
+
+  // Pré-visualização do convite (landing acolhedora) — quem convidou + nome da casa.
+  // `value` é o token (>8 chars) ou o código humano (8). Exige sessão (já no middleware).
+  .get('/invites/:value', async (c) => {
+    const value = c.req.param('value');
+    const byToken = value.length > 8;
+    const rows = await db
+      .select({
+        householdName: households.name,
+        invitedByName: user.name,
+        invitedEmail: householdInvites.invitedEmail,
+        expiresAt: householdInvites.expiresAt,
+        usedBy: householdInvites.usedBy,
+      })
+      .from(householdInvites)
+      .innerJoin(households, eq(households.id, householdInvites.householdId))
+      .innerJoin(user, eq(user.id, householdInvites.createdBy))
+      .where(
+        byToken
+          ? eq(householdInvites.token, value)
+          : eq(householdInvites.code, value.toUpperCase()),
+      )
+      .limit(1);
+    const inv = rows[0];
+    if (!inv || inv.usedBy || inv.expiresAt.getTime() < Date.now()) {
+      return c.json({ error: 'invalid_invite' }, 404);
+    }
+    return c.json({
+      householdName: inv.householdName,
+      invitedByName: inv.invitedByName,
+      requiresEmail: inv.invitedEmail != null,
+      emailMatches: inv.invitedEmail == null || inv.invitedEmail === c.get('user').email,
+    });
+  })
+
   .post(
     '/join',
     rateLimit({ windowMs: 60_000, max: 10 }),
-    zValidator('json', z.object({ code: z.string().trim().toUpperCase().length(8) })),
+    zValidator(
+      'json',
+      z
+        .object({
+          code: z.string().trim().toUpperCase().length(8).optional(),
+          token: z.string().trim().optional(),
+        })
+        .refine((v) => Boolean(v.code) || Boolean(v.token), { message: 'missing_invite' }),
+    ),
     async (c) => {
       const userId = c.get('user').id;
+      const userEmail = c.get('user').email;
       if (await membershipOf(userId)) {
         return c.json({ error: 'already_in_household' }, 409);
       }
-      const { code } = c.req.valid('json');
+      const { code, token } = c.req.valid('json');
 
-      const joined = await db.transaction(async (tx) => {
+      const result = await db.transaction(async (tx) => {
         const invites = await tx
           .select()
           .from(householdInvites)
-          .where(and(eq(householdInvites.code, code), isNull(householdInvites.usedBy)))
+          .where(
+            and(
+              token ? eq(householdInvites.token, token) : eq(householdInvites.code, code!),
+              isNull(householdInvites.usedBy),
+            ),
+          )
           .for('update')
           .limit(1);
         const invite = invites[0];
-        if (!invite || invite.expiresAt.getTime() < Date.now()) return null;
-
+        if (!invite || invite.expiresAt.getTime() < Date.now()) return { kind: 'invalid' as const };
+        // E7: convite por e-mail só vale pro endereço convidado
+        if (invite.invitedEmail && invite.invitedEmail !== userEmail) {
+          return { kind: 'mismatch' as const };
+        }
         await tx
           .update(householdInvites)
           .set({ usedBy: userId })
-          .where(eq(householdInvites.code, code));
+          .where(eq(householdInvites.code, invite.code));
         await tx
           .insert(householdMembers)
           .values({ householdId: invite.householdId, userId, role: 'member' });
-        return invite.householdId;
+        return { kind: 'ok' as const };
       });
 
-      if (!joined) {
-        return c.json({ error: 'invalid_invite' }, 404);
-      }
+      if (result.kind === 'mismatch') return c.json({ error: 'invite_email_mismatch' }, 403);
+      if (result.kind !== 'ok') return c.json({ error: 'invalid_invite' }, 404);
+
       const membership = await membershipOf(userId);
       return c.json({ membership }, 201);
     },

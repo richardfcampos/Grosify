@@ -17,9 +17,19 @@ interface Copy {
   footer: string;
 }
 
+interface InviteCopy {
+  subject: string; // recebe {household}
+  heading: string;
+  intro: string; // recebe {inviter} e {household}
+  button: string;
+  fallback: string;
+  footer: string;
+}
+
 interface EmailCopy {
   verify: Copy;
   reset: Copy;
+  invite: InviteCopy;
 }
 
 const COPY: Record<EmailLocale, EmailCopy> = {
@@ -42,6 +52,14 @@ const COPY: Record<EmailLocale, EmailCopy> = {
       fallback: 'Se você não pediu isto, ignore este e-mail — sua senha continua a mesma.',
       footer: 'Grosify — sua lista, estoque e preços.',
     },
+    invite: {
+      subject: 'Convite para a casa "{household}" no Grosify',
+      heading: 'Você foi convidado!',
+      intro: '{inviter} convidou você para entrar na casa "{household}" no Grosify — listas, estoque e preços compartilhados.',
+      button: 'Entrar na casa',
+      fallback: 'Se você não esperava este convite, pode ignorar este e-mail.',
+      footer: 'Grosify — sua lista, estoque e preços.',
+    },
   },
   en: {
     verify: {
@@ -60,6 +78,14 @@ const COPY: Record<EmailLocale, EmailCopy> = {
       intro: 'We received a request to reset your password. This link expires in 1 hour.',
       button: 'Reset password',
       fallback: "If you didn't request this, ignore this email — your password stays the same.",
+      footer: 'Grosify — your list, stock and prices.',
+    },
+    invite: {
+      subject: 'Invitation to "{household}" on Grosify',
+      heading: "You're invited!",
+      intro: '{inviter} invited you to join the household "{household}" on Grosify — shared lists, stock and prices.',
+      button: 'Join the household',
+      fallback: "If you weren't expecting this invitation, you can ignore this email.",
       footer: 'Grosify — your list, stock and prices.',
     },
   },
@@ -82,6 +108,14 @@ const COPY: Record<EmailLocale, EmailCopy> = {
       fallback: 'Si no lo solicitaste, ignora este correo: tu contraseña sigue igual.',
       footer: 'Grosify — tu lista, inventario y precios.',
     },
+    invite: {
+      subject: 'Invitación a la casa "{household}" en Grosify',
+      heading: '¡Te han invitado!',
+      intro: '{inviter} te invitó a unirte a la casa "{household}" en Grosify: listas, inventario y precios compartidos.',
+      button: 'Unirme a la casa',
+      fallback: 'Si no esperabas esta invitación, puedes ignorar este correo.',
+      footer: 'Grosify — tu lista, inventario y precios.',
+    },
   },
   it: {
     verify: {
@@ -100,6 +134,14 @@ const COPY: Record<EmailLocale, EmailCopy> = {
       intro: 'Abbiamo ricevuto una richiesta di reimpostazione password. Il link scade tra 1 ora.',
       button: 'Reimposta password',
       fallback: 'Se non hai richiesto questo, ignora questa email — la password resta la stessa.',
+      footer: 'Grosify — la tua lista, scorte e prezzi.',
+    },
+    invite: {
+      subject: 'Invito alla casa "{household}" su Grosify',
+      heading: 'Sei stato invitato!',
+      intro: '{inviter} ti ha invitato a unirti alla casa "{household}" su Grosify — liste, scorte e prezzi condivisi.',
+      button: 'Unisciti alla casa',
+      fallback: 'Se non ti aspettavi questo invito, puoi ignorare questa email.',
       footer: 'Grosify — la tua lista, scorte e prezzi.',
     },
   },
@@ -122,6 +164,14 @@ const COPY: Record<EmailLocale, EmailCopy> = {
       fallback: 'Wenn du das nicht angefordert hast, ignoriere diese E-Mail — dein Passwort bleibt unverändert.',
       footer: 'Grosify — deine Liste, dein Vorrat und deine Preise.',
     },
+    invite: {
+      subject: 'Einladung zum Haushalt "{household}" bei Grosify',
+      heading: 'Du wurdest eingeladen!',
+      intro: '{inviter} hat dich eingeladen, dem Haushalt "{household}" bei Grosify beizutreten — geteilte Listen, Vorräte und Preise.',
+      button: 'Dem Haushalt beitreten',
+      fallback: 'Wenn du diese Einladung nicht erwartet hast, kannst du diese E-Mail ignorieren.',
+      footer: 'Grosify — deine Liste, dein Vorrat und deine Preise.',
+    },
   },
   fr: {
     verify: {
@@ -142,6 +192,14 @@ const COPY: Record<EmailLocale, EmailCopy> = {
       fallback: "Si vous n'êtes pas à l'origine de cette demande, ignorez cet e-mail — votre mot de passe reste inchangé.",
       footer: 'Grosify — votre liste, votre stock et vos prix.',
     },
+    invite: {
+      subject: 'Invitation au foyer "{household}" sur Grosify',
+      heading: 'Vous êtes invité !',
+      intro: '{inviter} vous a invité à rejoindre le foyer "{household}" sur Grosify — listes, stock et prix partagés.',
+      button: 'Rejoindre le foyer',
+      fallback: "Si vous n'attendiez pas cette invitation, vous pouvez ignorer cet e-mail.",
+      footer: 'Grosify — votre liste, votre stock et vos prix.',
+    },
   },
 };
 
@@ -154,33 +212,40 @@ function escapeHtml(s: string): string {
     .replace(/'/g, '&#39;');
 }
 
-function build(copy: Copy, name: string, url: string): EmailMessage {
-  const safeName = escapeHtml(name);
-  const hi = copy.hi.replace('{name}', safeName);
-  const hiText = copy.hi.replace('{name}', name);
+type Rendered = Omit<EmailMessage, 'to'>;
+
+interface RenderParts {
+  subject: string;
+  heading: string;
+  /** parágrafos do corpo, já interpolados (escapados no HTML pelo build) */
+  body: string[];
+  button: string;
+  url: string;
+  fallback: string;
+  footer: string;
+}
+
+/** Builder genérico: estrutura/HTML compartilhada entre verificação, reset e convite. */
+function build({ subject, heading, body, button, url, fallback, footer }: RenderParts): Rendered {
+  const bodyHtml = body
+    .map((p) => `<p style="margin:0 0 12px;line-height:1.5">${escapeHtml(p)}</p>`)
+    .join('');
 
   const html = `<!doctype html><html><body style="margin:0;background:#f6f7f6">
   <div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;color:#1a1a1a">
     <div style="font-size:22px;font-weight:800;letter-spacing:-.02em;margin-bottom:20px">Grosify</div>
-    <h1 style="font-size:20px;margin:0 0 16px">${escapeHtml(copy.heading)}</h1>
-    <p style="margin:0 0 8px">${hi}</p>
-    <p style="margin:0 0 20px;line-height:1.5">${escapeHtml(copy.intro)}</p>
-    <a href="${escapeHtml(url)}" style="display:inline-block;background:#15803D;color:#fff;padding:12px 22px;border-radius:10px;text-decoration:none;font-weight:700">${escapeHtml(copy.button)}</a>
-    <p style="color:#666;font-size:13px;margin:24px 0 4px;line-height:1.5">${escapeHtml(copy.fallback)}</p>
+    <h1 style="font-size:20px;margin:0 0 16px">${escapeHtml(heading)}</h1>
+    ${bodyHtml}
+    <a href="${escapeHtml(url)}" style="display:inline-block;background:#15803D;color:#fff;padding:12px 22px;border-radius:10px;text-decoration:none;font-weight:700;margin-top:8px">${escapeHtml(button)}</a>
+    <p style="color:#666;font-size:13px;margin:24px 0 4px;line-height:1.5">${escapeHtml(fallback)}</p>
     <p style="color:#999;font-size:12px;word-break:break-all;margin:0 0 24px">${escapeHtml(url)}</p>
     <hr style="border:none;border-top:1px solid #e5e5e5;margin:0 0 16px" />
-    <p style="color:#999;font-size:12px;margin:0">${escapeHtml(copy.footer)}</p>
+    <p style="color:#999;font-size:12px;margin:0">${escapeHtml(footer)}</p>
   </div>
 </body></html>`;
 
-  const text = `${hiText}\n\n${copy.intro}\n\n${copy.button}: ${url}\n\n${copy.fallback}\n\n${copy.footer}`;
-
-  return { to: '', subject: copy.subject, html, text };
-}
-
-interface TemplateVars {
-  name: string;
-  url: string;
+  const text = `${body.join('\n\n')}\n\n${button}: ${url}\n\n${fallback}\n\n${footer}`;
+  return { subject, html, text };
 }
 
 function pick(locale: string): EmailLocale {
@@ -191,16 +256,50 @@ function pick(locale: string): EmailLocale {
 
 export function renderVerificationEmail(
   locale: string,
-  { name, url }: TemplateVars,
-): Omit<EmailMessage, 'to'> {
-  const { subject, html, text } = build(COPY[pick(locale)].verify, name, url);
-  return { subject, html, text };
+  { name, url }: { name: string; url: string },
+): Rendered {
+  const c = COPY[pick(locale)].verify;
+  return build({
+    subject: c.subject,
+    heading: c.heading,
+    body: [c.hi.replace('{name}', name), c.intro],
+    button: c.button,
+    url,
+    fallback: c.fallback,
+    footer: c.footer,
+  });
 }
 
 export function renderResetEmail(
   locale: string,
-  { name, url }: TemplateVars,
-): Omit<EmailMessage, 'to'> {
-  const { subject, html, text } = build(COPY[pick(locale)].reset, name, url);
-  return { subject, html, text };
+  { name, url }: { name: string; url: string },
+): Rendered {
+  const c = COPY[pick(locale)].reset;
+  return build({
+    subject: c.subject,
+    heading: c.heading,
+    body: [c.hi.replace('{name}', name), c.intro],
+    button: c.button,
+    url,
+    fallback: c.fallback,
+    footer: c.footer,
+  });
+}
+
+export function renderInviteEmail(
+  locale: string,
+  { inviterName, householdName, url }: { inviterName: string; householdName: string; url: string },
+): Rendered {
+  const c = COPY[pick(locale)].invite;
+  const fill = (s: string) =>
+    s.replace('{inviter}', inviterName).replace('{household}', householdName);
+  return build({
+    subject: fill(c.subject),
+    heading: c.heading,
+    body: [fill(c.intro)],
+    button: c.button,
+    url,
+    fallback: c.fallback,
+    footer: c.footer,
+  });
 }

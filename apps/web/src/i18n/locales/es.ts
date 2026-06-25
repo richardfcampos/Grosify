@@ -66,6 +66,13 @@ export default {
       inviteText: 'Te invitaron a unirte a un hogar en Grosify con el código <1>{{code}}</1>.',
       join: 'Unirse al hogar',
       joining: 'Uniéndose…',
+      inviteEmailLabel: 'Invitar por correo',
+      inviteEmailPlaceholder: 'correo de quien quieres invitar',
+      inviteEmailCta: 'Enviar invitación',
+      inviteEmailSent: 'Invitación enviada a {{email}}.',
+      inviteByName: '{{inviter}} te invitó',
+      inviteToHousehold: 'a unirte al hogar "{{household}}"',
+      inviteMismatch: 'Esta invitación es para otro correo. Entra con el correo invitado para aceptar.',
     },
     dashboard: {
       planFree: 'Plan Gratis',
@@ -251,6 +258,7 @@ export default {
       forbidden: 'No tienes permiso para esto.',
       email_failed: 'No se pudo enviar el correo ahora. Inténtalo de nuevo.',
       invalid_token: 'Enlace inválido o caducado.',
+      invite_email_mismatch: 'Esta invitación es para otro correo.',
       generic: 'Algo salió mal, inténtalo de nuevo',
     },
     billing: {

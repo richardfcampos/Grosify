@@ -117,6 +117,10 @@ export const householdInvites = pgTable('household_invites', {
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   usedBy: text('used_by').references(() => user.id),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  // Convite por e-mail: token opaco (inguessável) amarrado ao e-mail convidado.
+  // null = convite só por código humano (compartilhamento manual, confiança menor).
+  token: text('token').unique(),
+  invitedEmail: text('invited_email'),
 });
 
 /** Feed de atividades da casa (server-authoritative, não syncado). */

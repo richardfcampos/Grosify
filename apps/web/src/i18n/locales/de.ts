@@ -66,6 +66,13 @@ export default {
       inviteText: 'Du wurdest eingeladen, einem Haushalt bei Grosify beizutreten — Code <1>{{code}}</1>.',
       join: 'Haushalt beitreten',
       joining: 'Beitritt…',
+      inviteEmailLabel: 'Per E-Mail einladen',
+      inviteEmailPlaceholder: 'E-Mail der Person, die du einladen möchtest',
+      inviteEmailCta: 'Einladung senden',
+      inviteEmailSent: 'Einladung an {{email}} gesendet.',
+      inviteByName: '{{inviter}} hat dich eingeladen',
+      inviteToHousehold: 'dem Haushalt "{{household}}" beizutreten',
+      inviteMismatch: 'Diese Einladung ist für eine andere E-Mail. Melde dich mit der eingeladenen E-Mail an, um sie anzunehmen.',
     },
     dashboard: {
       planFree: 'Gratis-Plan',
@@ -251,6 +258,7 @@ export default {
       forbidden: 'Du hast keine Berechtigung dafür.',
       email_failed: 'E-Mail konnte gerade nicht gesendet werden. Versuch es erneut.',
       invalid_token: 'Link ungültig oder abgelaufen.',
+      invite_email_mismatch: 'Diese Einladung ist für eine andere E-Mail.',
       generic: 'Etwas ist schiefgelaufen, bitte erneut versuchen',
     },
     billing: {

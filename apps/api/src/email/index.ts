@@ -3,7 +3,7 @@ import { ResendEmailProvider } from './resend-provider.js';
 import type { EmailMessage, EmailProvider, EmailResult } from './types.js';
 
 export type { EmailMessage, EmailProvider, EmailResult } from './types.js';
-export { renderResetEmail, renderVerificationEmail } from './templates.js';
+export { renderResetEmail, renderVerificationEmail, renderInviteEmail } from './templates.js';
 export { SUPPORTED_EMAIL_LOCALES, resolveLocale, type EmailLocale } from './locales.js';
 
 type Env = Record<string, string | undefined>;

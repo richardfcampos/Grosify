@@ -37,6 +37,8 @@ export function AjustesPage() {
   const [busy, setBusy] = useState(false);
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [emailSent, setEmailSent] = useState<string | null>(null);
   const syncState = useSyncExternalStore(subscribeSync, getSyncState);
   const restoreRef = useRef<HTMLInputElement>(null);
   const { mode, dir, setMode, setDir } = useTheme();
@@ -69,6 +71,18 @@ export function AjustesPage() {
       return res.json();
     },
     onSuccess: (data) => setInviteUrl(`${window.location.origin}/convite/${data.code}`),
+  });
+
+  const inviteByEmail = useMutation({
+    mutationFn: async (email: string) => {
+      const res = await api.households.invites.email.$post({ json: { email } });
+      if (!res.ok) throw new Error('invite_failed');
+      return res.json();
+    },
+    onSuccess: (_data, email) => {
+      setEmailSent(email);
+      setInviteEmail('');
+    },
   });
 
   async function onExport() {
@@ -235,38 +249,72 @@ export function AjustesPage() {
 
       {/* convite */}
       <Section kicker={t('dashboard.inviteSection')}>
-        {inviteUrl ? (
-          <div className="flex flex-col gap-2">
-            <code
-              className="mono break-all rounded-xl px-3 py-2 text-sm"
-              style={{ background: 'var(--app-surface-2)' }}
+        {/* por e-mail: link amarrado ao endereço convidado */}
+        {emailSent ? (
+          <p className="muted text-sm">{t('household.inviteEmailSent', { email: emailSent })}</p>
+        ) : (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (inviteEmail) inviteByEmail.mutate(inviteEmail);
+            }}
+            className="flex flex-col gap-2"
+          >
+            <input
+              type="email"
+              value={inviteEmail}
+              onChange={(e) => setInviteEmail(e.target.value)}
+              placeholder={t('household.inviteEmailPlaceholder')}
+              aria-label={t('household.inviteEmailLabel')}
+              className="gro-field gro-field--mono"
+            />
+            <Button
+              variant="primary"
+              size="md"
+              fullWidth
+              type="submit"
+              disabled={inviteByEmail.isPending || !inviteEmail}
             >
-              {inviteUrl}
-            </code>
+              {inviteByEmail.isPending ? t('auth.sending') : t('household.inviteEmailCta')}
+            </Button>
+          </form>
+        )}
+
+        {/* ou compartilhe um link com código */}
+        <div className="mt-3">
+          {inviteUrl ? (
+            <div className="flex flex-col gap-2">
+              <code
+                className="mono break-all rounded-xl px-3 py-2 text-sm"
+                style={{ background: 'var(--app-surface-2)' }}
+              >
+                {inviteUrl}
+              </code>
+              <Button
+                variant="secondary"
+                size="md"
+                fullWidth
+                onClick={async () => {
+                  await navigator.clipboard.writeText(inviteUrl);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                }}
+              >
+                {copied ? t('dashboard.copied') : t('dashboard.copyLink')}
+              </Button>
+            </div>
+          ) : (
             <Button
               variant="secondary"
               size="md"
               fullWidth
-              onClick={async () => {
-                await navigator.clipboard.writeText(inviteUrl);
-                setCopied(true);
-                setTimeout(() => setCopied(false), 2000);
-              }}
+              onClick={() => invite.mutate()}
+              disabled={invite.isPending}
             >
-              {copied ? t('dashboard.copied') : t('dashboard.copyLink')}
+              {invite.isPending ? t('dashboard.generating') : t('dashboard.generateInvite')}
             </Button>
-          </div>
-        ) : (
-          <Button
-            variant="secondary"
-            size="md"
-            fullWidth
-            onClick={() => invite.mutate()}
-            disabled={invite.isPending}
-          >
-            {invite.isPending ? t('dashboard.generating') : t('dashboard.generateInvite')}
-          </Button>
-        )}
+          )}
+        </div>
       </Section>
 
       {/* atalhos */}

@@ -66,6 +66,13 @@ export default {
       inviteText: 'Você foi convidado a entrar numa casa no Grosify com o código <1>{{code}}</1>.',
       join: 'Entrar na casa',
       joining: 'Entrando…',
+      inviteEmailLabel: 'Convidar por e-mail',
+      inviteEmailPlaceholder: 'e-mail de quem você quer convidar',
+      inviteEmailCta: 'Enviar convite',
+      inviteEmailSent: 'Convite enviado para {{email}}.',
+      inviteByName: '{{inviter}} convidou você',
+      inviteToHousehold: 'para entrar na casa "{{household}}"',
+      inviteMismatch: 'Este convite é para outro e-mail. Entre com o e-mail convidado para aceitar.',
     },
     dashboard: {
       planFree: 'Plano Grátis',
@@ -251,6 +258,7 @@ export default {
       forbidden: 'Você não tem permissão para isso.',
       email_failed: 'Não foi possível enviar o e-mail agora. Tente de novo.',
       invalid_token: 'Link inválido ou expirado.',
+      invite_email_mismatch: 'Este convite é para outro e-mail.',
       generic: 'Algo deu errado, tente de novo',
     },
     billing: {

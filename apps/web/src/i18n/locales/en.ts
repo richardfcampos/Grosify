@@ -66,6 +66,13 @@ export default {
       inviteText: 'You were invited to join a household on Grosify with the code <1>{{code}}</1>.',
       join: 'Join household',
       joining: 'Joining…',
+      inviteEmailLabel: 'Invite by email',
+      inviteEmailPlaceholder: 'email of the person you want to invite',
+      inviteEmailCta: 'Send invite',
+      inviteEmailSent: 'Invite sent to {{email}}.',
+      inviteByName: '{{inviter}} invited you',
+      inviteToHousehold: 'to join the "{{household}}" household',
+      inviteMismatch: 'This invite is for a different email. Sign in with the invited email to accept.',
     },
     dashboard: {
       planFree: 'Free plan',
@@ -251,6 +258,7 @@ export default {
       forbidden: 'You do not have permission for this.',
       email_failed: "Couldn't send the email right now. Try again.",
       invalid_token: 'Invalid or expired link.',
+      invite_email_mismatch: 'This invite is for a different email.',
       generic: 'Something went wrong, please try again',
     },
     billing: {
