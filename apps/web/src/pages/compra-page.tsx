@@ -139,7 +139,7 @@ export function CompraPage() {
   }
 
   return (
-    <div className="flex min-h-dvh flex-col" style={{ background: 'var(--app-bg)', color: 'var(--app-ink)' }}>
+    <div className="flex h-dvh flex-col overflow-hidden" style={{ background: 'var(--app-bg)', color: 'var(--app-ink)' }}>
       <header
         className="sticky top-0 z-10 flex-none px-[18px] pb-3.5 pt-3"
         style={{ background: 'var(--app-surface)', borderBottom: '1px solid var(--app-border)' }}
@@ -221,7 +221,7 @@ export function CompraPage() {
         </div>
       </header>
 
-      <main className="flex-1 overflow-auto px-3.5 py-2 pb-32">
+      <main className="min-h-0 flex-1 overflow-auto px-3.5 py-2 pb-32">
         {sessionItems.length === 0 ? (
           <p className="muted mt-8 text-center">{t('shopping.emptySession')}</p>
         ) : (
