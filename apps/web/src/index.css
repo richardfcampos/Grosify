@@ -4,18 +4,19 @@
 html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
-  touch-action: manipulation;
 }
 
 body {
-  touch-action: manipulation;
   overscroll-behavior: none;
 }
 
-/* Sem arrasto lateral: as transições de tela (translateX) e overflow pontual não podem
-   virar scroll horizontal. `clip` não cria scroll container — não quebra sticky/fixed. */
+/* Só pan vertical: mata o arrasto lateral do browser (rubber-band horizontal) e tb
+   double-tap/pinch. Swipe do Modo Compra mede clientX em touchstart/end — não depende
+   de touch-action, então continua. `overflow-x: clip` apara qualquer overflow sub-pixel
+   sem criar scroll container (não quebra sticky/fixed da bottom nav). */
 html,
 body {
+  touch-action: pan-y;
   overflow-x: clip;
   overscroll-behavior-x: none;
 }
