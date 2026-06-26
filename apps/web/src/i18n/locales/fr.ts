@@ -73,6 +73,11 @@ export default {
       inviteByName: '{{inviter}} vous a invité',
       inviteToHousehold: 'à rejoindre le foyer "{{household}}"',
       inviteMismatch: 'Cette invitation concerne un autre e-mail. Connectez-vous avec l’e-mail invité pour accepter.',
+      yourHouses: 'Vos foyers',
+      switch: 'Changer',
+      active: 'Active',
+      newHousehold: 'Créer un nouveau foyer',
+      switchPending: 'Synchronisez les modifications en attente avant de changer de foyer.',
     },
     dashboard: {
       planFree: 'Forfait Gratuit',

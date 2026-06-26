@@ -1,12 +1,13 @@
 import { zValidator } from '@hono/zod-validator';
 import { isValidCurrency, updateMemberPayload } from '@grosify/shared';
-import { and, desc, eq, isNull } from 'drizzle-orm';
+import { and, asc, desc, eq, isNull } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { randomBytes } from 'node:crypto';
 import { v7 as uuidv7 } from 'uuid';
 import { z } from 'zod';
 import { db } from '../db/index.js';
 import { activities, householdInvites, householdMembers, households, user } from '../db/schema.js';
+import { resolveActiveHouseholdId, setActiveHousehold } from '../lib/active-household.js';
 import { renderInviteEmail, resolveLocale, sendEmail } from '../email/index.js';
 import { logActivity } from '../lib/activity.js';
 import { isSuppressed } from '../lib/email-suppression.js';
@@ -25,7 +26,10 @@ function inviteCode(): string {
   return code;
 }
 
+/** Membership da casa ATIVA do usuário (multi-casa). */
 async function membershipOf(userId: string) {
+  const activeId = await resolveActiveHouseholdId(userId);
+  if (!activeId) return null;
   const rows = await db
     .select({
       householdId: householdMembers.householdId,
@@ -39,7 +43,7 @@ async function membershipOf(userId: string) {
     })
     .from(householdMembers)
     .innerJoin(households, eq(households.id, householdMembers.householdId))
-    .where(eq(householdMembers.userId, userId))
+    .where(and(eq(householdMembers.userId, userId), eq(householdMembers.householdId, activeId)))
     .limit(1);
   return rows[0] ?? null;
 }
@@ -52,6 +56,32 @@ export const householdsRoute = new Hono<AuthEnv>()
     return c.json({
       membership: membership && { ...membership, onboarded: membership.onboardedAt != null },
     });
+  })
+
+  // Todas as casas do usuário (multi-casa) + qual é a ativa — pro seletor de casa.
+  .get('/list', async (c) => {
+    const userId = c.get('user').id;
+    const activeId = await resolveActiveHouseholdId(userId);
+    const rows = await db
+      .select({
+        householdId: householdMembers.householdId,
+        name: households.name,
+        role: householdMembers.role,
+        plan: households.plan,
+      })
+      .from(householdMembers)
+      .innerJoin(households, eq(households.id, householdMembers.householdId))
+      .where(eq(householdMembers.userId, userId))
+      .orderBy(asc(householdMembers.joinedAt));
+    return c.json({ households: rows, activeHouseholdId: activeId });
+  })
+
+  // Troca a casa ativa (valida que é membro). household_id vem do body aqui de propósito —
+  // é a única rota cujo papel é justamente escolher a casa; a troca é validada no servidor.
+  .post('/switch', zValidator('json', z.object({ householdId: z.string().uuid() })), async (c) => {
+    const ok = await setActiveHousehold(c.get('user').id, c.req.valid('json').householdId);
+    if (!ok) return c.json({ error: 'not_member' }, 403);
+    return c.json({ ok: true });
   })
 
   // Marca que o membro viu o onboarding — persiste na conta (não no aparelho),
@@ -120,14 +150,14 @@ export const householdsRoute = new Hono<AuthEnv>()
     ),
     async (c) => {
       const userId = c.get('user').id;
-      if (await membershipOf(userId)) {
-        return c.json({ error: 'already_in_household' }, 409);
-      }
+      // multi-casa: criar uma casa nova é permitido mesmo já tendo outra.
       const { name, currency } = c.req.valid('json');
       const id = uuidv7();
       await db.transaction(async (tx) => {
         await tx.insert(households).values({ id, name, currency, createdBy: userId });
         await tx.insert(householdMembers).values({ householdId: id, userId, role: 'owner' });
+        // a casa recém-criada vira a ativa
+        await tx.update(user).set({ activeHouseholdId: id }).where(eq(user.id, userId));
       });
       return c.json(
         { household: { id, name, currency, plan: 'free' as const, role: 'owner' as const } },
@@ -326,9 +356,6 @@ export const householdsRoute = new Hono<AuthEnv>()
     async (c) => {
       const userId = c.get('user').id;
       const userEmail = c.get('user').email;
-      if (await membershipOf(userId)) {
-        return c.json({ error: 'already_in_household' }, 409);
-      }
       const { code, token } = c.req.valid('json');
 
       const result = await db.transaction(async (tx) => {
@@ -349,6 +376,19 @@ export const householdsRoute = new Hono<AuthEnv>()
         if (invite.invitedEmail && invite.invitedEmail !== userEmail) {
           return { kind: 'mismatch' as const };
         }
+        // multi-casa: pode ter outras casas, mas não entra duas vezes na MESMA
+        const existing = await tx
+          .select({ hid: householdMembers.householdId })
+          .from(householdMembers)
+          .where(
+            and(
+              eq(householdMembers.userId, userId),
+              eq(householdMembers.householdId, invite.householdId),
+            ),
+          )
+          .limit(1);
+        if (existing[0]) return { kind: 'already' as const };
+
         await tx
           .update(householdInvites)
           .set({ usedBy: userId })
@@ -356,10 +396,13 @@ export const householdsRoute = new Hono<AuthEnv>()
         await tx
           .insert(householdMembers)
           .values({ householdId: invite.householdId, userId, role: 'member' });
+        // a casa em que acabou de entrar vira a ativa
+        await tx.update(user).set({ activeHouseholdId: invite.householdId }).where(eq(user.id, userId));
         return { kind: 'ok' as const };
       });
 
       if (result.kind === 'mismatch') return c.json({ error: 'invite_email_mismatch' }, 403);
+      if (result.kind === 'already') return c.json({ error: 'already_in_household' }, 409);
       if (result.kind !== 'ok') return c.json({ error: 'invalid_invite' }, 404);
 
       const membership = await membershipOf(userId);

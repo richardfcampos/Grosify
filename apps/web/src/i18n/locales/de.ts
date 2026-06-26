@@ -73,6 +73,11 @@ export default {
       inviteByName: '{{inviter}} hat dich eingeladen',
       inviteToHousehold: 'dem Haushalt "{{household}}" beizutreten',
       inviteMismatch: 'Diese Einladung ist für eine andere E-Mail. Melde dich mit der eingeladenen E-Mail an, um sie anzunehmen.',
+      yourHouses: 'Deine Haushalte',
+      switch: 'Wechseln',
+      active: 'Aktiv',
+      newHousehold: 'Neuen Haushalt erstellen',
+      switchPending: 'Synchronisiere die ausstehenden Änderungen, bevor du den Haushalt wechselst.',
     },
     dashboard: {
       planFree: 'Gratis-Plan',

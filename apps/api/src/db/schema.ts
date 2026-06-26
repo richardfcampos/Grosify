@@ -1,4 +1,5 @@
 import {
+  type AnyPgColumn,
   bigint,
   boolean,
   doublePrecision,
@@ -21,6 +22,11 @@ export const user = pgTable('user', {
   email: text('email').notNull().unique(),
   emailVerified: boolean('email_verified').notNull().default(false),
   image: text('image'),
+  // Casa ativa (multi-casa): qual das casas do usuário está em foco. App-managed
+  // (Better Auth ignora colunas que não conhece). null = resolve pra primeira casa.
+  activeHouseholdId: uuid('active_household_id').references((): AnyPgColumn => households.id, {
+    onDelete: 'set null',
+  }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

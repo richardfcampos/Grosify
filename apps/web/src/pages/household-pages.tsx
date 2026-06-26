@@ -1,15 +1,18 @@
 import { defaultCurrencyForLanguage, listCurrencies } from '@grosify/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Navigate, useNavigate, useParams } from '@tanstack/react-router';
+import { Navigate, useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api.js';
 import { useSession } from '../lib/auth-client.js';
 import { useMembership } from '../lib/use-membership.js';
+import { pendingCount, syncNow } from '../sync/engine.js';
 import { Button } from '../features/ui/index.js';
 
 export function CasaPage() {
   const { t, i18n } = useTranslation();
+  const { new: isNew } = useSearch({ from: '/casa' });
+  const navigate = useNavigate();
   const { data: session, isPending } = useSession();
   const membership = useMembership(!!session);
   const queryClient = useQueryClient();
@@ -28,13 +31,19 @@ export function CasaPage() {
       if (!res.ok) throw new Error('createFailed');
       return res.json();
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['membership'] }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['membership'] });
+      await queryClient.invalidateQueries({ queryKey: ['householdList'] });
+      // a casa nova já é a ativa (servidor); volta pro app — AppLayout re-puxa o cache
+      navigate({ to: '/' });
+    },
     onError: () => setError(t('household.createFailed')),
   });
 
   if (isPending || (session && membership.isLoading)) return <Loading />;
   if (!session) return <Navigate to="/entrar" search={{ redirect: '/casa' }} />;
-  if (membership.data) return <Navigate to="/" />;
+  // multi-casa: com ?new=1 o usuário cria uma casa adicional mesmo já tendo outra
+  if (membership.data && !isNew) return <Navigate to="/" />;
 
   function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -107,6 +116,10 @@ export function ConvitePage() {
 
   const join = useMutation({
     mutationFn: async () => {
+      // se já tem casa com mudanças offline pendentes, drena antes — entrar numa nova
+      // casa troca a casa ativa e zera o cache local
+      await syncNow();
+      if ((await pendingCount()) > 0) throw new Error(t('household.switchPending'));
       const res = await api.households.join.$post({
         json: isToken ? { token: code } : { code },
       });

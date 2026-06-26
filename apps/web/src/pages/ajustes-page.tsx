@@ -8,6 +8,7 @@ import { signOut, useSession } from '../lib/auth-client.js';
 import { useConfirm } from '../lib/confirm.js';
 import { useHouseholdPlan } from '../lib/use-currency.js';
 import { useMembership } from '../lib/use-membership.js';
+import { HouseholdSwitcher } from '../features/catalog/household-switcher.js';
 import { clearLocalData, getSyncState, subscribeSync, syncNow } from '../sync/engine.js';
 import { exportPricesCsv, importBackup } from '../lib/backup.js';
 import {
@@ -245,6 +246,11 @@ export function AjustesPage() {
             </>
           )}
         </div>
+      </Section>
+
+      {/* suas casas (multi-casa) */}
+      <Section kicker={t('household.yourHouses')}>
+        <HouseholdSwitcher />
       </Section>
 
       {/* convite */}

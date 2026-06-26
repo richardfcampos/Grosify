@@ -73,6 +73,11 @@ export default {
       inviteByName: '{{inviter}} invited you',
       inviteToHousehold: 'to join the "{{household}}" household',
       inviteMismatch: 'This invite is for a different email. Sign in with the invited email to accept.',
+      yourHouses: 'Your households',
+      switch: 'Switch',
+      active: 'Active',
+      newHousehold: 'Create new household',
+      switchPending: 'Sync your pending changes before switching households.',
     },
     dashboard: {
       planFree: 'Free plan',

@@ -73,6 +73,11 @@ export default {
       inviteByName: '{{inviter}} te invitó',
       inviteToHousehold: 'a unirte al hogar "{{household}}"',
       inviteMismatch: 'Esta invitación es para otro correo. Entra con el correo invitado para aceptar.',
+      yourHouses: 'Tus casas',
+      switch: 'Cambiar',
+      active: 'Activa',
+      newHousehold: 'Crear nueva casa',
+      switchPending: 'Sincroniza los cambios pendientes antes de cambiar de casa.',
     },
     dashboard: {
       planFree: 'Plan Gratis',

@@ -45,6 +45,7 @@ const cadastroRoute = createRoute({
 const casaRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/casa',
+  validateSearch: z.object({ new: z.string().optional() }),
   component: CasaPage,
 });
 const conviteRoute = createRoute({
