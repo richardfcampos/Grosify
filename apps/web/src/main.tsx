@@ -9,9 +9,11 @@ import './features/ui/theme.css';
 import { ConfirmProvider } from './lib/confirm.js';
 import { ThemeProvider } from './features/ui/theme-provider.js';
 import { trackKeyboardInset } from './lib/keyboard-inset.js';
+import { disableZoomGestures } from './lib/disable-zoom-gestures.js';
 import { router } from './router.js';
 
 trackKeyboardInset();
+disableZoomGestures();
 
 const queryClient = new QueryClient({
   defaultOptions: {
