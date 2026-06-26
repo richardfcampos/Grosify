@@ -259,6 +259,11 @@ export default {
       email_failed: 'Não foi possível enviar o e-mail agora. Tente de novo.',
       invalid_token: 'Link inválido ou expirado.',
       invite_email_mismatch: 'Este convite é para outro e-mail.',
+      disposable_email: 'Use um e-mail permanente — endereços descartáveis não são aceitos.',
+      pwned_password: 'Essa senha apareceu em vazamentos de dados. Escolha outra.',
+      account_locked: 'Muitas tentativas. Espere alguns minutos e tente de novo.',
+      captcha_failed: 'Não foi possível confirmar que você não é um robô. Recarregue e tente de novo.',
+      email_suppressed: 'Esse e-mail não pode receber mensagens (retornou erro antes).',
       generic: 'Algo deu errado, tente de novo',
     },
     billing: {

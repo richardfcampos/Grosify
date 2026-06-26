@@ -259,6 +259,11 @@ export default {
       email_failed: 'E-Mail konnte gerade nicht gesendet werden. Versuch es erneut.',
       invalid_token: 'Link ungültig oder abgelaufen.',
       invite_email_mismatch: 'Diese Einladung ist für eine andere E-Mail.',
+      disposable_email: 'Nimm eine dauerhafte E-Mail — Wegwerf-Adressen werden nicht akzeptiert.',
+      pwned_password: 'Dieses Passwort tauchte in Datenlecks auf. Wähl ein anderes.',
+      account_locked: 'Zu viele Versuche. Warte ein paar Minuten und versuch es erneut.',
+      captcha_failed: 'Wir konnten nicht bestätigen, dass du kein Roboter bist. Lad neu und versuch es erneut.',
+      email_suppressed: 'Diese E-Mail kann keine Nachrichten empfangen (hat zuvor einen Fehler zurückgegeben).',
       generic: 'Etwas ist schiefgelaufen, bitte erneut versuchen',
     },
     billing: {

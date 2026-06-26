@@ -259,6 +259,11 @@ export default {
       email_failed: "Couldn't send the email right now. Try again.",
       invalid_token: 'Invalid or expired link.',
       invite_email_mismatch: 'This invite is for a different email.',
+      disposable_email: 'Use a permanent email — throwaway addresses are not accepted.',
+      pwned_password: 'This password showed up in data breaches. Pick another one.',
+      account_locked: 'Too many attempts. Wait a few minutes and try again.',
+      captcha_failed: "Couldn't confirm you're not a robot. Reload and try again.",
+      email_suppressed: "That email can't receive messages (it bounced before).",
       generic: 'Something went wrong, please try again',
     },
     billing: {

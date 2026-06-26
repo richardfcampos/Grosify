@@ -123,6 +123,28 @@ export const householdInvites = pgTable('household_invites', {
   invitedEmail: text('invited_email'),
 });
 
+/**
+ * Tentativas de auth por conta — base da trava de força-bruta (durável, sobrevive
+ * redeploy e multi-instância, ao contrário do limite por-IP em memória).
+ */
+export const authAttempts = pgTable(
+  'auth_attempts',
+  {
+    id: uuid('id').primaryKey(),
+    email: text('email').notNull(),
+    kind: text('kind').notNull(), // 'login_fail'
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('auth_attempts_email_kind_created_idx').on(t.email, t.kind, t.createdAt)],
+);
+
+/** E-mails suprimidos por bounce/reclamação (webhook do provedor) — não enviar mais. */
+export const emailSuppression = pgTable('email_suppression', {
+  email: text('email').primaryKey(),
+  reason: text('reason').notNull(), // 'bounce' | 'complaint'
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 /** Feed de atividades da casa (server-authoritative, não syncado). */
 export const activities = pgTable(
   'activities',

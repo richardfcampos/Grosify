@@ -259,6 +259,11 @@ export default {
       email_failed: 'Impossible d’envoyer l’e-mail pour le moment. Réessayez.',
       invalid_token: 'Lien invalide ou expiré.',
       invite_email_mismatch: 'Cette invitation concerne un autre e-mail.',
+      disposable_email: 'Utilise une adresse e-mail permanente — les adresses jetables ne sont pas acceptées.',
+      pwned_password: 'Ce mot de passe est apparu dans des fuites de données. Choisis-en un autre.',
+      account_locked: 'Trop de tentatives. Attends quelques minutes et réessaie.',
+      captcha_failed: 'Impossible de confirmer que tu n’es pas un robot. Recharge et réessaie.',
+      email_suppressed: 'Cet e-mail ne peut pas recevoir de messages (une erreur a été renvoyée auparavant).',
       generic: 'Une erreur est survenue, réessayez',
     },
     billing: {

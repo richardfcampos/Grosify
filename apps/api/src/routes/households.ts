@@ -9,6 +9,7 @@ import { db } from '../db/index.js';
 import { activities, householdInvites, householdMembers, households, user } from '../db/schema.js';
 import { renderInviteEmail, resolveLocale, sendEmail } from '../email/index.js';
 import { logActivity } from '../lib/activity.js';
+import { isSuppressed } from '../lib/email-suppression.js';
 import { rateLimit } from '../middleware/rate-limit.js';
 import { requireSession, type AuthEnv } from '../middleware/session.js';
 import { webBaseUrl } from '../origins.js';
@@ -253,6 +254,8 @@ export const householdsRoute = new Hono<AuthEnv>()
       if (membership.role !== 'owner' && membership.role !== 'admin')
         return c.json({ error: 'forbidden' }, 403);
       const { email } = c.req.valid('json');
+      // não convidar e-mail que já deu bounce/reclamação (protege reputação de envio)
+      if (await isSuppressed(email)) return c.json({ error: 'email_suppressed' }, 422);
       const code = inviteCode();
       const token = randomBytes(32).toString('base64url');
       await db.insert(householdInvites).values({

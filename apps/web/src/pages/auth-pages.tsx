@@ -77,6 +77,26 @@ function safeRedirect(redirect: string | undefined): string {
   return redirect;
 }
 
+// Códigos de erro retornados pelos guards anti-abuso (Better Auth client expõe em err.message).
+const KNOWN_AUTH_ERRORS = [
+  'disposable_email',
+  'pwned_password',
+  'captcha_failed',
+  'account_locked',
+  'rate_limited',
+];
+
+/** Traduz códigos conhecidos (errors.*); senão usa a mensagem de fallback da tela. */
+function authErrorMessage(
+  t: (key: string) => string,
+  err: { message?: string } | null | undefined,
+  fallbackKey: string,
+): string {
+  const code = err?.message;
+  if (typeof code === 'string' && KNOWN_AUTH_ERRORS.includes(code)) return t(`errors.${code}`);
+  return t(fallbackKey);
+}
+
 export function EntrarPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -95,7 +115,7 @@ export function EntrarPage() {
         password: String(form.get('password')),
       });
       if (err) {
-        setError(t('auth.invalidCredentials'));
+        setError(authErrorMessage(t, err, 'auth.invalidCredentials'));
         return;
       }
       navigate({ to: safeRedirect(search.redirect) });
@@ -158,7 +178,7 @@ export function CadastroPage() {
         callbackURL: `${window.location.origin}/verificar-email`,
       });
       if (err) {
-        setError(err.message ?? t('auth.signupFailed'));
+        setError(authErrorMessage(t, err, 'auth.signupFailed'));
         return;
       }
       navigate({ to: safeRedirect(search.redirect) });
