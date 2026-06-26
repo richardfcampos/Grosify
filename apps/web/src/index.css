@@ -11,3 +11,11 @@ body {
   touch-action: manipulation;
   overscroll-behavior: none;
 }
+
+/* Sem arrasto lateral: as transições de tela (translateX) e overflow pontual não podem
+   virar scroll horizontal. `clip` não cria scroll container — não quebra sticky/fixed. */
+html,
+body {
+  overflow-x: clip;
+  overscroll-behavior-x: none;
+}
