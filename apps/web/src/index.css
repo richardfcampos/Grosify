@@ -1,1 +1,13 @@
 @import 'tailwindcss';
+
+/* App-like: sem zoom acidental (double-tap, pinch), sem auto-resize de texto no iOS. */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  touch-action: manipulation;
+}
+
+body {
+  touch-action: manipulation;
+  overscroll-behavior: none;
+}
