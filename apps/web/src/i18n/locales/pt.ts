@@ -136,6 +136,8 @@ export default {
       recurring: 'Recorrente (todo mês)',
       recurringTag: 'Recorrente',
       oneTimeTag: 'Avulsa',
+      private: 'Lista privada (só você vê)',
+      privateTag: 'Privada',
       unassigned: 'Sem responsável',
       budget: 'Orçamento',
       budgetHint: 'Limite de gasto (opcional)',

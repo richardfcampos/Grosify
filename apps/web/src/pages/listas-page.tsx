@@ -67,6 +67,11 @@ export function ListasPage() {
                     {countByList.get(list.id) ?? 0} {t('nav.items').toLowerCase()}
                   </p>
                 </div>
+                {list.isPrivate && (
+                  <Badge tone="neutral" className="shrink-0">
+                    🔒 {t('lists.privateTag')}
+                  </Badge>
+                )}
                 <Badge tone="neutral" className="shrink-0">
                   {list.isRecurring
                     ? t(`lists.recurrenceTag.${list.recurrence ?? 'monthly'}`)
@@ -98,6 +103,7 @@ function NewListSheet({ onClose }: { onClose: () => void }) {
   const [color, setColor] = useState<string | null>(null);
   const [budget, setBudget] = useState('');
   const [isRecurring, setIsRecurring] = useState(false);
+  const [isPrivate, setIsPrivate] = useState(false);
   const [recurrence, setRecurrence] = useState<Recurrence>('monthly');
   const [recurrenceDay, setRecurrenceDay] = useState(1);
   const [busy, setBusy] = useState(false);
@@ -120,6 +126,7 @@ function NewListSheet({ onClose }: { onClose: () => void }) {
     await createList({
       name: name.trim(),
       isRecurring,
+      isPrivate,
       budgetCents,
       icon,
       color,
@@ -192,6 +199,17 @@ function NewListSheet({ onClose }: { onClose: () => void }) {
             style={{ accentColor: 'var(--gro-green)' }}
           />
           <span>{t('lists.recurring')}</span>
+        </label>
+
+        <label className="flex items-center gap-3 py-1">
+          <input
+            type="checkbox"
+            checked={isPrivate}
+            onChange={(e) => setIsPrivate(e.target.checked)}
+            className="h-5 w-5"
+            style={{ accentColor: 'var(--gro-green)' }}
+          />
+          <span>{t('lists.private')}</span>
         </label>
 
         {isRecurring && (

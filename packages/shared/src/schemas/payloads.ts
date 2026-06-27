@@ -137,6 +137,7 @@ export const createListPayload = z.object({
   id: z.uuid(),
   name: z.string().trim().min(1).max(100),
   isRecurring: z.boolean().default(false),
+  isPrivate: z.boolean().default(false),
   budgetCents: budgetCents.nullable().optional(),
   icon: z.string().max(16).nullable().optional(),
   color: z.string().max(16).nullable().optional(),

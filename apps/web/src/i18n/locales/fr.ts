@@ -136,6 +136,8 @@ export default {
       recurring: 'Récurrente (chaque mois)',
       recurringTag: 'Récurrente',
       oneTimeTag: 'Ponctuelle',
+      private: 'Liste privée (visible par vous seul)',
+      privateTag: 'Privée',
       unassigned: 'Non assigné',
       budget: 'Budget',
       budgetHint: 'Limite de dépense (facultatif)',

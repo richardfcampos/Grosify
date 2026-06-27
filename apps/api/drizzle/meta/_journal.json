@@ -169,6 +169,13 @@
       "when": 1782477947079,
       "tag": "0023_groovy_tyger_tiger",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1782529979531,
+      "tag": "0024_normal_brother_voodoo",
+      "breakpoints": true
     }
   ]
 }

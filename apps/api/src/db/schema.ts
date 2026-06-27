@@ -363,6 +363,10 @@ export const shoppingLists = pgTable(
     recurrence: text('recurrence', { enum: ['weekly', 'biweekly', 'monthly'] }),
     /** Dia do ciclo: 0-6 (semana) ou 1-28 (mês). */
     recurrenceDay: integer('recurrence_day'),
+    /** Lista privada: só o dono vê (silo total — não toca o estoque da casa). */
+    isPrivate: boolean('is_private').notNull().default(false),
+    /** Dono da lista privada (null = compartilhada com a casa). */
+    ownerId: text('owner_id').references(() => user.id, { onDelete: 'cascade' }),
     ...syncColumns,
   },
   (t) => [
