@@ -28,6 +28,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.3",
     "@types/node": "^25.9.3",
     "drizzle-kit": "^0.31.10",
     "tsx": "^4.22.4",
