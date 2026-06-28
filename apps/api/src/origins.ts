@@ -11,6 +11,9 @@ const configured = (process.env.WEB_ORIGIN ?? 'http://localhost:5174,http://loca
 const isDev = process.env.NODE_ENV !== 'production';
 const localhostRe = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
 
+/** Origem primária do web — base dos links montados no servidor (ex.: convite por e-mail). */
+export const webBaseUrl = configured[0] ?? 'http://localhost:5174';
+
 export function isAllowedOrigin(origin: string | undefined): boolean {
   if (!origin) return false;
   if (configured.includes(origin)) return true;

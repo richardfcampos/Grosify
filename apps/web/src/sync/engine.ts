@@ -16,6 +16,7 @@ const HOUSEHOLD_KEY = 'householdId';
 let currentHouseholdId = '';
 let syncing = false;
 let started = false;
+let stream: EventSource | null = null;
 
 export function householdId(): string {
   return currentHouseholdId;
@@ -88,9 +89,13 @@ export async function clearLocalData(): Promise<void> {
  */
 export async function initHousehold(id: string): Promise<void> {
   const prev = await db.meta.get(HOUSEHOLD_KEY);
-  if (prev?.value && prev.value !== id) await clearLocalData();
+  const changed = Boolean(prev?.value && prev.value !== id);
+  if (changed) await clearLocalData();
   await db.meta.put({ key: HOUSEHOLD_KEY, value: id });
   currentHouseholdId = id;
+  // Trocou de casa com o sync já rodando: reconecta o SSE pra "poke" seguir a casa nova
+  // (o stream prende na casa ativa no momento da conexão). No primeiro load, startSync conecta.
+  if (changed && started) connectStream();
 }
 
 /** Enfileira uma mutação e tenta sincronizar (se online). */
@@ -297,6 +302,18 @@ export async function syncNow(): Promise<void> {
   }
 }
 
+/** (Re)conecta o SSE de "poke" da casa ativa. Fecha a conexão anterior, se houver. */
+function connectStream(): void {
+  try {
+    stream?.close();
+    stream = new EventSource(`${API_URL}/sync/stream`, { withCredentials: true });
+    stream.addEventListener('poke', () => void syncNow());
+  } catch {
+    // SSE indisponível — segue com os gatilhos por tempo/foco
+    stream = null;
+  }
+}
+
 /** Liga gatilhos: online, foco/visível, 30s. Idempotente. */
 export function startSync(): void {
   if (started) return;
@@ -309,13 +326,7 @@ export function startSync(): void {
     if (document.visibilityState === 'visible') tick();
   });
   setInterval(tick, 30_000);
-  // SSE: servidor "poka" quando outro membro muda algo → sincroniza na hora
-  try {
-    const es = new EventSource(`${API_URL}/sync/stream`, { withCredentials: true });
-    es.addEventListener('poke', () => void syncNow());
-  } catch {
-    // SSE indisponível — segue com os gatilhos por tempo/foco
-  }
+  connectStream(); // SSE: servidor "poka" quando outro membro muda algo → sincroniza na hora
   tick();
 }
 

@@ -1,7 +1,8 @@
-import { and, eq, gt } from 'drizzle-orm';
+import { and, eq, gt, notInArray } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { db } from '../db/index.js';
+import { hiddenListIds, hiddenSessionIds } from '../lib/list-privacy.js';
 import {
   categories,
   inventoryCounts,
@@ -46,14 +47,30 @@ export const syncRoute = new Hono<HouseholdEnv>()
    */
   .get('/pull', async (c) => {
     const hid = c.get('householdId');
+    const userId = c.get('user').id;
     const cursor = Number(c.req.query('cursor') ?? 0);
+
+    // SILO: o servidor nunca entrega lista privada de OUTRO membro — nem a lista, nem
+    // suas entradas, nem suas sessões/itens de compra. Esta é a fronteira de privacidade.
+    const hidden = await hiddenListIds(hid, userId);
+    const hiddenSess = await hiddenSessionIds(hid, hidden);
+    const privacyFilter = (name: string) => {
+      if (name === 'shopping_lists' && hidden.length) return notInArray(shoppingLists.id, hidden);
+      if (name === 'shopping_list_entries' && hidden.length)
+        return notInArray(shoppingListEntries.listId, hidden);
+      if (name === 'shopping_sessions' && hiddenSess.length)
+        return notInArray(shoppingSessions.id, hiddenSess);
+      if (name === 'shopping_session_items' && hiddenSess.length)
+        return notInArray(shoppingSessionItems.sessionId, hiddenSess);
+      return undefined;
+    };
 
     const entries = await Promise.all(
       Object.entries(TABLES).map(async ([name, table]) => {
         const rows = await db
           .select()
           .from(table)
-          .where(and(eq(table.householdId, hid), gt(table.serverVersion, cursor)));
+          .where(and(eq(table.householdId, hid), gt(table.serverVersion, cursor), privacyFilter(name)));
         return [name, rows] as const;
       }),
     );

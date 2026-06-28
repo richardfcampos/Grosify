@@ -1,8 +1,9 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { createMiddleware } from 'hono/factory';
 import { auth } from '../auth.js';
 import { db } from '../db/index.js';
 import { householdMembers, households } from '../db/schema.js';
+import { resolveActiveHouseholdId } from '../lib/active-household.js';
 import { pokeHousehold } from '../lib/poke.js';
 import type { AuthEnv } from './session.js';
 
@@ -26,6 +27,10 @@ export const requireHousehold = createMiddleware<HouseholdEnv>(async (c, next) =
   c.set('user', sessionData.user);
   c.set('session', sessionData.session);
 
+  // Casa ATIVA (multi-casa) — resolvida do servidor, nunca do body.
+  const activeId = await resolveActiveHouseholdId(sessionData.user.id);
+  if (!activeId) return c.json({ error: 'no_household' }, 403);
+
   const rows = await db
     .select({
       householdId: householdMembers.householdId,
@@ -34,7 +39,9 @@ export const requireHousehold = createMiddleware<HouseholdEnv>(async (c, next) =
     })
     .from(householdMembers)
     .innerJoin(households, eq(households.id, householdMembers.householdId))
-    .where(eq(householdMembers.userId, sessionData.user.id))
+    .where(
+      and(eq(householdMembers.userId, sessionData.user.id), eq(householdMembers.householdId, activeId)),
+    )
     .limit(1);
 
   const membership = rows[0];

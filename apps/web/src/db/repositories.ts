@@ -373,6 +373,7 @@ export async function deleteStore(id: string): Promise<void> {
 export interface NewListInput {
   name: string;
   isRecurring: boolean;
+  isPrivate?: boolean;
   budgetCents?: number | null;
   icon?: string | null;
   color?: string | null;
@@ -382,10 +383,12 @@ export interface NewListInput {
 
 export async function createList(input: NewListInput): Promise<string> {
   const id = uuidv7();
+  const isPrivate = input.isPrivate ?? false;
   const body = {
     id,
     name: input.name,
     isRecurring: input.isRecurring,
+    isPrivate,
     budgetCents: input.budgetCents ?? null,
     icon: input.icon ?? null,
     color: input.color ?? null,
@@ -394,6 +397,8 @@ export async function createList(input: NewListInput): Promise<string> {
   };
   await db.lists.put({
     ...body,
+    // ownerId real vem do servidor no próximo pull; localmente basta o flag pro silo
+    ownerId: null,
     householdId: hid(),
     updatedAt: nowISO(),
     deletedAt: null,
@@ -797,20 +802,28 @@ export async function setSessionReceipt(sessionId: string, blob: Blob): Promise<
 
 export async function completeSession(sessionId: string): Promise<void> {
   const ts = nowISO();
-  // o que foi comprado volta para o estoque de casa
-  const bought = await db.sessionItems
-    .where('sessionId')
-    .equals(sessionId)
-    .filter((s) => s.deletedAt === null && s.checkedAt != null && s.actualQty != null)
-    .toArray();
-  for (const si of bought) {
-    const inv = await db.inventory
-      .where('itemId')
-      .equals(si.itemId)
-      .and((i) => i.deletedAt === null)
-      .first();
-    const current = inv ? Number(inv.qtyOnHand) : 0;
-    await addStock(si.itemId, round3(current + Number(si.actualQty)));
+  // SILO: compra de lista PRIVADA não toca o estoque compartilhado da casa
+  // (senão o movimento de estoque vazaria a compra pros outros membros).
+  const session = await db.sessions.get(sessionId);
+  const list = session?.listId ? await db.lists.get(session.listId) : null;
+  const isPrivate = list?.isPrivate ?? false;
+
+  if (!isPrivate) {
+    // o que foi comprado volta para o estoque de casa
+    const bought = await db.sessionItems
+      .where('sessionId')
+      .equals(sessionId)
+      .filter((s) => s.deletedAt === null && s.checkedAt != null && s.actualQty != null)
+      .toArray();
+    for (const si of bought) {
+      const inv = await db.inventory
+        .where('itemId')
+        .equals(si.itemId)
+        .and((i) => i.deletedAt === null)
+        .first();
+      const current = inv ? Number(inv.qtyOnHand) : 0;
+      await addStock(si.itemId, round3(current + Number(si.actualQty)));
+    }
   }
   await db.sessions.update(sessionId, { status: 'completed', completedAt: ts, updatedAt: ts });
   await enqueue({
