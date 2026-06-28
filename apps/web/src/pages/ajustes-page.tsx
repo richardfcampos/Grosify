@@ -40,6 +40,7 @@ export function AjustesPage() {
   const [copied, setCopied] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [emailSent, setEmailSent] = useState<string | null>(null);
+  const [inviteError, setInviteError] = useState<string | null>(null);
   const syncState = useSyncExternalStore(subscribeSync, getSyncState);
   const restoreRef = useRef<HTMLInputElement>(null);
   const { mode, dir, setMode, setDir } = useTheme();
@@ -65,25 +66,40 @@ export function AjustesPage() {
     }
   }
 
+  // mapeia o código de erro da API (ex.: email_not_verified) p/ mensagem traduzida
+  const inviteErrMsg = (code: string) => t(`errors.${code}`, { defaultValue: t('errors.generic') });
+
   const invite = useMutation({
     mutationFn: async () => {
       const res = await api.households.invites.$post();
-      if (!res.ok) throw new Error('invite_failed');
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(body.error ?? 'generic');
+      }
       return res.json();
     },
-    onSuccess: (data) => setInviteUrl(`${window.location.origin}/convite/${data.code}`),
+    onSuccess: (data) => {
+      setInviteError(null);
+      setInviteUrl(`${window.location.origin}/convite/${data.code}`);
+    },
+    onError: (e: Error) => setInviteError(inviteErrMsg(e.message)),
   });
 
   const inviteByEmail = useMutation({
     mutationFn: async (email: string) => {
       const res = await api.households.invites.email.$post({ json: { email } });
-      if (!res.ok) throw new Error('invite_failed');
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(body.error ?? 'generic');
+      }
       return res.json();
     },
     onSuccess: (_data, email) => {
+      setInviteError(null);
       setEmailSent(email);
       setInviteEmail('');
     },
+    onError: (e: Error) => setInviteError(inviteErrMsg(e.message)),
   });
 
   async function onExport() {
@@ -284,6 +300,12 @@ export function AjustesPage() {
               {inviteByEmail.isPending ? t('auth.sending') : t('household.inviteEmailCta')}
             </Button>
           </form>
+        )}
+
+        {inviteError && (
+          <p className="mt-2 text-sm" style={{ color: 'var(--gro-red)' }}>
+            {inviteError}
+          </p>
         )}
 
         {/* ou compartilhe um link com código */}

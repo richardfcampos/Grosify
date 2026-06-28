@@ -271,6 +271,7 @@ export default {
       account_locked: 'Too many attempts. Wait a few minutes and try again.',
       captcha_failed: "Couldn't confirm you're not a robot. Reload and try again.",
       email_suppressed: "That email can't receive messages (it bounced before).",
+      email_not_verified: 'Verify your email before inviting anyone.',
       generic: 'Something went wrong, please try again',
     },
     billing: {

@@ -41,7 +41,7 @@ export async function authGuardSignup(c: Context): Promise<Response> {
   const email = String(body.email ?? '').toLowerCase();
   const password = String(body.password ?? '');
 
-  if (!(await verifyTurnstile(body.turnstileToken as string | undefined, clientIp(c)))) {
+  if (!(await verifyTurnstile(c.req.header('x-turnstile-token'), clientIp(c)))) {
     return c.json({ message: 'captcha_failed', code: 'captcha_failed' }, 403);
   }
   if (email && isDisposableEmail(email)) {
@@ -51,6 +51,14 @@ export async function authGuardSignup(c: Context): Promise<Response> {
     return c.json({ message: 'pwned_password', code: 'pwned_password' }, 422);
   }
   return auth.handler(forward);
+}
+
+/** Pedido de reset (esqueci-senha): só Turnstile (sem corpo sensível). */
+export async function authGuardRequestReset(c: Context): Promise<Response> {
+  if (!(await verifyTurnstile(c.req.header('x-turnstile-token'), clientIp(c)))) {
+    return c.json({ message: 'captcha_failed', code: 'captcha_failed' }, 403);
+  }
+  return auth.handler(c.req.raw);
 }
 
 export async function authGuardReset(c: Context): Promise<Response> {
@@ -66,7 +74,7 @@ export async function authGuardSignin(c: Context): Promise<Response> {
   const { forward, body } = await readBody(c);
   const email = String(body.email ?? '').toLowerCase();
 
-  if (!(await verifyTurnstile(body.turnstileToken as string | undefined, clientIp(c)))) {
+  if (!(await verifyTurnstile(c.req.header('x-turnstile-token'), clientIp(c)))) {
     return c.json({ message: 'captcha_failed', code: 'captcha_failed' }, 403);
   }
   if (email) {

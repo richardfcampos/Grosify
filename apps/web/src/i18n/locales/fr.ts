@@ -271,6 +271,7 @@ export default {
       account_locked: 'Trop de tentatives. Attends quelques minutes et réessaie.',
       captcha_failed: 'Impossible de confirmer que tu n’es pas un robot. Recharge et réessaie.',
       email_suppressed: 'Cet e-mail ne peut pas recevoir de messages (une erreur a été renvoyée auparavant).',
+      email_not_verified: 'Vérifie ton e-mail avant d’inviter quelqu’un.',
       generic: 'Une erreur est survenue, réessayez',
     },
     billing: {

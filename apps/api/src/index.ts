@@ -3,7 +3,12 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { auth } from './auth.js';
-import { authGuardReset, authGuardSignin, authGuardSignup } from './auth-guards.js';
+import {
+  authGuardRequestReset,
+  authGuardReset,
+  authGuardSignin,
+  authGuardSignup,
+} from './auth-guards.js';
 import { rateLimit } from './middleware/rate-limit.js';
 import { catalogRoute } from './routes/catalog.js';
 import { webhooksRoute } from './routes/webhooks.js';
@@ -22,7 +27,10 @@ const app = new Hono()
       origin: (origin) => (isAllowedOrigin(origin) ? origin : null),
       credentials: true,
       allowMethods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
-      allowHeaders: ['Content-Type', 'Authorization'],
+      // x-turnstile-token: header custom enviado nas chamadas de auth (login/cadastro/reset).
+      // Sem ele no allowlist, o preflight CORS barra TODA chamada de auth (o cors do Hono
+      // usa a lista estática, não reflete o Access-Control-Request-Headers).
+      allowHeaders: ['Content-Type', 'Authorization', 'x-turnstile-token'],
     }),
   )
   .get('/health', (c) => c.json({ ok: true }))
@@ -31,6 +39,7 @@ const app = new Hono()
   // casa a rota estática mais específica e o handler retorna Response, encerrando a cadeia).
   .post('/api/auth/sign-up/email', authGuardSignup)
   .post('/api/auth/sign-in/email', authGuardSignin)
+  .post('/api/auth/request-password-reset', authGuardRequestReset)
   .post('/api/auth/reset-password', authGuardReset)
   .on(['GET', 'POST'], '/api/auth/*', (c) => auth.handler(c.req.raw))
   .route('/webhooks', webhooksRoute)

@@ -2,6 +2,7 @@ import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../features/ui/index.js';
+import { Turnstile, turnstileEnabled } from '../features/auth/turnstile.js';
 import { requestPasswordReset, resetPassword } from '../lib/auth-client.js';
 import { AuthShell, Field } from './auth-pages.js';
 
@@ -11,6 +12,7 @@ export function EsqueciSenhaPage() {
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tsToken, setTsToken] = useState('');
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -20,7 +22,10 @@ export function EsqueciSenhaPage() {
     try {
       // Resposta é genérica no servidor; ignoramos o resultado de propósito (não
       // revela se a conta existe). Só erro de REDE vira mensagem.
-      await requestPasswordReset({ email, redirectTo: `${window.location.origin}/redefinir-senha` });
+      await requestPasswordReset(
+        { email, redirectTo: `${window.location.origin}/redefinir-senha` },
+        { headers: { 'x-turnstile-token': tsToken } },
+      );
       setSent(true);
     } catch {
       setError(t('auth.networkError'));
@@ -38,12 +43,20 @@ export function EsqueciSenhaPage() {
       ) : (
         <form onSubmit={onSubmit} className="flex flex-col gap-3.5">
           <Field label={t('auth.email')} name="email" type="email" placeholder="voce@email.com" mono required />
+          <Turnstile onToken={setTsToken} />
           {error && (
             <p className="text-sm" style={{ color: 'var(--gro-red)' }}>
               {error}
             </p>
           )}
-          <Button variant="primary" size="lg" fullWidth type="submit" disabled={busy} className="mt-1.5">
+          <Button
+            variant="primary"
+            size="lg"
+            fullWidth
+            type="submit"
+            disabled={busy || (turnstileEnabled && !tsToken)}
+            className="mt-1.5"
+          >
             {busy ? t('auth.sending') : t('auth.forgotCta')}
           </Button>
         </form>

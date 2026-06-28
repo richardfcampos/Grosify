@@ -262,6 +262,8 @@ export const householdsRoute = new Hono<AuthEnv>()
     }
     if (membership.role !== 'owner' && membership.role !== 'admin')
       return c.json({ error: 'forbidden' }, 403);
+    // só quem verificou o e-mail pode convidar (corta abuso de conta não-verificada)
+    if (!c.get('user').emailVerified) return c.json({ error: 'email_not_verified' }, 403);
     const code = inviteCode();
     await db.insert(householdInvites).values({
       code,
@@ -283,6 +285,7 @@ export const householdsRoute = new Hono<AuthEnv>()
       if (!membership) return c.json({ error: 'no_household' }, 403);
       if (membership.role !== 'owner' && membership.role !== 'admin')
         return c.json({ error: 'forbidden' }, 403);
+      if (!c.get('user').emailVerified) return c.json({ error: 'email_not_verified' }, 403);
       const { email } = c.req.valid('json');
       // não convidar e-mail que já deu bounce/reclamação (protege reputação de envio)
       if (await isSuppressed(email)) return c.json({ error: 'email_suppressed' }, 422);

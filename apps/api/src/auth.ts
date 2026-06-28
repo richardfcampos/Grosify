@@ -21,9 +21,11 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     // SOFT: login é permitido sem verificar; verificação gateia ações de confiança
-    // (criar/aceitar convite) — feito nas rotas, não aqui.
+    // (criar convite) — feito nas rotas, não aqui.
     requireEmailVerification: false,
     resetPasswordTokenExpiresIn: RESET_TTL_SEC,
+    // trocar a senha derruba todas as sessões antigas (segurança)
+    revokeSessionsOnPasswordReset: true,
     // Envio de email é fire-and-forget no Better Auth; falha é logada, nunca 500 ao usuário.
     // `forgetPassword` sempre responde genérico (anti-enumeration) independente de envio.
     sendResetPassword: async ({ user, url }, request) => {
