@@ -15,6 +15,7 @@ import { and, eq, isNull } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { db } from '../db/index.js';
 import { logActivity } from '../lib/activity.js';
+import { isForeignKeyViolation } from '../lib/pg-errors.js';
 import {
   inventoryCounts,
   priceRecords,
@@ -98,29 +99,37 @@ export const shoppingRoute = new Hono<HouseholdEnv>()
     const hid = c.get('householdId');
     const listId = c.req.param('id');
     const p = c.req.valid('json');
-    const [entry] = await db
-      .insert(shoppingListEntries)
-      .values({
-        id: p.id,
-        householdId: hid,
-        listId,
-        itemId: p.itemId,
-        qty: String(p.qty),
-        assignedTo: p.assignedTo ?? null,
-        assignedToName: p.assignedToName ?? null,
-      })
-      .onConflictDoUpdate({
-        target: [shoppingListEntries.listId, shoppingListEntries.itemId],
-        set: {
+    try {
+      const [entry] = await db
+        .insert(shoppingListEntries)
+        .values({
+          id: p.id,
+          householdId: hid,
+          listId,
+          itemId: p.itemId,
           qty: String(p.qty),
-          ...(p.assignedTo !== undefined ? { assignedTo: p.assignedTo } : {}),
-          ...(p.assignedToName !== undefined ? { assignedToName: p.assignedToName } : {}),
-          deletedAt: null,
-          updatedAt: new Date(),
-        },
-      })
-      .returning();
-    return c.json({ entry }, 201);
+          assignedTo: p.assignedTo ?? null,
+          assignedToName: p.assignedToName ?? null,
+        })
+        .onConflictDoUpdate({
+          target: [shoppingListEntries.listId, shoppingListEntries.itemId],
+          set: {
+            qty: String(p.qty),
+            ...(p.assignedTo !== undefined ? { assignedTo: p.assignedTo } : {}),
+            ...(p.assignedToName !== undefined ? { assignedToName: p.assignedToName } : {}),
+            deletedAt: null,
+            updatedAt: new Date(),
+          },
+        })
+        .returning();
+      return c.json({ entry }, 201);
+    } catch (err) {
+      // A lista ou o item referenciado não existe no servidor (ex.: POST do item foi
+      // rejeitado antes — limite de plano/barcode duplicado). FK é determinística:
+      // 500 faria a outbox do client retentar pra sempre e travar a fila inteira.
+      if (isForeignKeyViolation(err)) return c.json({ error: 'entry_ref_missing' }, 409);
+      throw err;
+    }
   })
 
   .delete('/lists/entries/:id', async (c) => {
