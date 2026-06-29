@@ -64,7 +64,7 @@ export function PriceScanModal({ onDetect, onClose }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-stone-950 text-stone-50">
+    <div className="fixed inset-0 z-[60] flex flex-col bg-stone-950 text-stone-50">
       <header className="flex items-center justify-between px-5 py-4">
         <h2 className="text-lg font-semibold">{t('priceScan.title')}</h2>
         <button onClick={onClose} className="min-h-11 px-3 text-sm font-medium text-stone-300">
