@@ -310,6 +310,8 @@ export default {
       syncing: 'Synchronisation…',
       synced: 'Synchronisé ✓',
       error: 'Erreur de synchro',
+      stuck_one: '{{count}} bloqué · touchez pour renvoyer',
+      stuck_other: '{{count}} bloqués · touchez pour renvoyer',
     },
     categories: {
       title: 'Catégories',

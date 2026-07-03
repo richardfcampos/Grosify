@@ -6,9 +6,11 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  deadLetterCount,
   getSyncState,
   initHousehold,
   pendingCount,
+  retryDeadLetters,
   startSync,
   subscribeSync,
   syncNow,
@@ -41,6 +43,7 @@ export function AppLayout() {
   const queryClient = useQueryClient();
   const [online, setOnline] = useState(navigator.onLine);
   const pending = useLiveQuery(() => pendingCount(), [], 0);
+  const dead = useLiveQuery(() => deadLetterCount(), [], 0);
   const syncState = useSyncExternalStore(subscribeSync, getSyncState);
   const [onbDone, setOnbDone] = useState(false); // marcado nesta sessão após terminar/pular
 
@@ -124,7 +127,13 @@ export function AppLayout() {
         </div>
         <BottomNav isActive={isActive} />
       </div>
-      <SyncChip online={online} state={syncState} pending={pending} showSynced={showSynced} />
+      <SyncChip
+        online={online}
+        state={syncState}
+        pending={pending}
+        dead={dead}
+        showSynced={showSynced}
+      />
     </div>
   );
 }
@@ -311,11 +320,13 @@ function SyncChip({
   online,
   state,
   pending,
+  dead,
   showSynced,
 }: {
   online: boolean;
   state: ReturnType<typeof getSyncState>;
   pending: number;
+  dead: number;
   showSynced: boolean;
 }) {
   const { t } = useTranslation();
@@ -332,6 +343,11 @@ function SyncChip({
     label = t('sync.error');
     tone = 'error';
     onClick = () => void syncNow();
+  } else if (dead > 0) {
+    // fila limpa mas há mutações no dead-letter: mostra e permite reprocessar
+    label = t('sync.stuck', { count: dead });
+    tone = 'error';
+    onClick = () => void retryDeadLetters();
   } else if (pending > 0) {
     label = t('sync.pending', { count: pending });
     onClick = () => void syncNow();
