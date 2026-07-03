@@ -43,6 +43,26 @@ export interface OutboxEntry {
   body?: unknown;
   /** id da linha afetada (pra proteger contra clobber no pull). */
   rowId: string;
+  /** Tentativas de replay que falharam com 5xx (pra dar dead-letter em poison). */
+  attempts?: number;
+}
+
+/**
+ * Mutação que falhou com 5xx além do limite de tentativas (poison). Sai da fila
+ * ativa pra não travar as independentes, mas fica guardada aqui — recuperável via
+ * retry manual, nunca descartada em silêncio.
+ */
+export interface DeadLetterEntry {
+  seq?: number;
+  method: 'POST' | 'PATCH' | 'PUT' | 'DELETE';
+  path: string;
+  body?: unknown;
+  rowId: string;
+  /** Último status HTTP recebido. */
+  status: number;
+  attempts: number;
+  /** ISO de quando foi movida pra cá. */
+  failedAt: string;
 }
 
 export interface MetaEntry {
@@ -65,6 +85,7 @@ const db = new Dexie('grosify') as Dexie & {
   sessions: EntityTable<LocalSession, 'id'>;
   sessionItems: EntityTable<LocalSessionItem, 'id'>;
   outbox: EntityTable<OutboxEntry, 'seq'>;
+  deadLetter: EntityTable<DeadLetterEntry, 'seq'>;
   meta: EntityTable<MetaEntry, 'key'>;
 };
 
@@ -173,6 +194,25 @@ db.version(8).stores({
   sessions: 'id, householdId, status, deletedAt',
   sessionItems: 'id, householdId, sessionId, itemId, deletedAt',
   outbox: '++seq, rowId',
+  meta: 'key',
+});
+
+db.version(9).stores({
+  items: 'id, householdId, name, category, categoryId, deletedAt',
+  categories: 'id, householdId, sortOrder, deletedAt',
+  barcodes: 'id, householdId, itemId, barcode, deletedAt',
+  brands: 'id, householdId, itemId, deletedAt',
+  comments: 'id, householdId, itemId, deletedAt',
+  stores: 'id, householdId, name, deletedAt',
+  prices: 'id, householdId, itemId, storeId, deletedAt',
+  lists: 'id, householdId, deletedAt',
+  listEntries: 'id, householdId, listId, itemId, deletedAt',
+  inventory: 'id, householdId, itemId, deletedAt',
+  movements: 'id, householdId, itemId, deletedAt',
+  sessions: 'id, householdId, status, deletedAt',
+  sessionItems: 'id, householdId, sessionId, itemId, deletedAt',
+  outbox: '++seq, rowId',
+  deadLetter: '++seq, rowId',
   meta: 'key',
 });
 

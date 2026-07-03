@@ -58,6 +58,7 @@ export async function clearLocalData(): Promise<void> {
       db.sessions,
       db.sessionItems,
       db.outbox,
+      db.deadLetter,
       db.meta,
     ],
     async () => {
@@ -76,6 +77,7 @@ export async function clearLocalData(): Promise<void> {
         db.sessions.clear(),
         db.sessionItems.clear(),
         db.outbox.clear(),
+        db.deadLetter.clear(),
         db.meta.clear(),
       ]);
     },
@@ -107,12 +109,21 @@ async function setCursor(value: number): Promise<void> {
   await db.meta.put({ key: CURSOR_KEY, value: String(value) });
 }
 
+/** Tentativas de replay (5xx) antes de mandar a entry pro dead-letter. */
+const MAX_OUTBOX_ATTEMPTS = 5;
+
 /**
- * Replica a outbox em ordem; para na primeira falha de rede (mantém fila).
- * Retorna false se algo retryável (rede/5xx) impediu drenar tudo.
+ * Replica a outbox em ordem. Offline (fetch lança) → para e mantém tudo pra depois.
+ * 5xx numa entry: conta a tentativa e SEGUE pras próximas — uma entry presa não pode
+ * travar as independentes (head-of-line). Após MAX tentativas, move pro dead-letter e
+ * tira da fila ativa, pra uma mutação determinísticamente quebrada (ex.: referência
+ * órfã num servidor sem o fix) não bloquear o sync pra sempre. Nada é descartado: o
+ * dead-letter é recuperável via retryDeadLetters.
+ * Retorna false se algo ficou pendente/falhou (mantém o estado 'error' na UI).
  */
 async function drainOutbox(): Promise<boolean> {
   const entries = await db.outbox.orderBy('seq').toArray();
+  let allClean = true;
   for (const entry of entries) {
     let res: Response;
     try {
@@ -123,13 +134,34 @@ async function drainOutbox(): Promise<boolean> {
         credentials: 'include',
       });
     } catch {
-      return false; // offline: tenta de novo depois
+      return false; // offline: para e tenta tudo de novo depois
     }
-    if (res.status >= 500) return false; // erro de servidor: mantém pra retry
+    if (res.status >= 500) {
+      const attempts = (entry.attempts ?? 0) + 1;
+      if (attempts >= MAX_OUTBOX_ATTEMPTS) {
+        // poison: sai da fila ativa pra não travar o resto; guardada pra retry manual
+        await db.transaction('rw', [db.outbox, db.deadLetter], async () => {
+          await db.deadLetter.add({
+            method: entry.method,
+            path: entry.path,
+            body: entry.body,
+            rowId: entry.rowId,
+            status: res.status,
+            attempts,
+            failedAt: new Date().toISOString(),
+          });
+          await db.outbox.delete(entry.seq!);
+        });
+      } else {
+        await db.outbox.update(entry.seq!, { attempts });
+      }
+      allClean = false;
+      continue; // segue pras próximas: as independentes drenam mesmo com esta falhando
+    }
     // 2xx (sucesso) ou 4xx (rejeição definitiva: limite/validação) → remove da fila
     await db.outbox.delete(entry.seq!);
   }
-  return true;
+  return allClean;
 }
 
 function num<T extends { qty?: unknown; qtyOnHand?: unknown }>(row: T): T {
@@ -322,4 +354,25 @@ export function startSync(): void {
 /** Conta de mutações pendentes (pra UI de status). */
 export function pendingCount() {
   return db.outbox.count();
+}
+
+/** Conta de mutações no dead-letter (poison que saiu da fila ativa). */
+export function deadLetterCount() {
+  return db.deadLetter.count();
+}
+
+/**
+ * Recoloca os dead-letters na outbox (zerando as tentativas) e sincroniza. Uso: depois
+ * de corrigir a causa no servidor (ex.: deploy do fix), reprocessar o que foi barrado.
+ */
+export async function retryDeadLetters(): Promise<void> {
+  const dead = await db.deadLetter.orderBy('seq').toArray();
+  if (dead.length === 0) return;
+  await db.transaction('rw', [db.deadLetter, db.outbox], async () => {
+    for (const d of dead) {
+      await db.outbox.add({ method: d.method, path: d.path, body: d.body, rowId: d.rowId });
+    }
+    await db.deadLetter.clear();
+  });
+  if (navigator.onLine) void syncNow();
 }

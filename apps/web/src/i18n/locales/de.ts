@@ -310,6 +310,8 @@ export default {
       syncing: 'Synchronisiere…',
       synced: 'Synchronisiert ✓',
       error: 'Sync-Fehler',
+      stuck_one: '{{count}} hängt · tippen zum Erneut-Senden',
+      stuck_other: '{{count}} hängen · tippen zum Erneut-Senden',
     },
     categories: {
       title: 'Kategorien',

@@ -310,6 +310,8 @@ export default {
       syncing: 'Syncing…',
       synced: 'Synced ✓',
       error: 'Sync error',
+      stuck_one: '{{count}} stuck · tap to resend',
+      stuck_other: '{{count}} stuck · tap to resend',
     },
     categories: {
       title: 'Categories',
