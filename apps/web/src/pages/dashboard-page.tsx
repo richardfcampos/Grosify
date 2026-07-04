@@ -7,7 +7,7 @@ import {
 } from '@grosify/shared';
 import { Link, Navigate, useNavigate } from '@tanstack/react-router';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   db,
@@ -25,6 +25,7 @@ import {
   SectionTitle,
   useMoneyParts,
 } from '../features/ui/index.js';
+import { HouseholdSwitcher } from '../features/catalog/household-switcher.js';
 import { useSession } from '../lib/auth-client.js';
 import { useFormatMoney } from '../lib/use-currency.js';
 import { useMembership } from '../lib/use-membership.js';
@@ -43,6 +44,7 @@ export function DashboardPage() {
   const money = useMoneyParts();
   const { data: session, isPending } = useSession();
   const membership = useMembership(!!session);
+  const [housesOpen, setHousesOpen] = useState(false);
 
   const lists = useLiveQuery(
     () => db.lists.filter((l) => l.deletedAt === null && l.isRecurring).toArray(),
@@ -160,8 +162,16 @@ export function DashboardPage() {
   return (
     <main className="screen-in flex flex-col gap-5 px-[18px] py-6">
       <header className="flex items-center gap-2.5">
-        <img src="/icon.svg" alt="" className="h-[30px] w-[30px] flex-none" />
-        <span className="text-[17px] font-bold tracking-tight">{membership.data.name}</span>
+        <button
+          type="button"
+          onClick={() => setHousesOpen(true)}
+          aria-label={t('household.yourHouses')}
+          className="-m-1 flex items-center gap-2.5 rounded-lg p-1"
+        >
+          <img src="/icon.svg" alt="" className="h-[30px] w-[30px] flex-none" />
+          <span className="text-[17px] font-bold tracking-tight">{membership.data.name}</span>
+          <Icon name="chev" size={18} className="text-[var(--app-gray)]" />
+        </button>
         <div className="flex-1" />
         <Link to="/historico" aria-label={t('history.title')} className="flex p-1 text-[var(--app-gray)]">
           <Icon name="clock" size={22} />
@@ -255,6 +265,19 @@ export function DashboardPage() {
           >
             {t('restock.doInventory')}
           </Link>
+        </div>
+      )}
+
+      {housesOpen && (
+        <div className="gro-sheet-backdrop" onClick={() => setHousesOpen(false)}>
+          <div onClick={(e) => e.stopPropagation()} className="gro-sheet-panel flex flex-col gap-4">
+            <div className="gro-sheet-grip" />
+            <div className="kicker">{t('household.yourHouses')}</div>
+            <HouseholdSwitcher />
+            <button onClick={() => setHousesOpen(false)} className="muted self-center text-sm">
+              {t('common.cancel')}
+            </button>
+          </div>
         </div>
       )}
     </main>
