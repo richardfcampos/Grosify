@@ -106,11 +106,17 @@ export function AppLayout() {
     );
   }
 
+  // Trocar de casa é a mesma rota ('/'), então a página não remonta sozinha e os
+  // useLiveQuery montados seguem presos ao contexto da casa antiga (só um refresh
+  // manual corrigia). Chavear pelo householdId remonta a subárvore roteada na troca,
+  // relendo o Dexie já populado pelo pull da casa nova.
+  const outletKey = membership.data.householdId;
+
   // Fluxo de compra (revisar + modo compra) é fullscreen, sem chrome: a nav inferior
   // fixa cobre/disputa o CTA fixo do rodapé ("Começar"/"Finalizar"). Cada tela tem o
   // próprio botão de voltar.
   if (location.pathname.startsWith('/compra') || location.pathname.endsWith('/comprar'))
-    return <Outlet />;
+    return <Outlet key={outletKey} />;
 
   const isActive = (to: string) =>
     to === '/' ? location.pathname === '/' : location.pathname.startsWith(to);
@@ -124,7 +130,7 @@ export function AppLayout() {
           style={{ viewTransitionName: 'app-content' }}
         >
           <VerifyBanner email={session.user.email} verified={session.user.emailVerified} />
-          <Outlet />
+          <Outlet key={outletKey} />
         </div>
         <BottomNav isActive={isActive} />
       </div>
