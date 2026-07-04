@@ -1,1 +1,22 @@
 @import 'tailwindcss';
+
+/* App-like: sem zoom acidental (double-tap, pinch), sem auto-resize de texto no iOS. */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  overscroll-behavior: none;
+}
+
+/* Só pan vertical: mata o arrasto lateral do browser (rubber-band horizontal) e tb
+   double-tap/pinch. Swipe do Modo Compra mede clientX em touchstart/end — não depende
+   de touch-action, então continua. `overflow-x: clip` apara qualquer overflow sub-pixel
+   sem criar scroll container (não quebra sticky/fixed da bottom nav). */
+html,
+body {
+  touch-action: pan-y;
+  overflow-x: clip;
+  overscroll-behavior-x: none;
+}
