@@ -3,8 +3,9 @@ import { useState, type FormEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../features/ui/index.js';
 import { signIn, signUp } from '../lib/auth-client.js';
+import { Turnstile, turnstileEnabled } from '../features/auth/turnstile.js';
 
-function AuthShell({ title, children }: { title: string; children: ReactNode }) {
+export function AuthShell({ title, children }: { title: string; children: ReactNode }) {
   const { t } = useTranslation();
   return (
     <main
@@ -39,7 +40,7 @@ function AuthShell({ title, children }: { title: string; children: ReactNode }) 
 }
 
 /** Campo com rótulo kicker + input no estilo do design system. */
-function Field({
+export function Field({
   label,
   name,
   type = 'text',
@@ -77,12 +78,33 @@ function safeRedirect(redirect: string | undefined): string {
   return redirect;
 }
 
+// Códigos de erro retornados pelos guards anti-abuso (Better Auth client expõe em err.message).
+const KNOWN_AUTH_ERRORS = [
+  'disposable_email',
+  'pwned_password',
+  'captcha_failed',
+  'account_locked',
+  'rate_limited',
+];
+
+/** Traduz códigos conhecidos (errors.*); senão usa a mensagem de fallback da tela. */
+function authErrorMessage(
+  t: (key: string) => string,
+  err: { message?: string } | null | undefined,
+  fallbackKey: string,
+): string {
+  const code = err?.message;
+  if (typeof code === 'string' && KNOWN_AUTH_ERRORS.includes(code)) return t(`errors.${code}`);
+  return t(fallbackKey);
+}
+
 export function EntrarPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const search = useSearch({ from: '/entrar' });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [tsToken, setTsToken] = useState('');
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -90,12 +112,15 @@ export function EntrarPage() {
     setError(null);
     const form = new FormData(e.currentTarget);
     try {
-      const { error: err } = await signIn.email({
-        email: String(form.get('email')),
-        password: String(form.get('password')),
-      });
+      const { error: err } = await signIn.email(
+        {
+          email: String(form.get('email')),
+          password: String(form.get('password')),
+        },
+        { headers: { 'x-turnstile-token': tsToken } },
+      );
       if (err) {
-        setError(t('auth.invalidCredentials'));
+        setError(authErrorMessage(t, err, 'auth.invalidCredentials'));
         return;
       }
       navigate({ to: safeRedirect(search.redirect) });
@@ -111,12 +136,25 @@ export function EntrarPage() {
       <form onSubmit={onSubmit} className="flex flex-col gap-3.5">
         <Field label={t('auth.email')} name="email" type="email" placeholder="voce@email.com" mono required />
         <Field label={t('auth.password')} name="password" type="password" placeholder="••••••••" mono required minLength={8} />
+        <Turnstile onToken={setTsToken} />
         {error && <p className="text-sm" style={{ color: 'var(--gro-red)' }}>{error}</p>}
-        <Button variant="primary" size="lg" fullWidth type="submit" disabled={busy} className="mt-1.5">
+        <Button
+          variant="primary"
+          size="lg"
+          fullWidth
+          type="submit"
+          disabled={busy || (turnstileEnabled && !tsToken)}
+          className="mt-1.5"
+        >
           {busy ? t('auth.loggingIn') : t('auth.login')}
         </Button>
       </form>
-      <p className="muted mt-5 text-center text-sm">
+      <p className="mt-4 text-center text-sm">
+        <Link to="/esqueci-senha" className="font-bold" style={{ color: 'var(--gro-green)' }}>
+          {t('auth.forgotPassword')}
+        </Link>
+      </p>
+      <p className="muted mt-3 text-center text-sm">
         {t('auth.noAccount')}{' '}
         <Link
           to="/cadastro"
@@ -137,6 +175,7 @@ export function CadastroPage() {
   const search = useSearch({ from: '/cadastro' });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [tsToken, setTsToken] = useState('');
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -144,13 +183,19 @@ export function CadastroPage() {
     setError(null);
     const form = new FormData(e.currentTarget);
     try {
-      const { error: err } = await signUp.email({
-        name: String(form.get('name')),
-        email: String(form.get('email')),
-        password: String(form.get('password')),
-      });
+      const { error: err } = await signUp.email(
+        {
+          name: String(form.get('name')),
+          email: String(form.get('email')),
+          password: String(form.get('password')),
+          // verificação SOFT: e-mail de confirmação enviado no cadastro; o link
+          // redireciona pra esta tela após verificar.
+          callbackURL: `${window.location.origin}/verificar-email`,
+        },
+        { headers: { 'x-turnstile-token': tsToken } },
+      );
       if (err) {
-        setError(err.message ?? t('auth.signupFailed'));
+        setError(authErrorMessage(t, err, 'auth.signupFailed'));
         return;
       }
       navigate({ to: safeRedirect(search.redirect) });
@@ -167,8 +212,16 @@ export function CadastroPage() {
         <Field label={t('auth.name')} name="name" placeholder="ex.: Ana Ribeiro" required />
         <Field label={t('auth.email')} name="email" type="email" placeholder="voce@email.com" mono required />
         <Field label={t('auth.password')} name="password" type="password" placeholder={t('auth.passwordHint')} mono required minLength={8} />
+        <Turnstile onToken={setTsToken} />
         {error && <p className="text-sm" style={{ color: 'var(--gro-red)' }}>{error}</p>}
-        <Button variant="primary" size="lg" fullWidth type="submit" disabled={busy} className="mt-1.5">
+        <Button
+          variant="primary"
+          size="lg"
+          fullWidth
+          type="submit"
+          disabled={busy || (turnstileEnabled && !tsToken)}
+          className="mt-1.5"
+        >
           {busy ? t('auth.signingUp') : t('auth.signup')}
         </Button>
       </form>

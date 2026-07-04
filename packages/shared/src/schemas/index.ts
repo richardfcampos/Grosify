@@ -107,6 +107,10 @@ export const shoppingListSchema = syncMetaSchema.extend({
   recurrence: recurrenceSchema.nullable(),
   /** Dia do ciclo: 0-6 (semana) ou 1-28 (mês). */
   recurrenceDay: z.number().int().min(0).max(28).nullable(),
+  /** Lista privada: só o dono vê (silo total — não toca o estoque da casa). */
+  isPrivate: z.boolean(),
+  /** Dono da lista privada (null em lista compartilhada). */
+  ownerId: z.string().nullable(),
 });
 export type ShoppingList = z.infer<typeof shoppingListSchema>;
 

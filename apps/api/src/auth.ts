@@ -3,6 +3,10 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { db } from './db/index.js';
 import * as schema from './db/schema.js';
 import { trustedOrigins } from './origins.js';
+import { renderResetEmail, renderVerificationEmail, resolveLocale, sendEmail } from './email/index.js';
+
+const RESET_TTL_SEC = 60 * 60; // 1h
+const VERIFY_TTL_SEC = 60 * 60 * 24; // 24h
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
@@ -16,6 +20,33 @@ export const auth = betterAuth({
   }),
   emailAndPassword: {
     enabled: true,
+    // SOFT: login é permitido sem verificar; verificação gateia ações de confiança
+    // (criar convite) — feito nas rotas, não aqui.
+    requireEmailVerification: false,
+    resetPasswordTokenExpiresIn: RESET_TTL_SEC,
+    // trocar a senha derruba todas as sessões antigas (segurança)
+    revokeSessionsOnPasswordReset: true,
+    // Envio de email é fire-and-forget no Better Auth; falha é logada, nunca 500 ao usuário.
+    // `forgetPassword` sempre responde genérico (anti-enumeration) independente de envio.
+    sendResetPassword: async ({ user, url }, request) => {
+      const { subject, html, text } = renderResetEmail(resolveLocale(request), {
+        name: user.name,
+        url,
+      });
+      await sendEmail({ to: user.email, subject, html, text });
+    },
+  },
+  emailVerification: {
+    sendOnSignUp: true,
+    autoSignInAfterVerification: true,
+    expiresIn: VERIFY_TTL_SEC,
+    sendVerificationEmail: async ({ user, url }, request) => {
+      const { subject, html, text } = renderVerificationEmail(resolveLocale(request), {
+        name: user.name,
+        url,
+      });
+      await sendEmail({ to: user.email, subject, html, text });
+    },
   },
   trustedOrigins,
   advanced: {

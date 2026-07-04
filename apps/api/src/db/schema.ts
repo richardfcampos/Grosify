@@ -1,4 +1,5 @@
 import {
+  type AnyPgColumn,
   bigint,
   boolean,
   doublePrecision,
@@ -21,6 +22,11 @@ export const user = pgTable('user', {
   email: text('email').notNull().unique(),
   emailVerified: boolean('email_verified').notNull().default(false),
   image: text('image'),
+  // Casa ativa (multi-casa): qual das casas do usuário está em foco. App-managed
+  // (Better Auth ignora colunas que não conhece). null = resolve pra primeira casa.
+  activeHouseholdId: uuid('active_household_id').references((): AnyPgColumn => households.id, {
+    onDelete: 'set null',
+  }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
@@ -116,6 +122,32 @@ export const householdInvites = pgTable('household_invites', {
     .references(() => user.id),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   usedBy: text('used_by').references(() => user.id),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  // Convite por e-mail: token opaco (inguessável) amarrado ao e-mail convidado.
+  // null = convite só por código humano (compartilhamento manual, confiança menor).
+  token: text('token').unique(),
+  invitedEmail: text('invited_email'),
+});
+
+/**
+ * Tentativas de auth por conta — base da trava de força-bruta (durável, sobrevive
+ * redeploy e multi-instância, ao contrário do limite por-IP em memória).
+ */
+export const authAttempts = pgTable(
+  'auth_attempts',
+  {
+    id: uuid('id').primaryKey(),
+    email: text('email').notNull(),
+    kind: text('kind').notNull(), // 'login_fail'
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('auth_attempts_email_kind_created_idx').on(t.email, t.kind, t.createdAt)],
+);
+
+/** E-mails suprimidos por bounce/reclamação (webhook do provedor) — não enviar mais. */
+export const emailSuppression = pgTable('email_suppression', {
+  email: text('email').primaryKey(),
+  reason: text('reason').notNull(), // 'bounce' | 'complaint'
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -331,6 +363,10 @@ export const shoppingLists = pgTable(
     recurrence: text('recurrence', { enum: ['weekly', 'biweekly', 'monthly'] }),
     /** Dia do ciclo: 0-6 (semana) ou 1-28 (mês). */
     recurrenceDay: integer('recurrence_day'),
+    /** Lista privada: só o dono vê (silo total — não toca o estoque da casa). */
+    isPrivate: boolean('is_private').notNull().default(false),
+    /** Dono da lista privada (null = compartilhada com a casa). */
+    ownerId: text('owner_id').references(() => user.id, { onDelete: 'cascade' }),
     ...syncColumns,
   },
   (t) => [

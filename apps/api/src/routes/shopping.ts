@@ -11,10 +11,11 @@ import {
   updateSessionItemPayload,
   updateSessionPayload,
 } from '@grosify/shared';
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, isNull, notInArray } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { db } from '../db/index.js';
 import { logActivity } from '../lib/activity.js';
+import { hiddenListIds, visibleListWhere } from '../lib/list-privacy.js';
 import { isForeignKeyViolation } from '../lib/pg-errors.js';
 import {
   inventoryCounts,
@@ -33,14 +34,24 @@ export const shoppingRoute = new Hono<HouseholdEnv>()
   // ---------- Listas ----------
   .get('/lists', async (c) => {
     const hid = c.get('householdId');
+    const userId = c.get('user').id;
     const lists = await db
       .select()
       .from(shoppingLists)
-      .where(and(eq(shoppingLists.householdId, hid), isNull(shoppingLists.deletedAt)));
+      .where(
+        and(eq(shoppingLists.householdId, hid), isNull(shoppingLists.deletedAt), visibleListWhere(userId)),
+      );
+    const hidden = await hiddenListIds(hid, userId);
     const entries = await db
       .select()
       .from(shoppingListEntries)
-      .where(and(eq(shoppingListEntries.householdId, hid), isNull(shoppingListEntries.deletedAt)));
+      .where(
+        and(
+          eq(shoppingListEntries.householdId, hid),
+          isNull(shoppingListEntries.deletedAt),
+          hidden.length ? notInArray(shoppingListEntries.listId, hidden) : undefined,
+        ),
+      );
     return c.json({ lists, entries });
   })
 
@@ -54,6 +65,9 @@ export const shoppingRoute = new Hono<HouseholdEnv>()
         householdId: hid,
         name: p.name,
         isRecurring: p.isRecurring,
+        isPrivate: p.isPrivate,
+        // lista privada pertence a quem criou; compartilhada = sem dono
+        ownerId: p.isPrivate ? c.get('user').id : null,
         budgetCents: p.budgetCents ?? null,
         icon: p.icon ?? null,
         color: p.color ?? null,
@@ -62,16 +76,26 @@ export const shoppingRoute = new Hono<HouseholdEnv>()
       })
       .onConflictDoNothing()
       .returning();
-    if (list) await logActivity(hid, c.get('user').id, c.get('user').name, 'list_created', list.name);
+    // não loga atividade de lista privada no feed da casa (vazaria a existência)
+    if (list && !list.isPrivate)
+      await logActivity(hid, c.get('user').id, c.get('user').name, 'list_created', list.name);
     return c.json({ list: list ?? null }, 201);
   })
 
   .patch('/lists/:id', zValidator('json', updateListPayload), async (c) => {
     const hid = c.get('householdId');
+    const userId = c.get('user').id;
     const [list] = await db
       .update(shoppingLists)
       .set({ ...c.req.valid('json'), updatedAt: new Date() })
-      .where(and(eq(shoppingLists.id, c.req.param('id')), eq(shoppingLists.householdId, hid)))
+      // só o dono mexe numa lista privada
+      .where(
+        and(
+          eq(shoppingLists.id, c.req.param('id')),
+          eq(shoppingLists.householdId, hid),
+          visibleListWhere(userId),
+        ),
+      )
       .returning();
     if (!list) return c.json({ error: 'not_found' }, 404);
     return c.json({ list });
@@ -79,7 +103,15 @@ export const shoppingRoute = new Hono<HouseholdEnv>()
 
   .delete('/lists/:id', async (c) => {
     const hid = c.get('householdId');
+    const userId = c.get('user').id;
     const id = c.req.param('id');
+    // valida acesso (lista privada de outro → 404) antes do soft-delete em cascata
+    const [accessible] = await db
+      .select({ id: shoppingLists.id })
+      .from(shoppingLists)
+      .where(and(eq(shoppingLists.id, id), eq(shoppingLists.householdId, hid), visibleListWhere(userId)))
+      .limit(1);
+    if (!accessible) return c.json({ error: 'not_found' }, 404);
     const now = new Date();
     await db.transaction(async (tx) => {
       await tx
@@ -99,6 +131,15 @@ export const shoppingRoute = new Hono<HouseholdEnv>()
     const hid = c.get('householdId');
     const listId = c.req.param('id');
     const p = c.req.valid('json');
+    // não deixa adicionar item na lista privada de outro membro
+    const [accessible] = await db
+      .select({ id: shoppingLists.id })
+      .from(shoppingLists)
+      .where(
+        and(eq(shoppingLists.id, listId), eq(shoppingLists.householdId, hid), visibleListWhere(c.get('user').id)),
+      )
+      .limit(1);
+    if (!accessible) return c.json({ error: 'not_found' }, 404);
     try {
       const [entry] = await db
         .insert(shoppingListEntries)
@@ -317,8 +358,20 @@ export const shoppingRoute = new Hono<HouseholdEnv>()
       .where(and(eq(shoppingSessions.id, c.req.param('id')), eq(shoppingSessions.householdId, hid)))
       .returning();
     if (!session) return c.json({ error: 'not_found' }, 404);
-    if (p.status === 'completed')
-      await logActivity(hid, c.get('user').id, c.get('user').name, 'shopping_completed', null);
+    if (p.status === 'completed') {
+      // compra de lista privada não vai pro feed da casa (silo)
+      const priv = session.listId
+        ? (
+            await db
+              .select({ isPrivate: shoppingLists.isPrivate })
+              .from(shoppingLists)
+              .where(eq(shoppingLists.id, session.listId))
+              .limit(1)
+          )[0]?.isPrivate
+        : false;
+      if (!priv)
+        await logActivity(hid, c.get('user').id, c.get('user').name, 'shopping_completed', null);
+    }
     return c.json({ session });
   })
 

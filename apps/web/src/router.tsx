@@ -7,6 +7,11 @@ import { AtividadesPage } from './pages/atividades-page.js';
 import { CategoriasPage } from './pages/categorias-page.js';
 import { MembrosPage } from './pages/membros-page.js';
 import { CadastroPage, EntrarPage } from './pages/auth-pages.js';
+import {
+  EsqueciSenhaPage,
+  RedefinirSenhaPage,
+  VerificarEmailPage,
+} from './pages/auth-recover-pages.js';
 import { DashboardPage } from './pages/dashboard-page.js';
 import { CasaPage, ConvitePage } from './pages/household-pages.js';
 import { CompraPage } from './pages/compra-page.js';
@@ -40,6 +45,7 @@ const cadastroRoute = createRoute({
 const casaRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/casa',
+  validateSearch: z.object({ new: z.string().optional() }),
   component: CasaPage,
 });
 const conviteRoute = createRoute({
@@ -51,6 +57,23 @@ const privacidadeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/privacidade',
   component: PrivacidadePage,
+});
+const esqueciSenhaRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/esqueci-senha',
+  component: EsqueciSenhaPage,
+});
+const redefinirSenhaRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/redefinir-senha',
+  validateSearch: z.object({ token: z.string().optional() }),
+  component: RedefinirSenhaPage,
+});
+const verificarEmailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/verificar-email',
+  validateSearch: z.object({ error: z.string().optional(), token: z.string().optional() }),
+  component: VerificarEmailPage,
 });
 
 // casca autenticada com nav inferior
@@ -146,6 +169,9 @@ const routeTree = rootRoute.addChildren([
   casaRoute,
   conviteRoute,
   privacidadeRoute,
+  esqueciSenhaRoute,
+  redefinirSenhaRoute,
+  verificarEmailRoute,
   appLayoutRoute.addChildren([
     indexRoute,
     itensRoute,

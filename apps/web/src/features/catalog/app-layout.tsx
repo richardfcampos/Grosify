@@ -16,7 +16,7 @@ import {
   syncNow,
 } from '../../sync/engine.js';
 import { useQueryClient } from '@tanstack/react-query';
-import { useSession } from '../../lib/auth-client.js';
+import { sendVerificationEmail, useSession } from '../../lib/auth-client.js';
 import { useMembership } from '../../lib/use-membership.js';
 import { api } from '../../lib/api.js';
 import { Onboarding } from '../onboarding/onboarding.js';
@@ -123,6 +123,7 @@ export function AppLayout() {
           className="mx-auto w-full max-w-md flex-1 pb-24 lg:max-w-[760px] lg:pb-12"
           style={{ viewTransitionName: 'app-content' }}
         >
+          <VerifyBanner email={session.user.email} verified={session.user.emailVerified} />
           <Outlet />
         </div>
         <BottomNav isActive={isActive} />
@@ -134,6 +135,51 @@ export function AppLayout() {
         dead={dead}
         showSynced={showSynced}
       />
+    </div>
+  );
+}
+
+/** Aviso de verificação de e-mail (SOFT): mostra até confirmar, com reenviar. Tom neutro. */
+function VerifyBanner({ email, verified }: { email: string; verified: boolean }) {
+  const { t } = useTranslation();
+  const [resent, setResent] = useState(false);
+  const [busy, setBusy] = useState(false);
+  if (verified) return null;
+
+  async function resend() {
+    setBusy(true);
+    try {
+      await sendVerificationEmail({
+        email,
+        callbackURL: `${window.location.origin}/verificar-email`,
+      });
+      setResent(true);
+    } catch {
+      /* offline/erro: usuário pode tentar de novo depois */
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div
+      className="mx-4 mt-3 flex items-center justify-between gap-3 rounded-xl px-3.5 py-2.5 text-sm lg:mx-0"
+      style={{ background: 'var(--app-surface)', border: '1px solid var(--app-border)' }}
+    >
+      <span className="muted">{t('auth.verifyBanner')}</span>
+      {resent ? (
+        <span className="muted flex-none text-xs">{t('auth.verifyResent')}</span>
+      ) : (
+        <button
+          type="button"
+          onClick={resend}
+          disabled={busy}
+          className="flex-none font-bold"
+          style={{ color: 'var(--gro-green)' }}
+        >
+          {t('auth.verifyResend')}
+        </button>
+      )}
     </div>
   );
 }
