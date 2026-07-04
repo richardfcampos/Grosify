@@ -97,7 +97,12 @@ export async function initHousehold(id: string): Promise<void> {
   currentHouseholdId = id;
   // Trocou de casa com o sync já rodando: reconecta o SSE pra "poke" seguir a casa nova
   // (o stream prende na casa ativa no momento da conexão). No primeiro load, startSync conecta.
-  if (changed && started) connectStream();
+  // Puxa a casa nova na hora — o cache foi limpo e startSync é no-op quando já iniciado,
+  // então sem isto os dados só chegariam no próximo tick (até 30s de tela vazia).
+  if (changed && started) {
+    connectStream();
+    void syncNow();
+  }
 }
 
 /** Enfileira uma mutação e tenta sincronizar (se online). */
