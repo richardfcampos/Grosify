@@ -175,4 +175,12 @@ Verifier (opus): pós-T14, automático
 
 ## Status das tasks
 
-- [ ] T1 · [ ] T2 · [ ] T3 · [ ] T4 · [ ] T5 · [ ] T6 · [ ] T7 · [ ] T8 · [ ] T9 · [ ] T10 · [ ] T11 · [ ] T12 · [ ] T13 · [ ] T14
+- [x] T1 (3945a01) · [x] T2 (914d88b) · [x] T3 (71ea1af) · [x] T4 (a850594) · [x] T5 (843f772) · [x] T6 (2a473ab) · [x] T7 (b6c3a27) · [x] T8 (7b2bb36) · [x] T9 (7cd288f) · [x] T10 (050f039) · [x] T11 (163a89f) · [x] T12 (1974a23) · [ ] T13 · [ ] T14
+
+> F4: chaves billing./errors. novas em pt com texto real; en/es/it/de/fr com placeholder inglês (T13 traduz). PlanSection extraída em plan-section/plan-checkout-form/plan-status-card (<200 linhas cada).
+
+> F2 validada por Verifier dedicado: PASS, sensor 4/4 mutantes mortos (conversão cents, grace boundary, idempotência, webhook auth) — validation.md.
+> Desvio F3 (T7, correto): token do webhook re-checado no handler (verifyAndParseWebhook confunde token-ruim com evento-não-mapeado) pra distinguir 401 de 200.
+
+> Desvio F1: `PRO_PRICE_CENTS` removido (substituído por PLAN_PRICES; zero usos confirmados).
+> F2: gate re-verificado pelo orquestrador (worker reportou fora do formato): typecheck ok, 108 testes api verdes.
