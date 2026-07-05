@@ -183,6 +183,13 @@
       "when": 1783212578818,
       "tag": "0025_add_user_ui_locale",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1783252781802,
+      "tag": "0026_rich_jasper_sitwell",
+      "breakpoints": true
     }
   ]
 }
