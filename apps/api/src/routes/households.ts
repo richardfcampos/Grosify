@@ -40,9 +40,11 @@ async function membershipOf(userId: string) {
       onboardedAt: householdMembers.onboardedAt,
       themeMode: householdMembers.uiThemeMode,
       themeDir: householdMembers.uiThemeDir,
+      locale: user.uiLocale,
     })
     .from(householdMembers)
     .innerJoin(households, eq(households.id, householdMembers.householdId))
+    .innerJoin(user, eq(user.id, householdMembers.userId))
     .where(and(eq(householdMembers.userId, userId), eq(householdMembers.householdId, activeId)))
     .limit(1);
   return rows[0] ?? null;
@@ -101,8 +103,8 @@ export const householdsRoute = new Hono<AuthEnv>()
     return c.json({ ok: true });
   })
 
-  // Preferências visuais do membro (tema claro/escuro/sistema + direção visual).
-  // Persiste na conta pra sincronizar entre aparelhos; household_id vem da sessão.
+  // Preferências do membro: tema (por casa) + idioma (por conta — segue a pessoa em
+  // qualquer aparelho/casa). Persiste na conta pra sincronizar entre aparelhos.
   .post(
     '/settings',
     zValidator(
@@ -110,6 +112,7 @@ export const householdsRoute = new Hono<AuthEnv>()
       z.object({
         themeMode: z.enum(['light', 'dark', 'system']).optional(),
         themeDir: z.enum(['painel', 'mercado', 'recibo']).optional(),
+        locale: z.enum(['pt', 'en', 'es', 'it', 'de', 'fr']).optional(),
       }),
     ),
     async (c) => {
@@ -129,6 +132,13 @@ export const householdsRoute = new Hono<AuthEnv>()
               eq(householdMembers.userId, c.get('user').id),
             ),
           );
+      }
+      // idioma vive no user (preferência da pessoa, não da casa)
+      if (body.locale !== undefined) {
+        await db
+          .update(user)
+          .set({ uiLocale: body.locale })
+          .where(eq(user.id, c.get('user').id));
       }
       return c.json({ ok: true });
     },

@@ -12,6 +12,8 @@ export interface Membership {
   /** Preferências visuais salvas na conta (null = nunca setou; client valida). */
   themeMode: string | null;
   themeDir: string | null;
+  /** Idioma da UI salvo na conta (null = nunca setou; cai na detecção do navegador). */
+  locale: string | null;
 }
 
 export function useMembership(enabled: boolean) {

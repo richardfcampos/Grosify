@@ -26,6 +26,9 @@ import {
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3010';
 
+// Códigos de idioma aceitos pelo servidor (espelha o enum da rota /settings).
+type UiLocale = 'pt' | 'en' | 'es' | 'it' | 'de' | 'fr';
+
 /** Ajustes = hub da casa: perfil, aparência, plano, convite, atalhos (histórico/
  *  análise/membros…) e dados (export/restore/excluir). Visual do design system. */
 export function AjustesPage() {
@@ -44,8 +47,8 @@ export function AjustesPage() {
   const syncState = useSyncExternalStore(subscribeSync, getSyncState);
   const restoreRef = useRef<HTMLInputElement>(null);
   const { mode, dir, setMode, setDir } = useTheme();
-  // salva a preferência visual na conta (sincroniza entre aparelhos); localStorage já guardou local
-  const saveAppearance = (json: { themeMode?: Mode; themeDir?: Direction }) =>
+  // salva a preferência (tema/idioma) na conta (sincroniza entre aparelhos); localStorage já guardou local
+  const saveAppearance = (json: { themeMode?: Mode; themeDir?: Direction; locale?: UiLocale }) =>
     void api.households.settings.$post({ json }).catch(() => {});
 
   async function onRestore(e: React.ChangeEvent<HTMLInputElement>) {
@@ -230,7 +233,11 @@ export function AjustesPage() {
       <Section kicker={t('dashboard.language')}>
         <select
           value={i18n.resolvedLanguage}
-          onChange={(e) => i18n.changeLanguage(e.target.value)}
+          onChange={(e) => {
+            const locale = e.target.value as UiLocale;
+            void i18n.changeLanguage(locale); // cache local imediato (localStorage)
+            saveAppearance({ locale }); // persiste na conta (sincroniza entre aparelhos)
+          }}
           className="gro-field"
         >
           {SUPPORTED_LANGUAGES.map((lang) => (
