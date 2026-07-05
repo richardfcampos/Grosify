@@ -5,7 +5,7 @@
 Implement these tasks with the `tlc-spec-driven` skill: activate it by name and follow its Execute flow and Critical Rules (per-task cycle implement→gate→atomic commit, adequacy review, Verifier no fim). If the skill cannot be activated, STOP.
 
 **Design**: `.specs/features/pro-plan-billing/design.md`
-**Status**: Approved → In Progress
+**Status**: Done (aguardando Verifier)
 **Orquestração**: Fable 5 orquestra; 1 worker por fase (sequencial, mesmo worktree, branch `claude/angry-meitner-daa5b8`). Workers commitam por task; NÃO fazem push/merge. Modelos: P1 sonnet · P2 opus · P3 opus · P4 sonnet · P5 haiku · Verifier opus.
 
 ---
@@ -175,7 +175,7 @@ Verifier (opus): pós-T14, automático
 
 ## Status das tasks
 
-- [x] T1 (3945a01) · [x] T2 (914d88b) · [x] T3 (71ea1af) · [x] T4 (a850594) · [x] T5 (843f772) · [x] T6 (2a473ab) · [x] T7 (b6c3a27) · [x] T8 (7b2bb36) · [x] T9 (7cd288f) · [x] T10 (050f039) · [x] T11 (163a89f) · [x] T12 (1974a23) · [ ] T13 · [ ] T14
+- [x] T1 (3945a01) · [x] T2 (914d88b) · [x] T3 (71ea1af) · [x] T4 (a850594) · [x] T5 (843f772) · [x] T6 (2a473ab) · [x] T7 (b6c3a27) · [x] T8 (7b2bb36) · [x] T9 (7cd288f) · [x] T10 (050f039) · [x] T11 (163a89f) · [x] T12 (1974a23) · [x] T13 (766df85) · [x] T14 (T14 commit deste worker)
 
 > F4: chaves billing./errors. novas em pt com texto real; en/es/it/de/fr com placeholder inglês (T13 traduz). PlanSection extraída em plan-section/plan-checkout-form/plan-status-card (<200 linhas cada).
 
