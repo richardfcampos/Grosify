@@ -4,6 +4,7 @@ import { NfceLookupError } from './types.js';
 
 export type { NfceEmitente, NfceErrorCode, NfceItem, NfceLookup, NfceResult } from './types.js';
 export { NfceLookupError } from './types.js';
+export { logNfceLookup, maskChave, type NfceLogFields } from './nfce-log.js';
 
 type Env = Record<string, string | undefined>;
 
