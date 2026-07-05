@@ -17,19 +17,19 @@ const CHAVE_SE = '28250714200166000166650010000012341123456789';
 const CHAVE_BA = '29250714200166000166650010000012341123456789';
 
 describe('parseNfceQr — extração da chave a partir da URL do QR', () => {
-  it('v2 (chave|2|tpAmb|idCSC|hash|extra) — portal SVRS/RS, 6 campos (piso aceito)', () => {
+  it('v2 online (chave|2|tpAmb|idCSC|hash) — 5 campos, formato padrão de emissão normal', () => {
+    const url = `https://www.sefazvirtual.rs.gov.br/qrcode?p=${CHAVE_RS}|2|1|1|A1B2C3D4E5F6`;
+    expect(parseNfceQr(url)).toEqual({ chave: CHAVE_RS, url });
+  });
+
+  it('v2 com 6 campos (variação de emissor aceita)', () => {
     const url = `https://www.sefazvirtual.rs.gov.br/qrcode?p=${CHAVE_RS}|2|1|1|A1B2C3D4E5F6|0`;
     expect(parseNfceQr(url)).toEqual({ chave: CHAVE_RS, url });
   });
 
-  it('v2 com 8 campos (teto aceito)', () => {
+  it('v2 contingência offline com 8 campos (teto aceito)', () => {
     const url = `https://www.sefazvirtual.rs.gov.br/qrcode?p=${CHAVE_RS}|2|1|1|A1B2C3D4E5F6|0|extra|extra2`;
     expect(parseNfceQr(url)).toEqual({ chave: CHAVE_RS, url });
-  });
-
-  it('rejeita v2 com 5 campos (abaixo do piso de 6)', () => {
-    const url = `https://www.sefazvirtual.rs.gov.br/qrcode?p=${CHAVE_RS}|2|1|1|A1B2C3D4E5F6`;
-    expect(parseNfceQr(url)).toBeNull();
   });
 
   it('v3 (chave|3|tpAmb) — obrigatório desde nov/2025 — portal SP', () => {
@@ -61,7 +61,7 @@ describe('parseNfceQr — extração da chave a partir da URL do QR', () => {
     expect(parseNfceQr(url)).toBeNull();
   });
 
-  it('rejeita v2 com menos de 6 campos', () => {
+  it('rejeita v2 com menos de 5 campos (online exige chave|2|tpAmb|idCSC|hash)', () => {
     const url = `https://www.sefazvirtual.rs.gov.br/qrcode?p=${CHAVE_RS}|2|1`;
     expect(parseNfceQr(url)).toBeNull();
   });

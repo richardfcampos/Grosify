@@ -21,7 +21,7 @@ export interface ParsedNfceQr {
  * O QR do DANFE traz uma URL de consulta do portal da SEFAZ com um parâmetro
  * `p=` cujo valor é pipe-separated. O 1º campo é SEMPRE a chave (44 dígitos),
  * em ambas as versões vigentes:
- *   v2: chave|2|tpAmb|idCSC|hash        (6 a 8 campos, hash HMAC de segurança)
+ *   v2: chave|2|tpAmb|idCSC|hash        (5 campos online; contingência offline chega a 8)
  *   v3: chave|3|tpAmb                    (3+ campos, obrigatório desde nov/2025)
  *
  * Retorna null (→ `nfce_invalid_qr`) se a URL não é de um portal SEFAZ conhecido
@@ -43,7 +43,9 @@ export function parseNfceQr(rawValue: string): ParsedNfceQr | null {
   if (!p) return null;
 
   const fields = p.split('|');
-  // v2 tem 6-8 campos (chave|2|tpAmb|idCSC|hash[|extra]); v3 tem 3+ (chave|3|tpAmb[|...]).
+  // v2 online tem 5 campos (chave|2|tpAmb|idCSC|hash); contingência offline vai a 8.
+  // v3 tem 3+ (chave|3|tpAmb[|...]). Não somos o validador fiscal — basta chave válida
+  // e versão conhecida; contagem estrita rejeitaria notas reais por variação de emissor.
   if (fields.length < 3) return null;
 
   const chave = fields[0] ?? '';
@@ -51,7 +53,7 @@ export function parseNfceQr(rawValue: string): ParsedNfceQr | null {
 
   const versao = fields[1];
   if (versao === '2') {
-    if (fields.length < 6 || fields.length > 8) return null;
+    if (fields.length < 5 || fields.length > 8) return null;
   } else if (versao === '3') {
     if (fields.length < 3) return null;
   } else {
