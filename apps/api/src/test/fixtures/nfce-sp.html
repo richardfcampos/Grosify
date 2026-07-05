@@ -1,0 +1,60 @@
+<!--
+  TODO_FIXTURE_REAL: fixture representativa do HTML do portal de SP
+  (nfce.fazenda.sp.gov.br/NFCeConsultaPublica, ASP.NET). O layout de SP usa classes
+  próprias `fixo-prod-serv-*` por item (diferente do SVRS). DEVE ser substituída por
+  HTML REAL capturado na validação com um cupom paulista (NFC-e modelo 65) de verdade
+  (checklist operacional T15). Escopo: SÓ modelo 65 — CF-e SAT (modelo 59) é outro
+  documento. Contém CPF do consumidor de propósito, pra provar o descarte (LGPD).
+-->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><title>NFC-e SP</title></head>
+<body>
+  <div id="conteudo">
+    <div class="txtTopo" id="u20">MERCADO PAULISTA S/A</div>
+    <div class="text">CNPJ: 35.777.222/0001-45</div>
+    <div class="text">Endereco: RUA AUGUSTA, 500 - SAO PAULO/SP</div>
+
+    <table id="tabResult">
+      <tr>
+        <td>
+          <span class="fixo-prod-serv-descricao">CAFE TORRADO 500G PILAO</span>
+          <span class="fixo-prod-serv-cod-barras">7896089012345</span>
+          <span class="fixo-prod-serv-qtd">Qtde.: 2</span>
+          <span class="fixo-prod-serv-uc">UN: UN</span>
+          <span class="fixo-prod-serv-vb">Vl. Unit.: 18,90</span>
+          <span class="fixo-prod-serv-vlr">Vl. Total: 37,80</span>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="fixo-prod-serv-descricao">ACUCAR REFINADO 1KG UNIAO</span>
+          <span class="fixo-prod-serv-cod-barras">7891910000197</span>
+          <span class="fixo-prod-serv-qtd">Qtde.: 1</span>
+          <span class="fixo-prod-serv-uc">UN: UN</span>
+          <span class="fixo-prod-serv-vb">Vl. Unit.: 4,59</span>
+          <span class="fixo-prod-serv-vlr">Vl. Total: 4,59</span>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="fixo-prod-serv-descricao">DETERGENTE NEUTRO 500ML</span>
+          <span class="fixo-prod-serv-cod-barras">SEM GTIN</span>
+          <span class="fixo-prod-serv-qtd">Qtde.: 4</span>
+          <span class="fixo-prod-serv-uc">UN: UN</span>
+          <span class="fixo-prod-serv-vb">Vl. Unit.: 2,29</span>
+          <span class="fixo-prod-serv-vlr">Vl. Total: 9,16</span>
+        </td>
+      </tr>
+    </table>
+
+    <div id="totalNota">
+      <span class="totalNumb txtMax">Valor total R$ 51,55</span>
+    </div>
+
+    <div id="infos">
+      <div class="text">CPF/CNPJ do Consumidor: 111.222.333-96</div>
+    </div>
+  </div>
+</body>
+</html>

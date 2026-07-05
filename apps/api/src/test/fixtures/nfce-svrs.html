@@ -1,0 +1,62 @@
+<!--
+  TODO_FIXTURE_REAL: fixture representativa do HTML do portal SVRS (Sefaz Virtual RS),
+  montada a partir da estrutura documentada do DANFE NFC-e (ENCAT: id="tabResult",
+  spans .txtTit/.RCod/.Rqtd/.RUN/.RvlUnit, td.valor). DEVE ser substituída por HTML
+  REAL capturado na validação com um cupom de verdade (checklist operacional T15) —
+  o seletor exato depende do DOM atual do portal, que a pesquisa confirmou HTTP 200
+  mas não capturou. Contém CPF do consumidor de propósito, pra provar que o parser o
+  descarta (LGPD).
+-->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><title>NFC-e</title></head>
+<body>
+  <div id="conteudo">
+    <div class="txtTopo" id="u20">SUPERMERCADO MODELO LTDA</div>
+    <div class="text">CNPJ: 14.200.166/0001-66</div>
+    <div class="text">Endereco: RUA DAS FLORES, 100 - PORTO ALEGRE/RS</div>
+
+    <table id="tabResult">
+      <tr id="Item + 1">
+        <td>
+          <span class="txtTit">ARROZ TP1 5KG CAMIL</span>
+          <span class="RCod">(Código: 7896006711257)</span>
+          <span class="Rqtd">Qtde.:2</span>
+          <span class="RUN">UN: UN</span>
+          <span class="RvlUnit">Vl. Unit.:&nbsp;25,90</span>
+        </td>
+        <td class="valor">51,80</td>
+      </tr>
+      <tr id="Item + 2">
+        <td>
+          <span class="txtTit">FEIJAO CARIOCA 1KG</span>
+          <span class="RCod">(Código: 7891234000012)</span>
+          <span class="Rqtd">Qtde.:1</span>
+          <span class="RUN">UN: UN</span>
+          <span class="RvlUnit">Vl. Unit.:&nbsp;8,49</span>
+        </td>
+        <td class="valor">8,49</td>
+      </tr>
+      <tr id="Item + 3">
+        <td>
+          <span class="txtTit">REFRIGERANTE COLA 2L</span>
+          <span class="RCod">(Código: SEM GTIN)</span>
+          <span class="Rqtd">Qtde.:3</span>
+          <span class="RUN">UN: UN</span>
+          <span class="RvlUnit">Vl. Unit.:&nbsp;7,90</span>
+        </td>
+        <td class="valor">23,70</td>
+      </tr>
+    </table>
+
+    <div id="totalNota">
+      <span class="totalNumb">Qtd. total de itens:</span><span>3</span>
+      <span class="totalNumb txtMax">Valor total R$ 83,99</span>
+    </div>
+
+    <div id="infos">
+      <div class="text">CPF/CNPJ do Consumidor: 123.456.789-09</div>
+    </div>
+  </div>
+</body>
+</html>
