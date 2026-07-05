@@ -25,6 +25,8 @@ export const uploadsRoute = new Hono<HouseholdEnv>()
   // POST (mutação) → viewer é bloqueado pelo middleware: não sobe foto, só lê
   .post('/presign', zValidator('json', presignBody), async (c) => {
     if (!r2Enabled) return c.json({ error: 'storage_disabled' }, 501);
+    // Fotos são recurso Pro — free recebe CTA de upgrade em vez de URL de upload.
+    if (c.get('plan') !== 'pro') return c.json({ error: 'pro_required' }, 403);
     const hid = c.get('householdId');
     const { kind, id } = c.req.valid('json');
     const key = keyFor(hid, kind, id);

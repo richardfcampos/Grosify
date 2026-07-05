@@ -1,6 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import { createMiddleware } from 'hono/factory';
 import { auth } from '../auth.js';
+import { resolveEffectivePlan } from '../billing/lifecycle.js';
 import { db } from '../db/index.js';
 import { householdMembers, households } from '../db/schema.js';
 import { resolveActiveHouseholdId } from '../lib/active-household.js';
@@ -34,7 +35,6 @@ export const requireHousehold = createMiddleware<HouseholdEnv>(async (c, next) =
   const rows = await db
     .select({
       householdId: householdMembers.householdId,
-      plan: households.plan,
       role: householdMembers.role,
     })
     .from(householdMembers)
@@ -47,6 +47,10 @@ export const requireHousehold = createMiddleware<HouseholdEnv>(async (c, next) =
   const membership = rows[0];
   if (!membership) return c.json({ error: 'no_household' }, 403);
 
+  // Plano efetivo (override + lazy expiry) — barato o bastante pra rodar por request;
+  // garante que os gates enxergam o downgrade no fim do período/grace sem cron.
+  const plan = await resolveEffectivePlan(membership.householdId);
+
   // viewer é somente-leitura: bloqueia mutações
   const method = c.req.method;
   if (membership.role === 'viewer' && method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS') {
@@ -54,7 +58,7 @@ export const requireHousehold = createMiddleware<HouseholdEnv>(async (c, next) =
   }
 
   c.set('householdId', membership.householdId);
-  c.set('plan', membership.plan);
+  c.set('plan', plan);
   c.set('role', membership.role as MemberRole);
   await next();
 

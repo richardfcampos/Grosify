@@ -1,5 +1,6 @@
-import { eq } from 'drizzle-orm';
+import { and, eq, ne } from 'drizzle-orm';
 import { Hono } from 'hono';
+import { getBillingProvider } from '../billing/index.js';
 import { db } from '../db/index.js';
 import {
   categories,
@@ -16,6 +17,7 @@ import {
   shoppingSessions,
   stockMovements,
   stores,
+  subscriptions,
   user,
 } from '../db/schema.js';
 import { requireHousehold, type HouseholdEnv } from '../middleware/household.js';
@@ -60,6 +62,25 @@ export const meRoute = new Hono<HouseholdEnv>()
   .delete('/', async (c) => {
     const hid = c.get('householdId');
     const userId = c.get('user').id;
+
+    // Cancela a assinatura viva no provider antes do cascade (best-effort) — a linha
+    // some com a casa, mas a cobrança recorrente no gateway continuaria se não cancelar.
+    const [sub] = await db
+      .select({ externalId: subscriptions.externalId, currency: subscriptions.currency })
+      .from(subscriptions)
+      .where(and(eq(subscriptions.householdId, hid), ne(subscriptions.status, 'canceled')))
+      .limit(1);
+    if (sub?.externalId) {
+      const provider = getBillingProvider(sub.currency);
+      if (provider) {
+        try {
+          await provider.cancelSubscription(sub.externalId);
+        } catch (err) {
+          console.error('[me:delete] falha ao cancelar assinatura no provider', err);
+        }
+      }
+    }
+
     await db.transaction(async (tx) => {
       // apaga a casa (cascade remove todo o domínio + memberships)
       await tx.delete(households).where(eq(households.id, hid));
