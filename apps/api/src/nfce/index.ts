@@ -14,6 +14,11 @@ export {
   type MatchResult,
 } from './matching.js';
 export { cosine, embed, embeddingEnabled, embeddingText, EMBEDDING_DIM } from './embedding.js';
+// NB: os helpers de cache (embed-cache.js) tocam a camada de banco (import de
+// db/index.js no topo). Eles NÃO são re-exportados aqui de propósito — o barrel
+// `nfce/index.ts` é importado por testes de unidade puros (router/errors/adapter)
+// que não mockam o banco; puxar db por ele quebraria esses testes. Quem precisa do
+// cache (rota /nfce da T9) importa direto de './embed-cache.js'.
 
 type Env = Record<string, string | undefined>;
 

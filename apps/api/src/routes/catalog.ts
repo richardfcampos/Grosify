@@ -266,15 +266,22 @@ export const catalogRoute = new Hono<HouseholdEnv>()
 
   .patch('/items/:id', zValidator('json', updateItemPayload), async (c) => {
     const hid = c.get('householdId');
+    const id = c.req.param('id');
     const { minStock, ...rest } = c.req.valid('json');
+    // Renomear invalida o embedding cacheado: o vetor guarda o nome antigo, então
+    // zeramos a coluna pra forçar re-embedding no próximo matching de NFC-e. Só
+    // limpamos quando o nome de fato muda (evita mexer no cache em edições de outros
+    // campos como categoria/estoque).
+    const renamedTo = rest.name;
     const [item] = await db
       .update(items)
       .set({
         ...rest,
         ...(minStock !== undefined ? { minStock: minStock != null ? String(minStock) : null } : {}),
+        ...(renamedTo !== undefined ? { embedding: null } : {}),
         updatedAt: new Date(),
       })
-      .where(and(eq(items.id, c.req.param('id')), eq(items.householdId, hid)))
+      .where(and(eq(items.id, id), eq(items.householdId, hid)))
       .returning();
     if (!item) return c.json({ error: 'not_found' }, 404);
     return c.json({ item });
