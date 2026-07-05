@@ -36,7 +36,7 @@ const NAV_RIGHT = [
 
 /** Casca das telas autenticadas: guarda sessão+casa, faz pull do catálogo, nav inferior. */
 export function AppLayout() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const location = useLocation();
   const { data: session, isPending } = useSession();
   const membership = useMembership(!!session);
@@ -64,6 +64,16 @@ export function AppLayout() {
     if (m.themeDir === 'painel' || m.themeDir === 'mercado' || m.themeDir === 'recibo') setDir(m.themeDir);
     themeApplied.current = true;
   }, [membership.data, setMode, setDir]);
+
+  // Aplica o idioma salvo na conta (1x por sessão): outro aparelho pega a escolha.
+  // localStorage segue como cache instantâneo pro carregamento inicial (sem flash).
+  const localeApplied = useRef(false);
+  useEffect(() => {
+    const m = membership.data;
+    if (!m || localeApplied.current) return;
+    if (m.locale && m.locale !== i18n.language) void i18n.changeLanguage(m.locale);
+    localeApplied.current = true;
+  }, [membership.data, i18n]);
 
   useEffect(() => {
     const update = () => setOnline(navigator.onLine);

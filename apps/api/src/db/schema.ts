@@ -27,6 +27,9 @@ export const user = pgTable('user', {
   activeHouseholdId: uuid('active_household_id').references((): AnyPgColumn => households.id, {
     onDelete: 'set null',
   }),
+  // Idioma da UI escolhido pelo usuário. Preferência da pessoa (não da casa), por isso
+  // fica no user — segue em qualquer aparelho/casa. App-managed (Better Auth ignora).
+  uiLocale: text('ui_locale'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
