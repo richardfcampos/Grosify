@@ -46,7 +46,7 @@ afterAll(async () => {
 beforeEach(async () => {
   await pg.exec(
     `TRUNCATE shopping_session_items, shopping_sessions, shopping_list_entries, shopping_lists,
-     subscriptions, webhook_events,
+     nfce_imports, subscriptions, webhook_events,
      household_members, households, auth_attempts, email_suppression, "user" RESTART IDENTITY CASCADE;`,
   );
 });
