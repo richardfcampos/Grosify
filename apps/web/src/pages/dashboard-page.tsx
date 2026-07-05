@@ -1,7 +1,9 @@
 import {
+  applyFreeCaps,
   cheapestStore,
   estimateTotal,
   isRecurrenceDue,
+  maxLists,
   neededQty,
   type PriceRecord,
 } from '@grosify/shared';
@@ -26,8 +28,9 @@ import {
   useMoneyParts,
 } from '../features/ui/index.js';
 import { HouseholdSwitcher } from '../features/catalog/household-switcher.js';
+import { HiddenDataBanner } from '../features/billing/hidden-data-banner.js';
 import { useSession } from '../lib/auth-client.js';
-import { useFormatMoney } from '../lib/use-currency.js';
+import { useFormatMoney, useHouseholdPlan } from '../lib/use-currency.js';
 import { useMembership } from '../lib/use-membership.js';
 import { Loading } from './household-pages.js';
 
@@ -44,12 +47,20 @@ export function DashboardPage() {
   const money = useMoneyParts();
   const { data: session, isPending } = useSession();
   const membership = useMembership(!!session);
+  const plan = useHouseholdPlan();
   const [housesOpen, setHousesOpen] = useState(false);
 
-  const lists = useLiveQuery(
+  const allRecurringLists = useLiveQuery(
     () => db.lists.filter((l) => l.deletedAt === null && l.isRecurring).toArray(),
     [],
     [] as LocalList[],
+  );
+  // Filtro de leitura no downgrade: dentre as recorrentes, só as mais antigas até o
+  // teto ficam visíveis no dashboard (mesma regra de listas-page, aplicada aqui ao
+  // subconjunto recorrente que a home usa pra reposição).
+  const lists = useMemo(
+    () => applyFreeCaps(allRecurringLists, maxLists(plan), plan),
+    [allRecurringLists, plan],
   );
   const entries = useLiveQuery(
     () => db.listEntries.filter((e) => e.deletedAt === null).toArray(),
@@ -180,6 +191,8 @@ export function DashboardPage() {
           <Icon name="gear" size={22} />
         </Link>
       </header>
+
+      <HiddenDataBanner />
 
       {savedThisMonth > 0 && (
         <div className="card overflow-hidden p-[26px]">

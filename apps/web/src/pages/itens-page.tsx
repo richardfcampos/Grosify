@@ -1,12 +1,13 @@
-import type { PriceRecord } from '@grosify/shared';
+import { applyFreeCaps, maxItems, type PriceRecord } from '@grosify/shared';
 import { Link } from '@tanstack/react-router';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { db, type LocalItem } from '../db/dexie.js';
+import { HiddenDataBanner } from '../features/billing/hidden-data-banner.js';
 import { seedCommonItems } from '../features/catalog/seed-items.js';
 import { Button, Icon, PriceChange, SectionTitle, Sparkline, useMoneyParts } from '../features/ui/index.js';
-import { useFormatMoney } from '../lib/use-currency.js';
+import { useFormatMoney, useHouseholdPlan } from '../lib/use-currency.js';
 import { useHydrateItemPhoto } from '../lib/use-hydrate-photo.js';
 import { useLocalPref } from '../lib/use-local-pref.js';
 import { useObjectUrl } from '../lib/use-object-url.js';
@@ -50,7 +51,11 @@ export function ItensPage() {
   const [recent, setRecent] = useState<string[]>(() => readJson<string[]>(RECENT_KEY, []));
   const [saved, setSaved] = useState<SavedFilter[]>(() => readJson<SavedFilter[]>(SAVED_KEY, []));
 
-  const items = useLiveQuery(() => db.items.filter((i) => i.deletedAt === null).toArray(), [], [] as LocalItem[]);
+  const plan = useHouseholdPlan();
+  const allItems = useLiveQuery(() => db.items.filter((i) => i.deletedAt === null).toArray(), [], [] as LocalItem[]);
+  // Filtro de leitura no downgrade: free vê só os itens mais antigos até o teto
+  // (nada é apagado — mesmo padrão do historyCutoff). Ver useHiddenCounts pro aviso.
+  const items = useMemo(() => applyFreeCaps(allItems, maxItems(plan), plan), [allItems, plan]);
   const brands = useLiveQuery(() => db.brands.filter((b) => b.deletedAt === null).toArray(), [], []);
   const inventory = useLiveQuery(() => db.inventory.filter((i) => i.deletedAt === null).toArray(), [], []);
   const prices = useLiveQuery(() => db.prices.filter((p) => p.deletedAt === null).toArray(), [], [] as PriceRecord[]);
@@ -154,6 +159,7 @@ export function ItensPage() {
         sub={t('prices.intelSub')}
       />
 
+      <HiddenDataBanner />
 
       <div className="card flex items-center gap-2.5" style={{ padding: '12px 14px' }}>
         <Icon name="search" size={18} className="text-[var(--app-gray)]" />
