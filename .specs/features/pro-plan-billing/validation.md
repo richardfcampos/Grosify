@@ -1,176 +1,156 @@
-# Pro Plan + Multi-Gateway Billing — Validation (Phase 2: T3, T4, T5)
+# Pro Plan + Multi-Gateway Billing — Validation (Feature-Level)
 
 **Date**: 2026-07-05
 **Spec**: `.specs/features/pro-plan-billing/spec.md`
-**Diff range**: `914d88b..843f772` (8 files, +1101)
-**Verifier**: independent sub-agent (author ≠ verifier), read-only over real tree; mutations in scratch state only, restored.
-**Scope**: T3 (porta/factory/Stripe stub) · T4 (adapter Asaas) · T5 (lifecycle máquina de estados + idempotência + lazy expiry). Server-side only. Rotas/webhook/gates HTTP são P3 (T6-T8), fora deste escopo.
+**Design (context)**: `.specs/features/pro-plan-billing/design.md`
+**Commit range**: `fe58efb..HEAD` (HEAD = `3bef44e`) — 15 commits (spec/design/tasks + T1–T14), 60 files, +7385/−163
+**Verifier**: independent sub-agent (author ≠ verifier), read-only over real tree; source mutations in-place then restored via `git checkout --`; only this file written.
+**Scope**: whole feature — T1–T14, all stories BILL-01…06 + Edge Cases.
 
 ---
 
 ## Verdict: ✅ PASS
 
-Gate green (typecheck 0, 108/108 tests). Sensor 4/4 mutations killed. All in-scope ACs traced to `file:line` with spec-matching assertions. No surviving mutants, no spec-precision gaps in scope.
+Gate green (api typecheck 0, web typecheck 0, api 139/139, web 7/7). Sensor 7 mutations, 6 killed / 1 survived. Every server-side AC and every UI-by-inspection AC is traced to `file:line` with a spec-matching assertion (or a rendered component + wired call site + i18n keys for pure-UI). The single surviving mutant is a **discrimination gap in the client preflight fail-open branch** (unknown/null cached plan never asserted at-cap) — not a correctness regression in shipped code, but the test that would lock the fail-open semantics is missing. Ranked below.
 
 ---
 
-## Task Completion
+## Gate Check (contagens exatas)
 
-| Task | Status | Notes |
-| ---- | ------ | ----- |
-| T3 Porta PaymentProvider + factory + Stripe stub | ✅ Done | commit `71ea1af` |
-| T4 Adapter Asaas | ✅ Done | commit `a850594` |
-| T5 Lifecycle | ✅ Done | commit `843f772` (= HEAD) |
+| Gate | Command | Result |
+| --- | --- | --- |
+| api typecheck | `pnpm --filter @grosify/api typecheck` | exit 0 |
+| web typecheck | `pnpm --filter @grosify/web typecheck` | exit 0 |
+| api test | `pnpm --filter @grosify/api test` | **139 passed / 0 failed / 0 skipped** (11 files) |
+| web test | `pnpm --filter @grosify/web test` | **7 passed / 0 failed / 0 skipped** (3 files) |
+
+api test files: `test/db-integration`, `test/plans`, `billing/factory`, `billing/asaas-provider`, `test/billing-lifecycle`, `test/billing-routes`, `test/billing-webhook`, `test/plan-gates` + 3 pre-existing. web test files: `sync/plan-gates`, `sync/engine-switch` + 1 pre-existing. Re-run after all mutation restores: still 139/7.
 
 ---
 
 ## Spec-Anchored Acceptance Criteria
 
-### BILL-04 (P2 porta/strategy) — T3
+Legend: **assertion** = the value/state asserted (payload/conjunction rule applied — asserts the outcome, not just the call). "por inspeção" = pure-UI AC with no render harness (Test Matrix declares none for UI layer); verified by component existence + correct render condition + wired call site + i18n keys present in all 6 locales.
 
-| Criterion | Spec-defined outcome | `file:line` + assertion | Result |
+### BILL-01 — Gates Free/Pro reais (P1)
+
+| AC | file:line | assertion | spec outcome | coberto |
+| --- | --- | --- | --- | --- |
+| 1 — 31º item Free → 403 `item_limit` | `test/plan-gates.test.ts:159-160` | `status===403` + `json==={error:'item_limit_reached'}` (seeds 30, POST 31º) | 403 item_limit | ✅ |
+| 2 — 3ª lista Free → 403 `list_limit` | `test/plan-gates.test.ts:208-209` | `status===403` + `{error:'list_limit_reached'}` (seeds 2, POST 3ª) | 403 list_limit | ✅ |
+| 3 — 3º membro Free → 403 `member_limit` | `test/plan-gates.test.ts:249-256` | `status===403` + `{error:'member_limit_reached'}` + member count stays `2` | 403 member_limit | ✅ |
+| 4 — fotos Free → `/uploads` 403 `pro_required` | `test/plan-gates.test.ts:289-290` | `status===403` + `{error:'pro_required'}` on `/uploads/presign` | 403 pro_required | ✅ |
+| 4 — analytics/CSV/photo client paywall | analytics `pages/analytics-page.tsx:93-98` (free→full-page upsell); photo `pages/item-form-page.tsx:203` (`plan==='free'?setPaywallOpen:filePicker`); CSV/compra gates present | rendered PaywallSheet / upsell | ✅ por inspeção |
+| 5 — Pro remove todos os tetos | items `plan-gates.test.ts:163-178` (201), lists `:212-222` (201), members `:259-277` (201, count 3), presign `:293-304` (200 URL) | each `status===201/200` under `plan:'pro'` | no limit | ✅ |
+| 6 — downgrade filtra leitura (nada apagado), volta no re-upgrade | `applyFreeCaps` pure logic `test/plans.test.ts:45-75` (id-asc sort, slice, non-mutating); surfaces `lib/use-hidden-counts.ts:29-31` + `pages/{itens,dashboard,listas}-page.tsx` apply it; `check-item-sheet.tsx` applies `historyCutoff` | read-filter, deterministic id-asc | ✅ (logic) + por inspeção (surfaces) |
+| 7 — aviso persistente "N ocultos" + CTA upgrade | `features/billing/hidden-data-banner.tsx:17` (null when total 0) + `:28` (`t('billing.hiddenBannerTitle',{items,lists})`) + `:21` (navigate `/ajustes`); wired in `itens-page:162`, `dashboard-page:195`, `listas-page:40`; counts `lib/use-hidden-counts.ts` | persistent banner w/ hidden count + CTA | ✅ por inspeção |
+
+### BILL-02 — Assinar Pro via Asaas (P1)
+
+| AC | file:line | assertion | spec outcome | coberto |
+| --- | --- | --- | --- | --- |
+| 1 — owner/admin POST checkout → cria sub Asaas + URL hosted | `test/billing-routes.test.ts:135-141` | `status===200` + `json==={checkoutUrl:'…'}` + sub `status==='pending'`, `externalId`, `priceCents===1290`, `currency==='BRL'` | 200 + checkout URL | ✅ |
+| 2 — member/viewer → 403 | member `billing-routes.test.ts:165-166` (`403` + `{error:'forbidden'}`); viewer `:173-175` (`403`) | 403 | 403 | ✅ |
+| 3 — sem `ASAAS_API_KEY` → 501 | route `billing-routes.test.ts:182-183` (`501` + `{error:'provider_unavailable'}`); factory `factory.test.ts:26` (`billingProviderFor('BRL',{})` null) | 501 provider_unavailable | ✅ |
+| 4 — webhook confirma → sub `active` + house `pro` | webhook HTTP `billing-webhook.test.ts:125-128` (`200` + `subStatus==='active'` + `housePlan==='pro'`); also `billing-routes.test.ts:154-157` (`applyBillingEvent`→'applied', active, pro) | active + pro | ✅ |
+| 5 — webhook desconhecido/token inválido → 401/404 sem efeito | token inválido `billing-webhook.test.ts:109-113` (`401` + `{error:'invalid_signature'}` + sub stays `pending` + house `free`); assinatura desconhecida `:151-152` (`200` no-op, spec permits "sem efeito") | 401/404, no effect | ✅ |
+| 6 — mesmo evento 2× → 2º no-op (idempotente) | `billing-webhook.test.ts:135-142` (2× `200`, `webhook_events` rows for eventId ===1); lifecycle `billing-lifecycle.test.ts:181-189` ('applied' then 'duplicate') | idempotent no-op | ✅ |
+| 7 — já-ativa + checkout → 409 `already_subscribed` | `billing-routes.test.ts:202-203` (`409` + `{error:'already_subscribed'}`) | 409 already_subscribed | ✅ |
+
+### BILL-03 — Ciclo de vida da assinatura (P1)
+
+| AC | file:line | assertion | spec outcome | coberto |
+| --- | --- | --- | --- | --- |
+| 1 — GET subscription → {status,cycle,currency,nextDueDate,provider}\|null | null `billing-routes.test.ts:277-279` (`{subscription:null}`); shape `:299-304` (status/cycle/currency/priceCents/provider + nextDueDate not null); prefers non-terminal `:329-331` | shape or null | ✅ |
+| 2 — cancel → provider canceled, status `canceled`, plan→free no fim do período (não imediato) | `billing-routes.test.ts:357-364` (`200` + `cancelSpy('sub_1')` + sub `canceled` + `canceledAt` set + `currentPeriodEnd===nextDueDate` + `housePlan==='pro'` — not immediate); lifecycle immediate cancel→free (no paid period) `billing-lifecycle.test.ts:141-152` | canceled, pro until period end | ✅ |
+| 3 — overdue mantém pro; após 7d → free | overdue keeps pro `billing-lifecycle.test.ts:115-126` (`overdue`, `overdueSince≠null`, house pro); grace boundary 8d→free `:222-232` (`resolveEffectivePlan==='free'` ×2 incl. write-behind); 2d→pro `:234-243` | pro in grace, free after 7d | ✅ |
+| 4 — plan `free` → AC-6 read-filter vale | canceled+expired→free `billing-lifecycle.test.ts:245-254`; then read-filter is `applyFreeCaps` (BILL-01 AC6 logic verified `plans.test.ts`) | read-filter after free | ✅ (composed) |
+
+### BILL-04 — Porta multi-gateway (P2)
+
+| AC | file:line | assertion | spec outcome | coberto |
+| --- | --- | --- | --- | --- |
+| 1 — porta+factory BRL→asaas / senão→stripe, único lugar, setBillingProvider | `factory.test.ts:29-32` (BRL+key→'asaas'), `:38-41` (USD+key→'stripe'), `:72-73` (override wins), `:76-77` (falls to factory), `:88-90` (reset clears) | factory por env+moeda | ✅ |
+| 2 — moeda≠BRL sem Stripe cred → checkout 501 `provider_unavailable` (stub) | factory `factory.test.ts:34-36` (USD no stripe key→null→501); stub throws `factory.test.ts:49-61` (`.toThrow('provider_unavailable')` on create/cancel/webhook); route maps `provider_unavailable`→501 `billing-routes.test.ts:268-269` | 501 provider_unavailable | ✅ |
+| 3 — webhooks normalizam pra BillingEvent único antes de tocar subscriptions | all 8 Asaas event mappings → normalized `type` `asaas-provider.test.ts:161-227`; lifecycle consumes normalized `BillingEvent` | normalized internal event | ✅ |
+| 4 — sub guarda provider + externalIds; ativa não re-roteia se moeda muda | provider locked by currency `factory.test.ts:43-45` (USD never→asaas even w/ ASAAS key); sub row carries `provider` (GET returns it `billing-routes.test.ts:303`) | provider pinned on row | ✅ |
+
+### BILL-05 — UI de plano em Ajustes (P2)
+
+| AC | evidência | spec outcome | coberto |
 | --- | --- | --- | --- |
-| AC1 factory por env+moeda: BRL→asaas | provider name `asaas` quando `ASAAS_API_KEY` | `factory.test.ts:29-32` — `expect(p?.name).toBe('asaas')` | ✅ PASS |
-| AC1 senão→stripe | provider name `stripe` quando `STRIPE_SECRET_KEY` | `factory.test.ts:38-41` — `expect(p?.name).toBe('stripe')` | ✅ PASS |
-| AC1 único lugar / setBillingProvider p/ testes | override vence factory; reset limpa | `factory.test.ts:65-90` — `expect(getBillingProvider('BRL',{})).toBe(fake)` / `.toBeNull()` após reset | ✅ PASS |
-| AC2 Stripe sem credencial → stub (rota 501) | `billingProviderFor('USD',{...})` → null (rota mapeia 501) | `factory.test.ts:34-36` — `expect(billingProviderFor('USD',{ASAAS_API_KEY:'k'})).toBeNull()` | ✅ PASS |
-| AC2 Stripe stub lança provider_unavailable | todo método lança `provider_unavailable` | `factory.test.ts:48-62` — `.toThrow('provider_unavailable')` (create/cancel/webhook) | ✅ PASS |
-| AC4 provider travado por moeda (moeda≠BRL nunca re-roteia p/ Asaas) | null mesmo com `ASAAS_API_KEY` em USD | `factory.test.ts:43-45` — `expect(billingProviderFor('USD',{ASAAS_API_KEY:'k'})).toBeNull()` | ✅ PASS |
-| Edge: BRL sem env → null | null (rota → 501) | `factory.test.ts:25-27` — `expect(billingProviderFor('BRL',{})).toBeNull()` | ✅ PASS |
+| 1 — Free vê comparativo + botões mensal/anual → redirect checkout | `features/billing/plan-section.tsx:94-102` renders `PlanCheckoutForm` when `plan==='free'`; `:52-54` `onSuccess`→`window.location.href=checkoutUrl`; PlanSection mounted `pages/ajustes-page.tsx:256` | comparativo + checkout redirect | ✅ por inspeção |
+| 2 — Pro vê status/ciclo/próxima cobrança + cancelar (confirm) | `plan-section.tsx:108-115` renders `PlanStatusCard` when managed sub; cancel via `useConfirm` `:71-79`; `plan-status-card.tsx` shows status/cycle/next-due | status + cancel w/ confirm | ✅ por inspeção |
+| 3 — volta do checkout → refetch membership + reflete plan | `plan-section.tsx` doc `:19-21` (focus-refetch default) + cancel `invalidateQueries(['membership'])` `:66` + `['billingSubscription']` `:67` | refetch on return | ✅ por inspeção |
 
-### BILL-02 (P1 checkout Asaas) — T4
+### BILL-06 — Comp/100% override (P3)
 
-| Criterion | Spec-defined outcome | `file:line` + assertion | Result |
+| AC | file:line | assertion | spec outcome | coberto |
+| --- | --- | --- | --- | --- |
+| 1 — planOverride='pro' → Pro sem assinatura, ignora gateway | resolve `billing-lifecycle.test.ts:267-276` (`resolveEffectivePlan==='pro'` w/ expired sub); gate bypass `test/plan-gates.test.ts:180-195` (override on free household → 31º item `201`) | pro without subscription | ✅ |
+
+### Edge Cases (spec §Edge Cases)
+
+| Edge | file:line | assertion | coberto |
 | --- | --- | --- | --- |
-| **1290→12.90 conversão (risco 100x)** | value = `12.9` / `"12.90"`, **nunca** 1290 | `asaas-provider.test.ts:44-46` — `expect(sentBody.value).toBe(12.9)` + `.toFixed(2)).toBe('12.90')` + `.not.toBe(1290)` | ✅ PASS |
-| createSubscription billingType UNDEFINED + externalReference | `billingType='UNDEFINED'`, `cycle='MONTHLY'`, `externalReference='hh-1'`, `customer='cus_1'` | `asaas-provider.test.ts:58-61` — 4x `toBe` | ✅ PASS |
-| cycle yearly → YEARLY | `cycle='YEARLY'` | `asaas-provider.test.ts:64-73` — `expect(sentBody.cycle).toBe('YEARLY')` | ✅ PASS |
-| headers access_token + User-Agent (obrigatório) | toda chamada leva os 3 headers | `asaas-provider.test.ts:81-88` — `toMatchObject({access_token,'Content-Type','User-Agent':'Grosify'})` | ✅ PASS |
-| checkoutUrl = invoiceUrl da 1ª cobrança | `{externalId:'sub_1',externalCustomerId:'cus_1',checkoutUrl:'https://asaas/pay/1'}` + GET `/payments` | `asaas-provider.test.ts:97-103` — `toEqual({...})` + URL da 3ª chamada | ✅ PASS |
-| ASAAS_BASE_URL custom | usa base custom | `asaas-provider.test.ts:106-113` — `.toBe('https://api.asaas.com/v3/customers')` | ✅ PASS |
-| cancel DELETE 2xx | resolve; método DELETE na URL certa | `asaas-provider.test.ts:117-124` | ✅ PASS |
-| cancel DELETE 404 idempotente | resolve (não lança) | `asaas-provider.test.ts:126-129` — `.resolves.toBeUndefined()` | ✅ PASS |
-| cancel DELETE 500 lança | `asaas_500` | `asaas-provider.test.ts:131-134` — `.rejects.toThrow(/asaas_500/)` | ✅ PASS |
-| **AC5 webhook token inválido → null sem efeito** | evento null | `asaas-provider.test.ts:145-151` — `expect(evt).toBeNull()` (token `errado`) | ✅ PASS |
-| mapping PAYMENT_CONFIRMED→payment_confirmed | type+eventId+externalSubscriptionId | `asaas-provider.test.ts:161-171` — `toMatchObject({eventId:'evt_9',type:'payment_confirmed',externalSubscriptionId:'sub_9'})` | ✅ PASS |
-| mapping PAYMENT_RECEIVED→payment_confirmed | `payment_confirmed` | `asaas-provider.test.ts:173-179` | ✅ PASS |
-| mapping PAYMENT_OVERDUE→payment_overdue | `payment_overdue` | `asaas-provider.test.ts:181-187` | ✅ PASS |
-| mapping PAYMENT_REFUNDED→payment_refunded | `payment_refunded` | `asaas-provider.test.ts:189-195` | ✅ PASS |
-| mapping PAYMENT_CHARGEBACK_*→chargeback | `chargeback` | `asaas-provider.test.ts:197-203` (PAYMENT_CHARGEBACK_REQUESTED) | ✅ PASS |
-| mapping SUBSCRIPTION_DELETED→subscription_deleted (externalId de subscription.id) | `subscription_deleted`, externalId `sub_7` | `asaas-provider.test.ts:205-211` — `toMatchObject({type:'subscription_deleted',externalSubscriptionId:'sub_7'})` | ✅ PASS |
-| mapping SUBSCRIPTION_INACTIVATED→subscription_deleted | `subscription_deleted` | `asaas-provider.test.ts:213-219` | ✅ PASS |
-| evento desconhecido → null (200) | null com token válido | `asaas-provider.test.ts:221-227` — PAYMENT_CREATED → `.toBeNull()` | ✅ PASS |
+| checkout mas webhook nunca chega → pending; novo checkout >24h cancela+recria | `billing-routes.test.ts:224-234` (`200` + `cancelSpy('sub_stale')` + old→`canceled` + new→`pending`) | ✅ |
+| webhooks fora de ordem (CONFIRMED após CANCELED) ignorado | `billing-lifecycle.test.ts:198-207` (`ignored_terminal`, sub stays `canceled`, house `free`) | ✅ |
+| Asaas indisponível no checkout → 502 `provider_error` | `billing-routes.test.ts:250-252` (`502` + `{error:'provider_error'}` + linha→`canceled`) | ✅ |
+| household deletado com sub ativa → cancel best-effort (LGPD) | design §4/T8(f); LGPD cancel path present in `routes/households.ts` deletion — no dedicated test | ⚠️ inspeção (no test) |
+| downgrade com 80 itens → 30 mais antigos visíveis (id asc determinístico) | `plans.test.ts:53-64` (`applyFreeCaps` sorts id-asc, slices cap; cap>total returns all ordered) | ✅ |
+| transição inválida (overdue em pending) ignorada | `billing-lifecycle.test.ts:209-218` (`ignored_invalid_transition`, sub stays `pending`) | ✅ |
+| webhook body não-JSON → 400 bad_payload | `billing-webhook.test.ts:168-171` (`400` + `{error:'bad_payload'}`) | ✅ |
 
-### BILL-03 (P1 ciclo de vida) + BILL-06 (P3 override) — T5
-
-| Criterion | Spec-defined outcome | `file:line` + assertion | Result |
-| --- | --- | --- | --- |
-| BILL-02 AC4 webhook confirma → status active + plan pro | sub `active`, house `pro` | `billing-lifecycle.test.ts:104-113` — `res 'applied'` + `status 'active'` + `housePlan 'pro'` | ✅ PASS |
-| BILL-03 AC3 atraso → overdue mantendo pro + overdueSince | `overdue`, `overdueSince≠null`, house `pro` (grace) | `billing-lifecycle.test.ts:115-126` | ✅ PASS |
-| overdue→active limpa overdueSince | `active`, `overdueSince=null`, `pro` | `billing-lifecycle.test.ts:128-139` | ✅ PASS |
-| BILL-03 AC2 cancel → canceled + free (sem período pago) | `canceled`, `canceledAt≠null`, house `free` | `billing-lifecycle.test.ts:141-152` | ✅ PASS |
-| BILL-03 AC2 pro até fim do período pago (não imediato) | house permanece `pro` com currentPeriodEnd futuro | `billing-lifecycle.test.ts:154-165` — `expect(await housePlan(h)).toBe('pro')` | ✅ PASS |
-| refund → canceled | `canceled` | `billing-lifecycle.test.ts:167-172` | ✅ PASS |
-| chargeback → canceled | `canceled` | `billing-lifecycle.test.ts:174-179` | ✅ PASS |
-| **BILL-02 AC6 idempotência (evento duplicado no-op)** | 1º `applied`, 2º `duplicate`, sub fica `active` | `billing-lifecycle.test.ts:181-189` — `.toBe('applied')` / `.toBe('duplicate')` | ✅ PASS |
-| BILL-02 AC5 assinatura desconhecida → sem efeito | `unknown_subscription`, house `free` | `billing-lifecycle.test.ts:191-196` | ✅ PASS |
-| **Edge out-of-order/terminal (CONFIRMED após CANCELED ignorado)** | `ignored_terminal`, sub `canceled`, house `free` | `billing-lifecycle.test.ts:198-207` | ✅ PASS |
-| Edge transição inválida (overdue em pending) ignorada | `ignored_invalid_transition`, sub `pending` | `billing-lifecycle.test.ts:209-218` | ✅ PASS |
-| **BILL-03 AC3 grace boundary: overdue 8d → free (write-behind)** | `resolveEffectivePlan='free'` + house persistido `free` | `billing-lifecycle.test.ts:222-232` — `.toBe('free')` (2x) | ✅ PASS |
-| **BILL-03 grace boundary: overdue 2d → pro (dentro do grace)** | `resolveEffectivePlan='pro'` | `billing-lifecycle.test.ts:234-243` — `.toBe('pro')` | ✅ PASS |
-| BILL-03 AC4 canceled + currentPeriodEnd vencido → free | `free` | `billing-lifecycle.test.ts:245-254` | ✅ PASS |
-| canceled + currentPeriodEnd futuro → pro | `pro` | `billing-lifecycle.test.ts:256-265` | ✅ PASS |
-| **BILL-06 AC1 planOverride='pro' vence assinatura expirada** | `pro` sem assinatura ativa | `billing-lifecycle.test.ts:267-276` — `.toBe('pro')` | ✅ PASS |
-
-**Status**: ✅ All in-scope ACs covered with spec-matching assertions. No spec-precision gaps.
-
-**Out of Phase-2 scope (correctly deferred to T6-T8, P3):** BILL-02 AC1 (POST /billing/checkout URL), AC2 (403 role), AC3 (501 env-gate at route), AC7 (409 already_subscribed); BILL-03 AC1 (GET /billing/subscription shape). These are HTTP-route ACs; the provider/lifecycle primitives they compose over ARE verified here.
+**Additional verified (T4 provider unit, from Phase-2, still green):** 1290→"12.90" conversion (100× guard) `asaas-provider.test.ts:44-46`; every event mapping + webhook token auth `:145-227`; cancel DELETE 404 idempotent `:126-129` / 500 throws `:131-134`.
 
 ---
 
-## Discrimination Sensor (P0-critical: payment path)
+## Discrimination Sensor (P0-critical: gates + payment + client sync)
 
-Scratch method: in-place edit of source → run targeted test → restore via `git checkout --`. Tree verified clean after each.
+Method: in-place source edit → run targeted test(s) → restore `git checkout --` → `git status --short` confirms clean after each. Avoided the 4 branches already killed in Phase 2 (cents conversion, grace boundary, idempotency, webhook auth). 7 mutations across the highest-risk feature-level branches.
 
-| # | File:line | Mutation | Target test | Killed? |
-| - | --------- | -------- | ----------- | ------- |
-| a | `asaas-provider.ts:84` | `params.priceCents / 100` → `params.priceCents` (100x bug) | `asaas-provider.test.ts:35` conversão cents→reais | ✅ Killed — `Expected 12.9, Received 1290` |
-| b | `lifecycle.ts:186` | grace `< now.getTime()` → `> now.getTime()` (flip boundary) | `billing-lifecycle.test.ts` grace 8d→free & 2d→pro | ✅ Killed — 2 failures (`expected 'free' to be 'pro'` on 2d; 8d also flipped) |
-| c | `lifecycle.ts:44` | remove `if (inserted.length === 0) return 'duplicate'` (idempotency no-op) | `billing-lifecycle.test.ts:181` evento duplicado | ✅ Killed — `Expected 'duplicate', Received 'applied'` |
-| d | `asaas-provider.ts:120` | `if (received !== expected) return null` → `if (false)` (disable token check) | `asaas-provider.test.ts:145` token errado→null | ✅ Killed — `expected {...payment_confirmed} to be null` |
+| # | Mutation | File:line | Target test | Killed? |
+| - | -------- | --------- | ----------- | ------- |
+| a | item teto off-by-one: `itemCount >= maxItems` → `>` | `routes/catalog.ts:219` | `plan-gates.test.ts:159` (31º→403) | ✅ Killed — `expected 201 to be 403` |
+| b | remove role gate no checkout: `if(!canManageBilling)` → `if(false&&…)` | `routes/billing.ts:39` | `billing-routes.test.ts:165` (member→403) | ✅ Killed — member checkout no longer 403 |
+| c | remove 409 guard: `if(!isStalePending)` → `if(!isStalePending&&false)` | `routes/billing.ts:71` | `billing-routes.test.ts:202` (já-ativa→409) | ✅ Killed — active household no longer 409 |
+| d | canceled deixa de ser terminal: `if(sub.status==='canceled')` → `if(false&&…)` | `billing/lifecycle.ts:60` | `billing-lifecycle.test.ts:204` (CONFIRMED após CANCELED) | ✅ Killed — reactivates instead of `ignored_terminal` |
+| e | remove member gate na tx do /join: `if(memberCount>=…)` → `if(false&&…)` | `routes/households.ts:440` | `plan-gates.test.ts:249` (3º membro→403) | ✅ Killed — 3rd member joins full free house |
+| f | preflight fail-open→fail-closed: `if(plan==='free')` → `if(plan!=='pro')` | `db/repositories.ts:50` | `sync/plan-gates.test.ts` (all 4) | ❌ **Survived** — see gap 1 |
+| g | remove delete otimista no 403: drop `reconcilePlanRejection(entry)` | `sync/engine.ts:207` | `sync/plan-gates.test.ts:103` (403 remove otimista) | ✅ Killed — orphan survives (`expected undefined`) |
 
-**Sensor depth**: P0-full (4 manual behavior-level mutations across all four highest-risk branches: money conversion, grace boundary, idempotency, webhook auth).
-**Result**: 4/4 killed — ✅ PASS. Tests are discriminating on every critical branch.
-
----
-
-## Code Quality
-
-| Principle | Status |
-| --------- | ------ |
-| Minimum code (no scope creep) | ✅ Port mirrors `email/index.ts`; adapter is thin fetch, no SDK |
-| Surgical changes | ✅ 8 new files only; no unrelated edits |
-| Matches existing patterns | ✅ factory + setProvider + reset mirrors email module; webhook thin-handler shape |
-| Spec-anchored outcome check | ✅ Asserted values match spec (12.90 not 1290; 7d grace; null on token mismatch) |
-| Per-layer Coverage: unit (env combos, cents→reais, every event mapping) | ✅ factory.test + asaas-provider.test |
-| Per-layer Coverage: integration (each transition, idempotency, out-of-order, grace, override) | ✅ billing-lifecycle.test (PGlite) |
-| Every test maps to a spec AC / edge case | ✅ No unclaimed tests |
-| Documented guidelines followed | ✅ tasks.md Test Coverage Matrix (unit fetch-mocked; integration PGlite); strong defaults, no coverage threshold configured |
+**Result**: 7 mutations, **6 killed / 1 survived**. Tests discriminate on every server-side critical branch (item/list/member tetos, role gate, 409 uniqueness, canceled-terminal machine guard, optimistic 403 reconciliation). The single survivor is a client-side coverage gap in the fail-open semantics, not a shipped-code defect.
 
 ---
 
-## Edge Cases (in scope)
+## Ranked Gaps
 
-- [x] Webhook out-of-order (CONFIRMED após CANCELED) → `ignored_terminal`, no state change — `billing-lifecycle.test.ts:198`
-- [x] Invalid transition (overdue em pending) → `ignored_invalid_transition` — `billing-lifecycle.test.ts:209`
-- [x] Duplicate webhook event → no-op via unique(provider,eventId) — `billing-lifecycle.test.ts:181`
-- [x] overdue > 7d grace boundary → lazy free flip (8d) / stays pro (2d) — `billing-lifecycle.test.ts:222,234`
-- [x] cancel DELETE 404 idempotent — `asaas-provider.test.ts:126`
-- [ ] "checkout mas webhook nunca chega → pending; novo checkout >24h cancela" — route-level (T6), out of Phase-2 scope
-- [ ] "Asaas indisponível no checkout → 502" — route-level (T6), out of Phase-2 scope
+1. **[low severity — test coverage, not a code bug] Client preflight fail-open branch is under-discriminated.**
+   `createItem` (`apps/web/src/db/repositories.ts:49-53`) intentionally blocks only when `cachedPlan()==='free'` (fail-open: unknown/null plan passes to the server, which is authoritative). Mutating the guard to `plan!=='pro'` (fail-closed — null now blocks) does **not** fail any test: the only test that seeds items at the cap sets `plan='free'` explicitly (`sync/plan-gates.test.ts:57-69`), and the two null-plan tests (`:91`, `:107`) seed **0** items so the cap check is never reached. No test asserts "unknown/null plan at cap → NOT blocked (falls through to optimistic write + server reconciliation)". A shipped code path exists that no test pins; a regression to fail-closed would silently block legitimate creates when the plan cache is cold (first launch / post-clear).
+   **Suggested lock (not applied — Verifier does not edit code):** add a `sync/plan-gates.test.ts` case: seed `FREE_MAX_ITEMS` items, leave `cachedPlan` unset (null), assert `createItem(...)` resolves (does not throw) and enqueues — proving fail-open at the cap.
 
----
-
-## Gate Check
-
-- **Gate command**: `pnpm --filter @grosify/api typecheck && pnpm --filter @grosify/api test`
-- **typecheck**: exit 0
-- **test**: exit 0 — **108 passed / 0 failed / 0 skipped** (8 files) — matches expected count
-- **In-scope test files**: `billing/factory.test.ts` (13), `billing/asaas-provider.test.ts` (19), `test/billing-lifecycle.test.ts` (16)
-- **Failures**: none
-- **Skipped**: none
-
----
-
-## Requirement Traceability Update (Phase-2 primitives)
-
-| Requirement | Previous | New (server primitives) |
-| ----------- | -------- | ----------------------- |
-| BILL-04 (porta/strategy) | Pending | ✅ Verified (T3) |
-| BILL-02 (adapter Asaas: create/cancel/webhook parse+auth+mapping+cents) | Pending | ✅ Verified (T4) — HTTP route ACs remain for T6 |
-| BILL-03 (lifecycle: máquina de estados, grace, lazy expiry) | Pending | ✅ Verified (T5) — GET route AC remains for T6 |
-| BILL-06 (planOverride precedence) | Pending | ✅ Verified (T5) |
+No other gaps. No spec-precision mismatches found on any covered AC (HTTP status, error code, and state values all match spec verbatim). No surviving server-side mutants.
 
 ---
 
 ## Notes / Observations
 
-1. **`tasks.md` unstaged change (not mine):** during this session an external write (orchestrator status update) marked T1-T5 done with commit hashes and logged deviations (F1: `PRO_PRICE_CENTS` removed, superseded by `PLAN_PRICES`, zero usages; F2: gate re-verified). Verifier is read-only and did NOT touch `tasks.md`; left in place to avoid clobbering legitimate author state. `apps/api/src/billing/*.ts` all restored to committed state; only `validation.md` added by Verifier.
-2. **Webhook token dev-bypass:** `asaas-provider.ts:121-123` — when `ASAAS_WEBHOOK_TOKEN` is unset it accepts the webhook (dev convenience, logged warn). Matches design ("token verificado" gated on env presence). Production must set the env; not a test gap.
-3. **Route-layer ACs (409/501/502/403 checkout, GET subscription shape, webhook 401 HTTP status) are deliberately Phase-3 (T6-T8)** and not asserted here — the underlying provider/lifecycle behavior they build on is fully covered.
+1. **Webhook 401 vs 404 (BILL-02 AC5):** spec says "401/404 sem efeito" for unknown-subscription-or-invalid-token. Implementation returns **401** for bad token (`billing-webhook.test.ts:109`) and **200 no-op** for unknown subscription (`:151`). The 200 (not 404) for unknown-subscription is acceptable under the design's "handler never throws → 200 + log" rule (webhook queue must not be interrupted) and still satisfies "sem efeito" — the DB is unchanged. Spec's "401/404" is an OR over the two failure kinds; token failure is 401 as required. Not a gap; flagged for transparency.
+2. **`tasks.md` T14 status line** says "T14 commit deste worker" (placeholder) but HEAD `3bef44e` is the T14 commit — the placeholder was not rewritten to the hash. Cosmetic; does not affect code.
+3. **LGPD household-delete cancel** (Edge Case) and **compra-page photo gate / CSV export gate** (BILL-01 AC4 secondary surfaces) are verified by code inspection only — no automated test. Consistent with the Test Matrix (UI + deletion flows: build gate only). Acceptable per documented guidelines.
+4. Sensor mutations touched 6 source files; all restored; final `git status --short` shows only `validation.md` modified and pre-existing untracked report files outside scope.
 
 ---
 
-## Summary
+## Validação da fase 2 (T3–T5) — resumo preservado
 
-**Overall**: ✅ Ready (Phase 2 / T3-T5)
+O relatório anterior deste arquivo cobria só a Fase 2 (porta/factory/Stripe stub, adapter Asaas, lifecycle) sobre `914d88b..843f772`. Veredito **PASS**; gate 108/108; sensor **4/4 mortos** nas quatro branches de maior risco:
 
-**Spec-anchored check**: all in-scope BILL-02/03/04/06 ACs matched spec outcome; 0 spec-precision gaps.
-**Sensor**: 4/4 mutations killed (P0-full: cents conversion, grace boundary, idempotency, webhook auth).
-**Gate**: 108 passed, 0 failed.
+| # | File:line | Mutação | Killed? |
+| - | --------- | ------- | ------- |
+| a | `asaas-provider.ts:84` | `priceCents/100` → `priceCents` (bug 100×) | ✅ `Expected 12.9, Received 1290` |
+| b | `lifecycle.ts:186` | grace `<` → `>` (flip boundary) | ✅ 8d/2d falham |
+| c | `lifecycle.ts:44` | remove `return 'duplicate'` (idempotência) | ✅ `Expected 'duplicate', Received 'applied'` |
+| d | `asaas-provider.ts:120` | desliga check de token do webhook | ✅ token errado deixa de virar null |
 
-**What works**: money conversion asserts 12.90 not 1290; webhook token mismatch → null; all 8 event-type mappings; idempotency duplicate no-op; out-of-order terminal guard; invalid-transition guard; 7d grace boundary (8d→free, 2d→pro); planOverride precedence; factory env+currency routing; Stripe stub throws provider_unavailable.
-
-**Issues found**: none in scope.
-
-**Next steps**: proceed to Phase 3 (T6-T8: routes, webhook HTTP handler, server gates) — the route-level ACs deferred above get verified there.
+Todos os ACs em escopo da Fase 2 (BILL-02/03/04/06, primitivas server-side) tinham assertion batendo com o spec; 0 gaps de precisão. Essas quatro branches **não** foram re-mutadas nesta rodada feature-level (evitando repetição); a Fase 3 (rotas/webhook/gates HTTP) e o client foram as novas superfícies mutadas aqui.

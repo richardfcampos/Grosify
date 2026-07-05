@@ -88,6 +88,24 @@ describe('plan gates — preflight offline + reconciliação', () => {
     expect(total).toBe(FREE_MAX_ITEMS + 1);
   });
 
+  it('plano desconhecido (sem cache) no teto NÃO bloqueia — fail-open, servidor decide', async () => {
+    await seedItems(FREE_MAX_ITEMS);
+    // sem setCachedPlan: db.meta não tem a chave 'plan' (page-load offline, cache limpo)
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 201,
+      json: async () => ({ changes: {}, cursor: 0 }),
+    });
+
+    await expect(
+      createItem({ name: 'Item extra', unit: 'un', barcodes: [] }),
+    ).resolves.toEqual(expect.any(String));
+    await flush();
+
+    const total = await db.items.where('householdId').equals('casa-teste').count();
+    expect(total).toBe(FREE_MAX_ITEMS + 1);
+  });
+
   it('403 item_limit_reached no drain remove o item otimista e incrementa rejectedByPlan', async () => {
     // plano desconhecido (fail-open): preflight deixa passar, servidor rejeita no sync
     fetchMock.mockResolvedValue({
