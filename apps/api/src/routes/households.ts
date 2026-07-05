@@ -1,10 +1,11 @@
 import { zValidator } from '@hono/zod-validator';
-import { isValidCurrency, updateMemberPayload } from '@grosify/shared';
-import { and, asc, desc, eq, isNull } from 'drizzle-orm';
+import { isValidCurrency, maxMembers, updateMemberPayload } from '@grosify/shared';
+import { and, asc, count, desc, eq, isNull } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { randomBytes } from 'node:crypto';
 import { v7 as uuidv7 } from 'uuid';
 import { z } from 'zod';
+import { resolveEffectivePlan } from '../billing/lifecycle.js';
 import { db } from '../db/index.js';
 import { activities, householdInvites, householdMembers, households, user } from '../db/schema.js';
 import { resolveActiveHouseholdId, setActiveHousehold } from '../lib/active-household.js';
@@ -47,7 +48,21 @@ async function membershipOf(userId: string) {
     .innerJoin(user, eq(user.id, householdMembers.userId))
     .where(and(eq(householdMembers.userId, userId), eq(householdMembers.householdId, activeId)))
     .limit(1);
-  return rows[0] ?? null;
+  const row = rows[0];
+  if (!row) return null;
+  // Plano efetivo (override + lazy expiry) em vez do plan materializado cru — assim o
+  // downgrade no fim do período/grace aparece na leitura sem depender de cron.
+  const plan = await resolveEffectivePlan(row.householdId);
+  return { ...row, plan };
+}
+
+/** Casa já bateu o teto de membros do plano? Checagem antecipada de UX pros convites. */
+async function atMemberLimit(householdId: string, plan: 'free' | 'pro'): Promise<boolean> {
+  const [{ value: memberCount } = { value: 0 }] = await db
+    .select({ value: count() })
+    .from(householdMembers)
+    .where(eq(householdMembers.householdId, householdId));
+  return memberCount >= maxMembers(plan);
 }
 
 export const householdsRoute = new Hono<AuthEnv>()
@@ -274,6 +289,10 @@ export const householdsRoute = new Hono<AuthEnv>()
       return c.json({ error: 'forbidden' }, 403);
     // só quem verificou o e-mail pode convidar (corta abuso de conta não-verificada)
     if (!c.get('user').emailVerified) return c.json({ error: 'email_not_verified' }, 403);
+    // Checagem antecipada do teto de membros (UX: bloqueia antes de gerar convite que o
+    // /join recusaria). O gate atômico definitivo é dentro da transação do /join.
+    if (await atMemberLimit(membership.householdId, membership.plan))
+      return c.json({ error: 'member_limit_reached' }, 403);
     const code = inviteCode();
     await db.insert(householdInvites).values({
       code,
@@ -296,6 +315,8 @@ export const householdsRoute = new Hono<AuthEnv>()
       if (membership.role !== 'owner' && membership.role !== 'admin')
         return c.json({ error: 'forbidden' }, 403);
       if (!c.get('user').emailVerified) return c.json({ error: 'email_not_verified' }, 403);
+      if (await atMemberLimit(membership.householdId, membership.plan))
+        return c.json({ error: 'member_limit_reached' }, 403);
       const { email } = c.req.valid('json');
       // não convidar e-mail que já deu bounce/reclamação (protege reputação de envio)
       if (await isSuppressed(email)) return c.json({ error: 'email_suppressed' }, 422);
@@ -402,6 +423,22 @@ export const householdsRoute = new Hono<AuthEnv>()
           .limit(1);
         if (existing[0]) return { kind: 'already' as const };
 
+        // Teto de membros do plano — checado DENTRO da tx (com o invite travado por
+        // FOR UPDATE) pra ser atômico: dois joins simultâneos não furam o limite.
+        // Plano efetivo aqui é simples (override ?? plan da linha lida) — não chama
+        // resolveEffectivePlan dentro da transação.
+        const [house] = await tx
+          .select({ plan: households.plan, planOverride: households.planOverride })
+          .from(households)
+          .where(eq(households.id, invite.householdId))
+          .limit(1);
+        const effectivePlan = house?.planOverride ?? house?.plan ?? 'free';
+        const [{ value: memberCount } = { value: 0 }] = await tx
+          .select({ value: count() })
+          .from(householdMembers)
+          .where(eq(householdMembers.householdId, invite.householdId));
+        if (memberCount >= maxMembers(effectivePlan)) return { kind: 'member_limit' as const };
+
         await tx
           .update(householdInvites)
           .set({ usedBy: userId })
@@ -416,6 +453,7 @@ export const householdsRoute = new Hono<AuthEnv>()
 
       if (result.kind === 'mismatch') return c.json({ error: 'invite_email_mismatch' }, 403);
       if (result.kind === 'already') return c.json({ error: 'already_in_household' }, 409);
+      if (result.kind === 'member_limit') return c.json({ error: 'member_limit_reached' }, 403);
       if (result.kind !== 'ok') return c.json({ error: 'invalid_invite' }, 404);
 
       const membership = await membershipOf(userId);

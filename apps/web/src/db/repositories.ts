@@ -1,6 +1,6 @@
-import { cheapestStore, neededQty, type Recurrence, type Unit } from '@grosify/shared';
+import { cheapestStore, maxItems, maxLists, neededQty, type Recurrence, type Unit } from '@grosify/shared';
 import { v7 as uuidv7 } from 'uuid';
-import { enqueue, householdId, syncNow } from '../sync/engine.js';
+import { cachedPlan, enqueue, householdId, syncNow } from '../sync/engine.js';
 import {
   db,
   type LocalBrand,
@@ -44,6 +44,14 @@ export interface NewItemInput {
 }
 
 export async function createItem(input: NewItemInput): Promise<string> {
+  // Preflight offline: plano free cacheado e teto batido bloqueia antes do otimista.
+  // Plano desconhecido/pro segue (fail-open — o servidor é a fonte autoritativa).
+  const plan = await cachedPlan();
+  if (plan === 'free') {
+    const count = await db.items.where('householdId').equals(hid()).and((i) => i.deletedAt === null).count();
+    if (count >= maxItems('free')) throw new Error('item_limit_reached');
+  }
+
   const id = uuidv7();
   const ts = nowISO();
   const barcodeRows = input.barcodes.map((barcode) => ({ id: uuidv7(), barcode }));
@@ -382,6 +390,13 @@ export interface NewListInput {
 }
 
 export async function createList(input: NewListInput): Promise<string> {
+  // Preflight offline: mesmo padrão de createItem — free cacheado + teto batido bloqueia.
+  const plan = await cachedPlan();
+  if (plan === 'free') {
+    const count = await db.lists.where('householdId').equals(hid()).and((l) => l.deletedAt === null).count();
+    if (count >= maxLists('free')) throw new Error('list_limit_reached');
+  }
+
   const id = uuidv7();
   const isPrivate = input.isPrivate ?? false;
   const body = {

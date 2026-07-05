@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { setCachedPlan } from '../sync/engine.js';
 import { api } from './api.js';
 
 export interface Membership {
@@ -24,6 +25,8 @@ export function useMembership(enabled: boolean) {
       const res = await api.households.mine.$get();
       if (!res.ok) throw new Error('falha ao carregar casa');
       const data = await res.json();
+      // cache local pro preflight offline (createItem/createList); fail-open se nunca setado
+      if (data.membership) await setCachedPlan(data.membership.plan);
       return data.membership;
     },
   });

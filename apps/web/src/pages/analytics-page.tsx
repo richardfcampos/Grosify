@@ -3,8 +3,8 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { db, type LocalItem, type LocalSessionItem } from '../db/dexie.js';
-import { Icon, MoneyValue, useMoneyParts } from '../features/ui/index.js';
-import { useFormatMoney } from '../lib/use-currency.js';
+import { Button, Icon, MoneyValue, useMoneyParts } from '../features/ui/index.js';
+import { useFormatMoney, useHouseholdPlan } from '../lib/use-currency.js';
 
 /** Análise de gastos: por mês (barras planas), por categoria (barras de tinta), itens mais caros.
  *  Barras planas seguem o DESIGN.md (sem gráfico de pizza colorido). */
@@ -13,6 +13,7 @@ export function AnalyticsPage() {
   const navigate = useNavigate();
   const fmt = useFormatMoney();
   const money = useMoneyParts();
+  const plan = useHouseholdPlan();
 
   const bought = useLiveQuery(
     () =>
@@ -82,14 +83,24 @@ export function AnalyticsPage() {
           <Icon name="back" size={17} /> {t('common.back')}
         </button>
         <h1 className="text-2xl font-bold tracking-tight">{t('analytics.title')}</h1>
-        {bought.length > 0 && (
+        {plan === 'pro' && bought.length > 0 && (
           <button onClick={() => window.print()} className="pill ml-auto" style={{ background: 'var(--app-surface-2)' }}>
             {t('analytics.print')}
           </button>
         )}
       </header>
 
-      {bought.length === 0 ? (
+      {plan === 'free' ? (
+        // BILL-01 AC4: análise completa é recurso Pro — bloqueia com upsell full-page
+        // (inclui o botão print, que some do header acima quando free).
+        <div className="mt-8 flex flex-col items-center gap-3 text-center">
+          <div className="kicker">{t('analytics.title')}</div>
+          <p className="text-sm">{t('billing.analyticsPaywallPitch')}</p>
+          <Button variant="primary" size="md" onClick={() => navigate({ to: '/ajustes' })}>
+            {t('billing.paywallCta')}
+          </Button>
+        </div>
+      ) : bought.length === 0 ? (
         <p className="muted mt-6 text-center">{t('analytics.empty')}</p>
       ) : (
         <>

@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import {
   type AnyPgColumn,
   bigint,
@@ -11,6 +12,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
 
@@ -87,6 +89,8 @@ export const households = pgTable('households', {
     .default('free'),
   /** ISO 4217 — moeda de todos os preços da casa. */
   currency: text('currency').notNull().default('BRL'),
+  /** Entitlement manual (comp/100% off) — vence sobre a assinatura; setável via SQL/admin. */
+  planOverride: text('plan_override', { enum: ['pro'] }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -499,4 +503,58 @@ export const shoppingSessionItems = pgTable(
     index('shopping_session_items_session_idx').on(t.sessionId),
     unique('shopping_session_items_session_item_uq').on(t.sessionId, t.itemId),
   ],
+);
+
+// ===== Billing (server-authoritative, sem colunas de sync) =====
+
+/**
+ * Assinatura de plano Pro. Fonte da verdade é este banco — provedores (Asaas/Stripe)
+ * só empurram webhooks que convergem aqui; households.plan é materializado a partir
+ * das transições da máquina de estados em billing/lifecycle.ts.
+ */
+export const subscriptions = pgTable(
+  'subscriptions',
+  {
+    id: uuid('id').primaryKey(),
+    householdId: uuid('household_id')
+      .notNull()
+      .references(() => households.id, { onDelete: 'cascade' }),
+    provider: text('provider', { enum: ['asaas', 'stripe'] }).notNull(),
+    externalId: text('external_id'),
+    externalCustomerId: text('external_customer_id'),
+    status: text('status', { enum: ['pending', 'active', 'overdue', 'canceled'] })
+      .notNull()
+      .default('pending'),
+    cycle: text('cycle', { enum: ['monthly', 'yearly'] }).notNull(),
+    /** ISO 4217 — moeda travada no momento da assinatura (não re-roteia se a casa mudar). */
+    currency: text('currency').notNull(),
+    priceCents: integer('price_cents').notNull(),
+    nextDueDate: timestamp('next_due_date', { withTimezone: true }),
+    /** Fim do período pago — Pro permanece até aqui mesmo após cancelamento. */
+    currentPeriodEnd: timestamp('current_period_end', { withTimezone: true }),
+    overdueSince: timestamp('overdue_since', { withTimezone: true }),
+    canceledAt: timestamp('canceled_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('subscriptions_household_idx').on(t.householdId),
+    // Garante no máximo 1 assinatura não-terminal por casa (concorrência de checkout).
+    uniqueIndex('subscriptions_active_household_uq')
+      .on(t.householdId)
+      .where(sql`${t.status} <> 'canceled'`),
+  ],
+);
+
+/** Eventos de webhook recebidos — dedupe por (provider, eventId) garante idempotência. */
+export const webhookEvents = pgTable(
+  'webhook_events',
+  {
+    id: uuid('id').primaryKey(),
+    provider: text('provider').notNull(),
+    eventId: text('event_id').notNull(),
+    type: text('type').notNull(),
+    receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique('webhook_events_provider_event_uq').on(t.provider, t.eventId)],
 );

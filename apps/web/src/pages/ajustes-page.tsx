@@ -9,6 +9,8 @@ import { useConfirm } from '../lib/confirm.js';
 import { useHouseholdPlan } from '../lib/use-currency.js';
 import { useMembership } from '../lib/use-membership.js';
 import { HouseholdSwitcher } from '../features/catalog/household-switcher.js';
+import { PaywallSheet } from '../features/billing/paywall-sheet.js';
+import { PlanSection } from '../features/billing/plan-section.js';
 import { clearLocalData, getSyncState, subscribeSync, syncNow } from '../sync/engine.js';
 import { exportPricesCsv, importBackup } from '../lib/backup.js';
 import {
@@ -39,6 +41,7 @@ export function AjustesPage() {
   const { data: session } = useSession();
   const confirm = useConfirm();
   const [busy, setBusy] = useState(false);
+  const [exportPaywallOpen, setExportPaywallOpen] = useState(false);
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
@@ -250,25 +253,7 @@ export function AjustesPage() {
 
       {/* plano */}
       <Section kicker={t('billing.plan')}>
-        <div className="card flex flex-col gap-2.5" style={{ padding: 16 }}>
-          <div className="flex items-center justify-between">
-            <span className="font-semibold">
-              {plan === 'pro' ? t('billing.proName') : t('billing.freeName')}
-            </span>
-            <Badge tone={plan === 'pro' ? 'oferta' : 'neutral'}>
-              {plan === 'pro' ? t('billing.proName') : t('billing.freeName')}
-            </Badge>
-          </div>
-          {plan === 'free' && (
-            <>
-              <p className="muted text-sm">{t('billing.proPitch')}</p>
-              <Button variant="primary" size="md" disabled title={t('billing.comingSoon')}>
-                {t('billing.upgrade')}
-              </Button>
-              <p className="muted text-xs">{t('billing.comingSoon')}</p>
-            </>
-          )}
-        </div>
+        <PlanSection />
       </Section>
 
       {/* suas casas (multi-casa) */}
@@ -379,7 +364,7 @@ export function AjustesPage() {
             icon="chart"
             title={t('settings.exportCsv')}
             sub={t('settings.exportCsvHint')}
-            onClick={() => void exportPricesCsv()}
+            onClick={() => (plan === 'free' ? setExportPaywallOpen(true) : void exportPricesCsv())}
           />
           <Row
             icon="back"
@@ -418,6 +403,10 @@ export function AjustesPage() {
           }}
         />
       </div>
+
+      {exportPaywallOpen && (
+        <PaywallSheet feature="export" onClose={() => setExportPaywallOpen(false)} />
+      )}
     </main>
   );
 }

@@ -5,13 +5,14 @@ import {
   createMovementPayload,
   createPricePayload,
   createSessionPayload,
+  maxLists,
   setInventoryPayload,
   setListEntryPayload,
   updateListPayload,
   updateSessionItemPayload,
   updateSessionPayload,
 } from '@grosify/shared';
-import { and, eq, isNull, notInArray } from 'drizzle-orm';
+import { and, count, eq, isNull, notInArray } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { db } from '../db/index.js';
 import { logActivity } from '../lib/activity.js';
@@ -58,6 +59,15 @@ export const shoppingRoute = new Hono<HouseholdEnv>()
   .post('/lists', zValidator('json', createListPayload), async (c) => {
     const hid = c.get('householdId');
     const p = c.req.valid('json');
+    // Teto de listas do plano (só as vivas contam; soft-deletadas não). count+insert sem
+    // lock é aceito: household é pequeno e o teto é soft-business.
+    const [{ value: listCount } = { value: 0 }] = await db
+      .select({ value: count() })
+      .from(shoppingLists)
+      .where(and(eq(shoppingLists.householdId, hid), isNull(shoppingLists.deletedAt)));
+    if (listCount >= maxLists(c.get('plan'))) {
+      return c.json({ error: 'list_limit_reached' }, 403);
+    }
     const [list] = await db
       .insert(shoppingLists)
       .values({
@@ -201,22 +211,30 @@ export const shoppingRoute = new Hono<HouseholdEnv>()
   .post('/prices', zValidator('json', createPricePayload), async (c) => {
     const hid = c.get('householdId');
     const p = c.req.valid('json');
-    const [price] = await db
-      .insert(priceRecords)
-      .values({
-        id: p.id,
-        householdId: hid,
-        itemId: p.itemId,
-        brandId: p.brandId ?? null,
-        storeId: p.storeId,
-        priceCents: p.priceCents,
-        recordedAt: p.recordedAt ? new Date(p.recordedAt) : new Date(),
-        source: 'manual',
-        rating: p.rating ?? null,
-      })
-      .onConflictDoNothing()
-      .returning();
-    return c.json({ price: price ?? null }, 201);
+    try {
+      const [price] = await db
+        .insert(priceRecords)
+        .values({
+          id: p.id,
+          householdId: hid,
+          itemId: p.itemId,
+          brandId: p.brandId ?? null,
+          storeId: p.storeId,
+          priceCents: p.priceCents,
+          recordedAt: p.recordedAt ? new Date(p.recordedAt) : new Date(),
+          source: 'manual',
+          rating: p.rating ?? null,
+        })
+        .onConflictDoNothing()
+        .returning();
+      return c.json({ price: price ?? null }, 201);
+    } catch (err) {
+      // Item/loja referenciados não existem no servidor (ex.: POST do item rejeitado
+      // antes por limite de plano). FK é determinística: 4xx encerra a outbox em vez
+      // de 500→retry infinito que travaria a fila.
+      if (isForeignKeyViolation(err)) return c.json({ error: 'ref_missing' }, 409);
+      throw err;
+    }
   })
 
   // ---------- Inventário ----------
@@ -233,41 +251,53 @@ export const shoppingRoute = new Hono<HouseholdEnv>()
   .put('/inventory', zValidator('json', setInventoryPayload), async (c) => {
     const hid = c.get('householdId');
     const p = c.req.valid('json');
-    const [count] = await db
-      .insert(inventoryCounts)
-      .values({
-        id: p.id,
-        householdId: hid,
-        itemId: p.itemId,
-        qtyOnHand: String(p.qtyOnHand),
-        countedAt: new Date(),
-      })
-      .onConflictDoUpdate({
-        target: [inventoryCounts.householdId, inventoryCounts.itemId],
-        set: { qtyOnHand: String(p.qtyOnHand), countedAt: new Date(), deletedAt: null, updatedAt: new Date() },
-      })
-      .returning();
-    return c.json({ count }, 201);
+    try {
+      const [count] = await db
+        .insert(inventoryCounts)
+        .values({
+          id: p.id,
+          householdId: hid,
+          itemId: p.itemId,
+          qtyOnHand: String(p.qtyOnHand),
+          countedAt: new Date(),
+        })
+        .onConflictDoUpdate({
+          target: [inventoryCounts.householdId, inventoryCounts.itemId],
+          set: { qtyOnHand: String(p.qtyOnHand), countedAt: new Date(), deletedAt: null, updatedAt: new Date() },
+        })
+        .returning();
+      return c.json({ count }, 201);
+    } catch (err) {
+      // Item referenciado ausente no servidor (ex.: item rejeitado por limite de plano).
+      // FK determinística → 4xx encerra a outbox em vez de 500→retry infinito.
+      if (isForeignKeyViolation(err)) return c.json({ error: 'ref_missing' }, 409);
+      throw err;
+    }
   })
 
   .post('/movements', zValidator('json', createMovementPayload), async (c) => {
     const hid = c.get('householdId');
     const p = c.req.valid('json');
-    const [movement] = await db
-      .insert(stockMovements)
-      .values({
-        id: p.id,
-        householdId: hid,
-        itemId: p.itemId,
-        type: p.type,
-        qty: String(p.qty),
-        balanceAfter: String(p.balanceAfter),
-        reason: p.reason ?? null,
-        movedAt: p.movedAt ? new Date(p.movedAt) : new Date(),
-      })
-      .onConflictDoNothing()
-      .returning();
-    return c.json({ movement: movement ?? null }, 201);
+    try {
+      const [movement] = await db
+        .insert(stockMovements)
+        .values({
+          id: p.id,
+          householdId: hid,
+          itemId: p.itemId,
+          type: p.type,
+          qty: String(p.qty),
+          balanceAfter: String(p.balanceAfter),
+          reason: p.reason ?? null,
+          movedAt: p.movedAt ? new Date(p.movedAt) : new Date(),
+        })
+        .onConflictDoNothing()
+        .returning();
+      return c.json({ movement: movement ?? null }, 201);
+    } catch (err) {
+      if (isForeignKeyViolation(err)) return c.json({ error: 'ref_missing' }, 409);
+      throw err;
+    }
   })
 
   // ---------- Sessões de compra ----------
@@ -287,58 +317,70 @@ export const shoppingRoute = new Hono<HouseholdEnv>()
   .post('/sessions', zValidator('json', createSessionPayload), async (c) => {
     const hid = c.get('householdId');
     const p = c.req.valid('json');
-    const session = await db.transaction(async (tx) => {
-      const [s] = await tx
-        .insert(shoppingSessions)
-        .values({
-          id: p.id,
-          householdId: hid,
-          listId: p.listId ?? null,
-          storeId: p.storeId ?? null,
-          status: 'active',
-          startedAt: p.startedAt ? new Date(p.startedAt) : new Date(),
-        })
-        .onConflictDoNothing()
-        .returning();
-      if (p.items.length) {
-        await tx
-          .insert(shoppingSessionItems)
-          .values(
-            p.items.map((it) => ({
-              id: it.id,
-              householdId: hid,
-              sessionId: p.id,
-              itemId: it.itemId,
-              neededQty: String(it.neededQty),
-              estimatedUnitPriceCents: it.estimatedUnitPriceCents ?? null,
-              estimatedPriceStoreId: it.estimatedPriceStoreId ?? null,
-            })),
-          )
-          .onConflictDoNothing();
-      }
-      return s ?? null;
-    });
-    return c.json({ session }, 201);
+    try {
+      const session = await db.transaction(async (tx) => {
+        const [s] = await tx
+          .insert(shoppingSessions)
+          .values({
+            id: p.id,
+            householdId: hid,
+            listId: p.listId ?? null,
+            storeId: p.storeId ?? null,
+            status: 'active',
+            startedAt: p.startedAt ? new Date(p.startedAt) : new Date(),
+          })
+          .onConflictDoNothing()
+          .returning();
+        if (p.items.length) {
+          await tx
+            .insert(shoppingSessionItems)
+            .values(
+              p.items.map((it) => ({
+                id: it.id,
+                householdId: hid,
+                sessionId: p.id,
+                itemId: it.itemId,
+                neededQty: String(it.neededQty),
+                estimatedUnitPriceCents: it.estimatedUnitPriceCents ?? null,
+                estimatedPriceStoreId: it.estimatedPriceStoreId ?? null,
+              })),
+            )
+            .onConflictDoNothing();
+        }
+        return s ?? null;
+      });
+      return c.json({ session }, 201);
+    } catch (err) {
+      // Item de sessão referencia item ausente no servidor (rejeitado por limite antes).
+      // FK determinística → 4xx encerra a outbox em vez de 500→retry infinito.
+      if (isForeignKeyViolation(err)) return c.json({ error: 'ref_missing' }, 409);
+      throw err;
+    }
   })
 
   .post('/sessions/:id/items', zValidator('json', addSessionItemPayload), async (c) => {
     const hid = c.get('householdId');
     const sessionId = c.req.param('id');
     const p = c.req.valid('json');
-    const [row] = await db
-      .insert(shoppingSessionItems)
-      .values({
-        id: p.id,
-        householdId: hid,
-        sessionId,
-        itemId: p.itemId,
-        neededQty: String(p.neededQty),
-        estimatedUnitPriceCents: p.estimatedUnitPriceCents ?? null,
-        estimatedPriceStoreId: p.estimatedPriceStoreId ?? null,
-      })
-      .onConflictDoNothing()
-      .returning();
-    return c.json({ item: row ?? null }, 201);
+    try {
+      const [row] = await db
+        .insert(shoppingSessionItems)
+        .values({
+          id: p.id,
+          householdId: hid,
+          sessionId,
+          itemId: p.itemId,
+          neededQty: String(p.neededQty),
+          estimatedUnitPriceCents: p.estimatedUnitPriceCents ?? null,
+          estimatedPriceStoreId: p.estimatedPriceStoreId ?? null,
+        })
+        .onConflictDoNothing()
+        .returning();
+      return c.json({ item: row ?? null }, 201);
+    } catch (err) {
+      if (isForeignKeyViolation(err)) return c.json({ error: 'ref_missing' }, 409);
+      throw err;
+    }
   })
 
   .patch('/sessions/:id', zValidator('json', updateSessionPayload), async (c) => {

@@ -1,3 +1,4 @@
+import type { Plan } from '@grosify/shared';
 import {
   db,
   type LocalInventory,
@@ -12,6 +13,10 @@ const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3010';
 const CURSOR_KEY = 'syncCursor';
 
 const HOUSEHOLD_KEY = 'householdId';
+/** Chave do plano cacheado localmente — usada no preflight offline (fail-open se ausente). */
+const PLAN_KEY = 'plan';
+/** Contador de mutações rejeitadas por limite de plano (reconciliação do drain). */
+const REJECTED_BY_PLAN_KEY = 'rejectedByPlan';
 
 let currentHouseholdId = '';
 let syncing = false;
@@ -20,6 +25,31 @@ let stream: EventSource | null = null;
 
 export function householdId(): string {
   return currentHouseholdId;
+}
+
+/**
+ * Plano cacheado localmente (persistido no fetch de membership). Usado no preflight
+ * offline de criação — null/ausente é fail-open (deixa passar; servidor é autoritativo).
+ */
+export async function cachedPlan(): Promise<Plan | null> {
+  const row = await db.meta.get(PLAN_KEY);
+  return (row?.value as Plan | undefined) ?? null;
+}
+
+/** Persiste o plano da casa localmente (chamado pelo useMembership após fetch ok). */
+export async function setCachedPlan(plan: Plan): Promise<void> {
+  await db.meta.put({ key: PLAN_KEY, value: plan });
+}
+
+/** Conta quantas mutações otimistas foram rejeitadas pelo servidor por limite de plano. */
+export async function rejectedByPlanCount(): Promise<number> {
+  const row = await db.meta.get(REJECTED_BY_PLAN_KEY);
+  return row ? Number(row.value) : 0;
+}
+
+async function incrementRejectedByPlan(): Promise<void> {
+  const current = await rejectedByPlanCount();
+  await db.meta.put({ key: REJECTED_BY_PLAN_KEY, value: String(current + 1) });
 }
 
 // ---- Estado de sync observável (pra UI: offline/sincronizando/sincronizado/erro) ----
@@ -168,10 +198,39 @@ async function drainOutbox(): Promise<boolean> {
       allClean = false;
       continue; // segue pras próximas: as independentes drenam mesmo com esta falhando
     }
+    // 4xx de rejeição por limite de plano em criação: o preflight local não pegou
+    // (plano desatualizado/offline) — desfaz o otimista pra não sobrar órfão na UI.
+    if (res.status >= 400 && res.status < 500 && entry.method === 'POST') {
+      const body = (await res.json().catch(() => null)) as { error?: string } | null;
+      const code = body?.error;
+      if (code === 'item_limit_reached' || code === 'list_limit_reached' || code === 'pro_required') {
+        await reconcilePlanRejection(entry);
+        await incrementRejectedByPlan();
+      }
+    }
     // 2xx (sucesso) ou 4xx (rejeição definitiva: limite/validação) → remove da fila
     await db.outbox.delete(entry.seq!);
   }
   return allClean;
+}
+
+/**
+ * Desfaz a linha otimista local de uma criação rejeitada por limite de plano.
+ * Identifica a tabela pelo path da entry (item ou lista) e apaga a linha + filhos
+ * (barcodes do item / entradas da lista) — nada fica órfão na UI.
+ */
+async function reconcilePlanRejection(entry: OutboxEntry): Promise<void> {
+  if (entry.path === '/catalog/items') {
+    await db.transaction('rw', [db.items, db.barcodes], async () => {
+      await db.items.delete(entry.rowId);
+      await db.barcodes.where('itemId').equals(entry.rowId).delete();
+    });
+  } else if (entry.path === '/shopping/lists') {
+    await db.transaction('rw', [db.lists, db.listEntries], async () => {
+      await db.lists.delete(entry.rowId);
+      await db.listEntries.where('listId').equals(entry.rowId).delete();
+    });
+  }
 }
 
 function num<T extends { qty?: unknown; qtyOnHand?: unknown }>(row: T): T {
@@ -201,10 +260,13 @@ function numSessionItem(row: unknown): unknown {
  * Sobe pro R2 fotos que estão só locais (blob presente, key ainda null) e
  * enfileira o PATCH com a key — assim os outros membros recebem via sync e
  * baixam sob demanda. Cobre fotos tiradas offline (ex.: recibo no mercado).
- * No-op se R2 está desligado no servidor (501) ou offline.
+ * No-op se R2 está desligado no servidor (501), offline, ou plano free (a rota
+ * de presign responde pro_required — sem o early-return aqui o sweep tentaria
+ * pra sempre a cada ciclo, já que uploadBlob só trata 501 como "desligado").
  */
 async function drainPhotoUploads(): Promise<void> {
   if (storageDisabled()) return;
+  if ((await cachedPlan()) === 'free') return;
 
   const items = await db.items
     .filter((i) => i.deletedAt === null && i.photoKey == null && i.photoBlob != null)

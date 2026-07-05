@@ -1,5 +1,6 @@
 import {
   cheapestStore,
+  historyCutoff,
   parseToMinorUnits,
   priceChange,
   PRICE_ALERT_THRESHOLD_PCT,
@@ -14,7 +15,7 @@ import { BrandPicker } from '../brands/brand-picker.js';
 import { PriceScanModal } from '../scanner/price-scan-modal.js';
 import { StarRating } from '../prices/star-rating.js';
 import { Button, SearchSelect } from '../ui/index.js';
-import { useFormatMoney, useHouseholdCurrency } from '../../lib/use-currency.js';
+import { useFormatMoney, useHouseholdCurrency, useHouseholdPlan } from '../../lib/use-currency.js';
 
 interface Props {
   sessionItem: LocalSessionItem;
@@ -40,6 +41,7 @@ export function CheckItemSheet({
   const { t, i18n } = useTranslation();
   const fmt = useFormatMoney();
   const currency = useHouseholdCurrency();
+  const plan = useHouseholdPlan();
 
   const stores = useLiveQuery(() => db.stores.filter((s) => s.deletedAt === null).toArray(), [], []);
   const brands = useLiveQuery(
@@ -47,7 +49,7 @@ export function CheckItemSheet({
     [sessionItem.itemId],
     [],
   );
-  const prices = useLiveQuery(
+  const allPrices = useLiveQuery(
     () =>
       db.prices
         .where('itemId')
@@ -57,6 +59,13 @@ export function CheckItemSheet({
     [sessionItem.itemId],
     [] as PriceRecord[],
   );
+  // Plano free: histórico limitado aos últimos 90 dias (mesma regra do preco-sheet).
+  const prices = useMemo(() => {
+    const cutoff = historyCutoff(plan, new Date());
+    if (!cutoff) return allPrices;
+    const iso = cutoff.toISOString();
+    return allPrices.filter((p) => p.recordedAt >= iso);
+  }, [allPrices, plan]);
 
   const [storeId, setStoreId] = useState(initialStoreId ?? sessionItem.estimatedPriceStoreId ?? '');
   const [brandId, setBrandId] = useState<string | null>(initialBrandId ?? sessionItem.actualBrandId ?? null);

@@ -1,12 +1,13 @@
-import { parseToMinorUnits, RECURRENCES, type Recurrence } from '@grosify/shared';
+import { applyFreeCaps, maxLists, parseToMinorUnits, RECURRENCES, type Recurrence } from '@grosify/shared';
 import { Link } from '@tanstack/react-router';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useState, type FormEvent } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { db, type LocalList } from '../db/dexie.js';
 import { createList } from '../db/repositories.js';
+import { HiddenDataBanner } from '../features/billing/hidden-data-banner.js';
 import { Badge, Button, Empty, Icon } from '../features/ui/index.js';
-import { useHouseholdCurrency } from '../lib/use-currency.js';
+import { useHouseholdCurrency, useHouseholdPlan } from '../lib/use-currency.js';
 
 const LIST_ICONS = ['🛒', '🔥', '🎉', '🥩', '🧺', '🍎', '🧽', '🎂', '🍷', '🐶'];
 const LIST_COLORS = ['#15803D', '#DC2626', '#CA8A04', '#2563EB', '#7C3AED', '#0D9488', '#DB2777'];
@@ -14,12 +15,15 @@ const LIST_COLORS = ['#15803D', '#DC2626', '#CA8A04', '#2563EB', '#7C3AED', '#0D
 export function ListasPage() {
   const { t } = useTranslation();
   const [creating, setCreating] = useState(false);
+  const plan = useHouseholdPlan();
 
-  const lists = useLiveQuery(
+  const allLists = useLiveQuery(
     () => db.lists.filter((l) => l.deletedAt === null).toArray(),
     [],
     [] as LocalList[],
   );
+  // Filtro de leitura no downgrade: free vê só as listas mais antigas até o teto.
+  const lists = useMemo(() => applyFreeCaps(allLists, maxLists(plan), plan), [allLists, plan]);
   const entries = useLiveQuery(
     () => db.listEntries.filter((e) => e.deletedAt === null).toArray(),
     [],
@@ -32,6 +36,8 @@ export function ListasPage() {
   return (
     <main className="screen-in flex flex-col gap-4 px-[18px] py-6">
       <h1 className="text-2xl font-bold tracking-tight">{t('lists.title')}</h1>
+
+      <HiddenDataBanner />
 
       {lists.length === 0 ? (
         <div className="card" style={{ padding: 0 }}>
