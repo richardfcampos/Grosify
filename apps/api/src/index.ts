@@ -10,6 +10,7 @@ import {
   authGuardSignup,
 } from './auth-guards.js';
 import { rateLimit } from './middleware/rate-limit.js';
+import { billingRoute } from './routes/billing.js';
 import { catalogRoute } from './routes/catalog.js';
 import { webhooksRoute } from './routes/webhooks.js';
 import { householdsRoute } from './routes/households.js';
@@ -48,7 +49,8 @@ const app = new Hono()
   .route('/shopping', shoppingRoute)
   .route('/sync', syncRoute)
   .route('/me', meRoute)
-  .route('/uploads', uploadsRoute);
+  .route('/uploads', uploadsRoute)
+  .route('/billing', billingRoute);
 
 export type AppType = typeof app;
 
