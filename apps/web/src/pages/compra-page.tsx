@@ -13,6 +13,7 @@ import {
   setSessionStore,
   uncheckSessionItem,
 } from '../db/repositories.js';
+import { PaywallSheet } from '../features/billing/paywall-sheet.js';
 import { CheckItemSheet } from '../features/shopping/check-item-sheet.js';
 import { UnknownBarcodeSheet } from '../features/brands/unknown-barcode-sheet.js';
 import { ScannerModal } from '../features/scanner/scanner-modal.js';
@@ -20,7 +21,7 @@ import { Button, Icon, MoneyValue, SearchSelect, Stamp, useMoneyParts } from '..
 import { resizeToWebp } from '../lib/resize-image.js';
 import { useHydrateReceipt } from '../lib/use-hydrate-photo.js';
 import { useObjectUrl } from '../lib/use-object-url.js';
-import { useFormatMoney } from '../lib/use-currency.js';
+import { useFormatMoney, useHouseholdPlan } from '../lib/use-currency.js';
 
 export function CompraPage() {
   const { t } = useTranslation();
@@ -541,6 +542,8 @@ function Summary({
   const navigate = useNavigate();
   const fmt = useFormatMoney();
   const money = useMoneyParts();
+  const plan = useHouseholdPlan();
+  const [paywallOpen, setPaywallOpen] = useState(false);
   const list = useLiveQuery(
     () => (session.listId ? db.lists.get(session.listId) : undefined),
     [session.listId],
@@ -709,7 +712,16 @@ function Summary({
         <div className="receipt-edge" style={{ transform: 'rotate(180deg)' }} />
       </div>
 
-      <label className="flex cursor-pointer flex-col items-center gap-2">
+      <label
+        className="flex cursor-pointer flex-col items-center gap-2"
+        onClick={(e) => {
+          // Free bloqueia a captura: intercepta antes do <label> abrir o file picker.
+          if (plan === 'free') {
+            e.preventDefault();
+            setPaywallOpen(true);
+          }
+        }}
+      >
         {receiptUrl ? (
           <img src={receiptUrl} alt="" className="h-24 w-24 rounded-xl object-cover" />
         ) : (
@@ -723,6 +735,7 @@ function Summary({
         <span className="muted text-sm">{t('shopping.attachReceipt')}</span>
         <input type="file" accept="image/*" capture="environment" onChange={onReceiptPick} className="hidden" />
       </label>
+      {paywallOpen && <PaywallSheet feature="photos" onClose={() => setPaywallOpen(false)} />}
 
       <div className="flex w-full gap-2.5" style={{ maxWidth: 360 }}>
         <Button variant="primary" size="lg" fullWidth onClick={onShare}>

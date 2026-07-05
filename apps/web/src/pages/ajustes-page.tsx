@@ -9,6 +9,7 @@ import { useConfirm } from '../lib/confirm.js';
 import { useHouseholdPlan } from '../lib/use-currency.js';
 import { useMembership } from '../lib/use-membership.js';
 import { HouseholdSwitcher } from '../features/catalog/household-switcher.js';
+import { PaywallSheet } from '../features/billing/paywall-sheet.js';
 import { clearLocalData, getSyncState, subscribeSync, syncNow } from '../sync/engine.js';
 import { exportPricesCsv, importBackup } from '../lib/backup.js';
 import {
@@ -39,6 +40,7 @@ export function AjustesPage() {
   const { data: session } = useSession();
   const confirm = useConfirm();
   const [busy, setBusy] = useState(false);
+  const [exportPaywallOpen, setExportPaywallOpen] = useState(false);
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
@@ -379,7 +381,7 @@ export function AjustesPage() {
             icon="chart"
             title={t('settings.exportCsv')}
             sub={t('settings.exportCsvHint')}
-            onClick={() => void exportPricesCsv()}
+            onClick={() => (plan === 'free' ? setExportPaywallOpen(true) : void exportPricesCsv())}
           />
           <Row
             icon="back"
@@ -418,6 +420,10 @@ export function AjustesPage() {
           }}
         />
       </div>
+
+      {exportPaywallOpen && (
+        <PaywallSheet feature="export" onClose={() => setExportPaywallOpen(false)} />
+      )}
     </main>
   );
 }

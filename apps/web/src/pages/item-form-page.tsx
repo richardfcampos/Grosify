@@ -13,8 +13,10 @@ import {
 } from '../db/repositories.js';
 import { resizeToWebp } from '../lib/resize-image.js';
 import { useConfirm } from '../lib/confirm.js';
+import { useHouseholdPlan } from '../lib/use-currency.js';
 import { useHydrateItemPhoto } from '../lib/use-hydrate-photo.js';
 import { useObjectUrl } from '../lib/use-object-url.js';
+import { PaywallSheet } from '../features/billing/paywall-sheet.js';
 import { ScannerModal } from '../features/scanner/scanner-modal.js';
 import { BrandsSection } from '../features/brands/brands-section.js';
 import { BarcodeBrandChooser } from '../features/brands/barcode-brand-chooser.js';
@@ -29,6 +31,8 @@ export function ItemFormPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const confirm = useConfirm();
+  const plan = useHouseholdPlan();
+  const [paywallOpen, setPaywallOpen] = useState(false);
   const params = useParams({ strict: false }) as { id?: string };
   const editingId = params.id ?? null;
 
@@ -196,7 +200,7 @@ export function ItemFormPage() {
         <div className="flex flex-col items-center gap-2">
           <button
             type="button"
-            onClick={() => fileRef.current?.click()}
+            onClick={() => (plan === 'free' ? setPaywallOpen(true) : fileRef.current?.click())}
             className="muted flex h-28 w-28 items-center justify-center overflow-hidden rounded-2xl text-sm"
             style={{ border: '2px dashed var(--app-border)', background: 'var(--app-surface-2)' }}
           >
@@ -342,6 +346,7 @@ export function ItemFormPage() {
           onDone={() => setPendingCode(null)}
         />
       )}
+      {paywallOpen && <PaywallSheet feature="photos" onClose={() => setPaywallOpen(false)} />}
     </main>
   );
 }

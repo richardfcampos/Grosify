@@ -260,10 +260,13 @@ function numSessionItem(row: unknown): unknown {
  * Sobe pro R2 fotos que estão só locais (blob presente, key ainda null) e
  * enfileira o PATCH com a key — assim os outros membros recebem via sync e
  * baixam sob demanda. Cobre fotos tiradas offline (ex.: recibo no mercado).
- * No-op se R2 está desligado no servidor (501) ou offline.
+ * No-op se R2 está desligado no servidor (501), offline, ou plano free (a rota
+ * de presign responde pro_required — sem o early-return aqui o sweep tentaria
+ * pra sempre a cada ciclo, já que uploadBlob só trata 501 como "desligado").
  */
 async function drainPhotoUploads(): Promise<void> {
   if (storageDisabled()) return;
+  if ((await cachedPlan()) === 'free') return;
 
   const items = await db.items
     .filter((i) => i.deletedAt === null && i.photoKey == null && i.photoBlob != null)
