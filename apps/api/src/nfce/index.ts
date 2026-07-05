@@ -5,6 +5,15 @@ import { NfceLookupError } from './types.js';
 export type { NfceEmitente, NfceErrorCode, NfceItem, NfceLookup, NfceResult } from './types.js';
 export { NfceLookupError } from './types.js';
 export { logNfceLookup, maskChave, type NfceLogFields } from './nfce-log.js';
+export {
+  matchItems,
+  matchLine,
+  tokenSetScore,
+  type CatalogItem,
+  type MatchMethod,
+  type MatchResult,
+} from './matching.js';
+export { cosine, embed, embeddingEnabled, embeddingText, EMBEDDING_DIM } from './embedding.js';
 
 type Env = Record<string, string | undefined>;
 
