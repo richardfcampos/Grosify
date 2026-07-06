@@ -6,6 +6,7 @@ import {
   doublePrecision,
   index,
   integer,
+  jsonb,
   numeric,
   pgTable,
   primaryKey,
@@ -206,6 +207,13 @@ export const items = pgTable(
     unit: text('unit', { enum: ['un', 'kg', 'g', 'l', 'ml'] })
       .notNull()
       .default('un'),
+    /**
+     * Vetor de embedding do nome (Gemini `gemini-embedding-001` @768d) cacheado
+     * pro matching de import de NFC-e — evita re-chamar a API a cada lookup.
+     * null = sem GEMINI_API_KEY configurada ou item ainda não embedado; nesse
+     * caso o matching cai pra fuzzy puro (nunca é obrigatório).
+     */
+    embedding: jsonb('embedding').$type<number[]>(),
     ...syncColumns,
   },
   (t) => [
@@ -313,6 +321,8 @@ export const stores = pgTable(
     neighborhood: text('neighborhood'),
     lat: doublePrecision('lat'),
     lng: doublePrecision('lng'),
+    /** CNPJ do emitente (import de NFC-e casa a loja por CNPJ; nome sozinho muda entre notas). */
+    cnpj: text('cnpj'),
     ...syncColumns,
   },
   (t) => [
@@ -338,7 +348,7 @@ export const priceRecords = pgTable(
     /** Unidades mínimas da moeda da casa. */
     priceCents: integer('price_cents').notNull(),
     recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull(),
-    source: text('source', { enum: ['manual', 'shopping'] })
+    source: text('source', { enum: ['manual', 'shopping', 'import'] })
       .notNull()
       .default('manual'),
     /** Avaliação de qualidade (1-5), opcional. */
@@ -502,6 +512,46 @@ export const shoppingSessionItems = pgTable(
     index('shopping_session_items_household_version_idx').on(t.householdId, t.serverVersion),
     index('shopping_session_items_session_idx').on(t.sessionId),
     unique('shopping_session_items_session_item_uq').on(t.sessionId, t.itemId),
+  ],
+);
+
+// ===== Import de NFC-e (server-authoritative, sem colunas de sync) =====
+
+/**
+ * Nota fiscal (NFC-e) consultada via QR e importada por uma casa. Guarda o
+ * resultado do lookup por `chave` — serve de cache (re-scan não re-consulta
+ * a SEFAZ), idempotência (unique por household+chave) e base de contagem de
+ * quota mensal (Free 2/mês, Pro 60/mês fair-use).
+ *
+ * `rawJson` guarda só itens + emitente já parseados — NUNCA o CPF do
+ * consumidor (LGPD: descartado no parser/adapter antes de qualquer escrita).
+ */
+export const nfceImports = pgTable(
+  'nfce_imports',
+  {
+    id: uuid('id').primaryKey(),
+    householdId: uuid('household_id')
+      .notNull()
+      .references(() => households.id, { onDelete: 'cascade' }),
+    /** Chave de acesso: 44 dígitos numéricos. */
+    chave: text('chave').notNull(),
+    uf: text('uf').notNull(),
+    storeCnpj: text('store_cnpj'),
+    storeName: text('store_name'),
+    status: text('status', { enum: ['pending', 'parsed', 'confirmed', 'failed'] })
+      .notNull()
+      .default('pending'),
+    itemCount: integer('item_count').notNull().default(0),
+    /** Itens + emitente parseados do portal (cache do lookup) — sem CPF do consumidor. */
+    rawJson: jsonb('raw_json'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // Nota é imutável: re-scan da mesma chave na mesma casa retorna do cache
+    // (não re-consulta o portal, não duplica price_records, não conta quota).
+    unique('nfce_imports_household_chave_uq').on(t.householdId, t.chave),
+    // Contagem de quota mensal lê por (household, mês-calendário via createdAt).
+    index('nfce_imports_household_created_idx').on(t.householdId, t.createdAt),
   ],
 );
 

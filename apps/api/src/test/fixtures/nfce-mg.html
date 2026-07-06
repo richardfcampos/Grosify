@@ -1,0 +1,50 @@
+<!--
+  TODO_FIXTURE_REAL: fixture representativa do HTML do portal de MG
+  (portalsped.fazenda.mg.gov.br/portalnfce). MG replica a estrutura de DANFE do SVRS
+  (id="tabResult", spans .txtTit/.Rqtd/.RUN/.RvlUnit, td.valor), por isso o parser de
+  MG reusa parseSvrsHtml. DEVE ser substituída por HTML REAL capturado na validação
+  com um cupom mineiro de verdade (checklist operacional T15). Contém CPF do
+  consumidor de propósito, pra provar que o parser o descarta (LGPD).
+-->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><title>NFC-e MG</title></head>
+<body>
+  <div id="conteudo">
+    <div class="txtTopo" id="u20">PADARIA PAO QUENTE ME</div>
+    <div class="text">CNPJ: 31.998.877/0001-10</div>
+    <div class="text">Endereco: AV BRASIL, 2000 - BELO HORIZONTE/MG</div>
+
+    <table id="tabResult">
+      <tr>
+        <td>
+          <span class="txtTit">LEITE INTEGRAL 1L PIRACANJUBA</span>
+          <span class="RCod">(Código: 7891234567895)</span>
+          <span class="Rqtd">Qtde.:6</span>
+          <span class="RUN">UN: UN</span>
+          <span class="RvlUnit">Vl. Unit.:&nbsp;5,49</span>
+        </td>
+        <td class="valor">32,94</td>
+      </tr>
+      <tr>
+        <td>
+          <span class="txtTit">PAO FRANCES</span>
+          <span class="RCod">(Código: SEM GTIN)</span>
+          <span class="Rqtd">Qtde.:0,750</span>
+          <span class="RUN">UN: KG</span>
+          <span class="RvlUnit">Vl. Unit.:&nbsp;12,00</span>
+        </td>
+        <td class="valor">9,00</td>
+      </tr>
+    </table>
+
+    <div id="totalNota">
+      <span class="totalNumb txtMax">Valor total R$ 41,94</span>
+    </div>
+
+    <div id="infos">
+      <div class="text">CPF/CNPJ do Consumidor: 987.654.321-00</div>
+    </div>
+  </div>
+</body>
+</html>

@@ -331,6 +331,8 @@ export interface NewStoreInput {
   neighborhood?: string | null;
   lat?: number | null;
   lng?: number | null;
+  /** CNPJ do emitente (import de NFC-e casa a loja por CNPJ em re-imports futuros). */
+  cnpj?: string | null;
 }
 
 export async function createStore(input: NewStoreInput): Promise<string> {
@@ -343,6 +345,7 @@ export async function createStore(input: NewStoreInput): Promise<string> {
     neighborhood: input.neighborhood ?? null,
     lat: input.lat ?? null,
     lng: input.lng ?? null,
+    cnpj: input.cnpj ?? null,
     updatedAt: nowISO(),
     deletedAt: null,
     serverVersion: 0,
@@ -357,6 +360,7 @@ export async function createStore(input: NewStoreInput): Promise<string> {
       neighborhood: input.neighborhood ?? undefined,
       lat: input.lat ?? undefined,
       lng: input.lng ?? undefined,
+      cnpj: input.cnpj ?? undefined,
     },
     rowId: id,
   });
@@ -508,6 +512,7 @@ export async function recordPrice(
   priceCents: number,
   brandId: string | null = null,
   rating: number | null = null,
+  source: 'manual' | 'shopping' | 'import' = 'manual',
 ): Promise<void> {
   const id = uuidv7();
   const ts = nowISO();
@@ -519,7 +524,7 @@ export async function recordPrice(
     storeId,
     priceCents,
     recordedAt: ts,
-    source: 'manual',
+    source,
     rating,
     updatedAt: ts,
     deletedAt: null,
@@ -528,7 +533,7 @@ export async function recordPrice(
   await enqueue({
     method: 'POST',
     path: '/shopping/prices',
-    body: { id, itemId, brandId, storeId, priceCents, rating },
+    body: { id, itemId, brandId, storeId, priceCents, rating, source },
     rowId: id,
   });
 }

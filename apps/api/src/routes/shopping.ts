@@ -222,7 +222,7 @@ export const shoppingRoute = new Hono<HouseholdEnv>()
           storeId: p.storeId,
           priceCents: p.priceCents,
           recordedAt: p.recordedAt ? new Date(p.recordedAt) : new Date(),
-          source: 'manual',
+          source: p.source ?? 'manual',
           rating: p.rating ?? null,
         })
         .onConflictDoNothing()

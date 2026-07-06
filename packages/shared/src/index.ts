@@ -2,3 +2,4 @@ export * from './schemas/index.js';
 export * from './schemas/payloads.js';
 export * from './domain/index.js';
 export * from './plans.js';
+export * from './nfce.js';

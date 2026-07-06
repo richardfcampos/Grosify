@@ -15,6 +15,7 @@ import { catalogRoute } from './routes/catalog.js';
 import { webhooksRoute } from './routes/webhooks.js';
 import { householdsRoute } from './routes/households.js';
 import { meRoute } from './routes/me.js';
+import { nfceRoute } from './routes/nfce.js';
 import { shoppingRoute } from './routes/shopping.js';
 import { syncRoute } from './routes/sync.js';
 import { uploadsRoute } from './routes/uploads.js';
@@ -50,7 +51,8 @@ const app = new Hono()
   .route('/sync', syncRoute)
   .route('/me', meRoute)
   .route('/uploads', uploadsRoute)
-  .route('/billing', billingRoute);
+  .route('/billing', billingRoute)
+  .route('/nfce', nfceRoute);
 
 export type AppType = typeof app;
 
