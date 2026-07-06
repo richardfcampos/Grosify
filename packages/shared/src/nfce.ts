@@ -27,8 +27,15 @@ export interface ParsedNfceQr {
  * Retorna null (→ `nfce_invalid_qr`) se a URL não é de um portal SEFAZ conhecido
  * OU não tem `p=` válido OU o 1º campo não tem exatamente 44 dígitos.
  */
+// `URL` é global em Node 18+ e em todo browser, mas o tsconfig do shared não inclui
+// lib DOM nem @types/node (pacote isomórfico) — declaramos só o mínimo que usamos.
+declare const URL: new (input: string) => {
+  hostname: string;
+  searchParams: { get(name: string): string | null };
+};
+
 export function parseNfceQr(rawValue: string): ParsedNfceQr | null {
-  let url: URL;
+  let url: InstanceType<typeof URL>;
   try {
     url = new URL(rawValue);
   } catch {
