@@ -337,7 +337,7 @@ export default {
       analyticsPaywallPitch: 'El análisis completo de gastos es solo para Pro.',
       exportPaywallPitch: 'Exportar precios como CSV es solo para Pro.',
       nfcePaywallPitch: 'Has alcanzado el límite de comprobantes importados este mes en el plan Gratis.',
-      nlListPaywallPitch: 'Generating lists from text is a Pro-only feature.',
+      nlListPaywallPitch: 'Generar listas por texto es una función exclusiva del plan Pro.',
     },
     nfce: {
       importButton: 'Importar comprobante (QR)',

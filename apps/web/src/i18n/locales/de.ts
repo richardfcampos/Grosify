@@ -337,7 +337,7 @@ export default {
       analyticsPaywallPitch: 'Komplette Ausgabenanalyse ist nur für Pro.',
       exportPaywallPitch: 'Preise als CSV zu exportieren ist nur für Pro.',
       nfcePaywallPitch: 'Du hast das Limit für importierte Belege diesen Monat im kostenlosen Plan erreicht.',
-      nlListPaywallPitch: 'Generating lists from text is a Pro-only feature.',
+      nlListPaywallPitch: 'Listen aus Text zu erstellen ist exklusiv im Pro-Plan.',
     },
     nfce: {
       importButton: 'Beleg importieren (QR)',

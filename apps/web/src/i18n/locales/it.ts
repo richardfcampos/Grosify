@@ -337,7 +337,7 @@ export default {
       analyticsPaywallPitch: 'L\'analisi completa della spesa è solo per Pro.',
       exportPaywallPitch: 'L\'esportazione di prezzi come CSV è solo per Pro.',
       nfcePaywallPitch: 'Hai raggiunto il limite di ricevute importate questo mese nel piano gratuito.',
-      nlListPaywallPitch: 'Generating lists from text is a Pro-only feature.',
+      nlListPaywallPitch: 'Generare liste dal testo è una funzione esclusiva del piano Pro.',
     },
     nfce: {
       importButton: 'Importa ricevuta (QR)',
