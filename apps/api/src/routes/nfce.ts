@@ -3,14 +3,10 @@ import { NFCE_FREE_QUOTA, NFCE_PRO_QUOTA, parseNfceQr, ufFromChave } from '@gros
 import { Hono } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { z } from 'zod';
-import {
-  embedAndCacheCatalog,
-  loadCatalog,
-} from '../nfce/embed-cache.js';
+import { matchLinesForHousehold } from '../nfce/match-for-household.js';
 import {
   logNfceLookup,
   lookupFor,
-  matchItems,
   NfceLookupError,
   type NfceErrorCode,
 } from '../nfce/index.js';
@@ -95,9 +91,9 @@ export const nfceRoute = new Hono<HouseholdEnv>()
         emitente: cached.rawJson.emitente,
         totalCents: cached.rawJson.totalCents,
         // Itens brutos (qty/valor/EAN) pra revisão editável no client — `lines[i]`
-        // casa 1:1 com `itens[i]` via lineIndex (matchItemsForHousehold preserva a ordem).
+        // casa 1:1 com `itens[i]` via lineIndex (matchLinesForHousehold preserva a ordem).
         itens: cached.rawJson.itens,
-        lines: await matchItemsForHousehold(householdId, cached.rawJson.itens),
+        lines: await matchLinesForHousehold(householdId, cached.rawJson.itens),
       });
     }
 
@@ -129,7 +125,7 @@ export const nfceRoute = new Hono<HouseholdEnv>()
         emitente: result.emitente,
         totalCents: result.totalCents,
         itens: result.itens,
-        lines: await matchItemsForHousehold(householdId, result.itens),
+        lines: await matchLinesForHousehold(householdId, result.itens),
       });
     } catch (err) {
       // Só NfceLookupError é esperado aqui; qualquer outro erro sobe (bug → 500).
@@ -156,17 +152,3 @@ export const nfceRoute = new Hono<HouseholdEnv>()
     const used = await countMonthImports(householdId);
     return c.json({ used, limit: plan === 'pro' ? NFCE_PRO_QUOTA : NFCE_FREE_QUOTA, plan });
   });
-
-/**
- * Casa os itens da nota contra o catálogo da casa: garante o cache de embedding do
- * catálogo antes (quando `GEMINI_API_KEY`; sem chave é no-op e o matching cai pra fuzzy),
- * depois roda matchItems. Isolado pra reuso entre o caminho de cache e o de lookup fresco.
- */
-async function matchItemsForHousehold(
-  householdId: string,
-  itens: Parameters<typeof matchItems>[0],
-) {
-  const catalog = await loadCatalog(householdId);
-  const withEmbeddings = await embedAndCacheCatalog(householdId, catalog);
-  return matchItems(itens, withEmbeddings);
-}
