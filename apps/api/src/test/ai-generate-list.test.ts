@@ -251,3 +251,25 @@ describe('POST /ai/generate-list — robustez (NL-04)', () => {
     expect(generateCalls(spy)).toBe(0);
   });
 });
+
+describe('rate limit da rota (NL-03 — anti-abuso mesmo sendo Pro)', () => {
+  it('11ª requisição no minuto → 429 rate_limited', async () => {
+    // free basta: o rateLimit roda ANTES do gate Pro, então cada 403 conta no bucket.
+    // IP dedicado via x-forwarded-for isola este teste dos buckets dos demais.
+    await seed('owner', 'free');
+    const req = () =>
+      app.request('/ai/generate-list', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-forwarded-for': '10.99.99.99' },
+        body: JSON.stringify({ prompt: 'lista de mercado' }),
+      });
+
+    for (let i = 0; i < 10; i++) {
+      const r = await req();
+      expect(r.status).toBe(403); // passa no rate limit, barra no gate Pro
+    }
+    const r11 = await req();
+    expect(r11.status).toBe(429);
+    expect(await r11.json()).toEqual({ error: 'rate_limited' });
+  });
+});
