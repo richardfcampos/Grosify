@@ -96,16 +96,21 @@ export function NfceLineRow({ line, items, onChange, showPrice = true }: Props) 
           <div className="flex gap-2">
             <label className="flex flex-1 flex-col gap-0.5">
               <span className="kicker">{t('nfce.qty')}</span>
-              <input
-                type="number"
-                inputMode="decimal"
-                min="0"
-                step="0.001"
-                value={line.qty}
-                onChange={(e) => onChange({ qty: Number(e.target.value) || 0 })}
-                className="gro-field mono"
-                style={{ minHeight: 40, padding: '8px 12px', fontSize: 13 }}
-              />
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  step="0.001"
+                  value={line.qty}
+                  onChange={(e) => onChange({ qty: Number(e.target.value) || 0 })}
+                  className="gro-field mono"
+                  style={{ minHeight: 40, padding: '8px 12px', fontSize: 13 }}
+                />
+                {/* Unidade só aparece sem o campo de preço (modo nl-list) — o NFC-e
+                    já traz a unidade implícita no valor unitário registrado. */}
+                {!showPrice && <span className="muted text-[12px]">{line.raw.unidade}</span>}
+              </div>
             </label>
             {showPrice && (
               <label className="flex flex-1 flex-col gap-0.5">
