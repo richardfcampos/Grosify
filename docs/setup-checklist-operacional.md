@@ -109,10 +109,10 @@ Widget anti-bot Cloudflare no signup. Ativa automaticamente com Secret no backen
 
 ---
 
-## 4. Gemini — Embedding para Matching de NFC-e
+## 4. Gemini — Embedding para Matching de NFC-e + Geração de Lista por Texto
 
 ### O que é
-IA Google para embeddings de textos de itens. Otimiza matching entre itens importados de notas e seu catálogo. Sem chave: matching usa fuzzy apenas (funciona, menos preciso).
+IA Google para embeddings de textos de itens (otimiza matching de notas) e geração de lista por texto (feature Pro). Sem chave: matching usa fuzzy apenas (funciona, menos preciso) e nl-list retorna 501.
 
 ### Passo a passo
 
@@ -208,7 +208,7 @@ Teste manual final: escanear NFC-e real e conferir comportamento end-to-end.
 | **Asaas** | `ASAAS_API_KEY`, `ASAAS_WEBHOOK_TOKEN`, `ASAAS_BASE_URL` | Criar conta asaas.com | Billing 501 |
 | **R2** | `R2_ACCOUNT_ID`, `R2_BUCKET`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` | Cloudflare Dashboard | Fotos 501 |
 | **Turnstile** | `TURNSTILE_SECRET` (Railway) + `VITE_TURNSTILE_SITE_KEY` (build web) | Cloudflare Turnstile | Widget off |
-| **Gemini** | `GEMINI_API_KEY` | aistudio.google.com | Matching fuzzy só |
+| **Gemini** | `GEMINI_API_KEY` | aistudio.google.com | Matching fuzzy só + nl-list 501 |
 | **Infosimples** | `INFOSIMPLES_TOKEN` | infosimples.com (trial) | SE indisponível |
 
 ---

@@ -149,6 +149,6 @@ Verifier (opus): pós-T9, automático
 
 ## Status das tasks
 
-- [ ] T1 · [ ] T2 · [ ] T3 · [ ] T4 · [ ] T5 · [ ] T6 · [ ] T7 · [ ] T8 · [ ] T9
+- [x] T1 (9b4f522) · [x] T2 (b34816a) · [x] T3 (f43de43) · [x] T4 (9adf3de) · [x] T5 (c92c58d) · [x] T6 (9adf3de) · [x] T7 (67af972) · [x] T8 (9deea8e) · [ ] T9
 
-**Status**: Ready for execution
+**Status**: Done (aguardando Verifier)
