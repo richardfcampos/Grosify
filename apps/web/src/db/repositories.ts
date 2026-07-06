@@ -512,6 +512,7 @@ export async function recordPrice(
   priceCents: number,
   brandId: string | null = null,
   rating: number | null = null,
+  source: 'manual' | 'shopping' | 'import' = 'manual',
 ): Promise<void> {
   const id = uuidv7();
   const ts = nowISO();
@@ -523,7 +524,7 @@ export async function recordPrice(
     storeId,
     priceCents,
     recordedAt: ts,
-    source: 'manual',
+    source,
     rating,
     updatedAt: ts,
     deletedAt: null,
@@ -532,7 +533,7 @@ export async function recordPrice(
   await enqueue({
     method: 'POST',
     path: '/shopping/prices',
-    body: { id, itemId, brandId, storeId, priceCents, rating },
+    body: { id, itemId, brandId, storeId, priceCents, rating, source },
     rowId: id,
   });
 }

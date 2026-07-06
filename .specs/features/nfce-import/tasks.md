@@ -194,4 +194,4 @@ Verifier (opus): pós-T15, automático
 
 ## Status das tasks
 
-- [x] T1 · [x] T2 · [x] T3 · [x] T4 · [x] T5 · [x] T6 · [x] T7 (abc5c62) · [x] T8 (1b4a3f1) · [x] T9 (5d83cdc) · [x] T10 (11ed6b1) · [x] T11 · [x] T12 · [ ] T13 · [ ] T14 · [ ] T15
+- [x] T1 · [x] T2 · [x] T3 · [x] T4 · [x] T5 · [x] T6 · [x] T7 (abc5c62) · [x] T8 (1b4a3f1) · [x] T9 (5d83cdc) · [x] T10 (11ed6b1) · [x] T11 · [x] T12 · [x] T13 · [ ] T14 · [ ] T15

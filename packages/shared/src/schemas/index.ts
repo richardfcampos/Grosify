@@ -70,7 +70,8 @@ export const storeSchema = syncMetaSchema.extend({
 });
 export type Store = z.infer<typeof storeSchema>;
 
-export const PRICE_SOURCES = ['manual', 'shopping'] as const;
+/** 'import' = preço vindo de uma NFC-e importada (distingue de manual/shopping). */
+export const PRICE_SOURCES = ['manual', 'shopping', 'import'] as const;
 
 export const priceRecordSchema = syncMetaSchema.extend({
   itemId: z.uuid(),

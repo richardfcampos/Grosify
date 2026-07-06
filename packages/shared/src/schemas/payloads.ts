@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { itemSchema, storeSchema, unitSchema } from './index.js';
+import { itemSchema, priceRecordSchema, storeSchema, unitSchema } from './index.js';
 
 const qty = z.number().nonnegative().multipleOf(0.001);
 const positiveQty = qty.refine((v) => v > 0, 'quantidade deve ser positiva');
@@ -125,6 +125,8 @@ export const createPricePayload = z.object({
   priceCents: z.number().int().positive(),
   recordedAt: isoDate.optional(),
   rating: z.number().int().min(1).max(5).nullable().optional(),
+  /** Origem do preço (manual/shopping/import); default 'manual' quando ausente. */
+  source: priceRecordSchema.shape.source.optional(),
 });
 export type CreatePricePayload = z.infer<typeof createPricePayload>;
 
