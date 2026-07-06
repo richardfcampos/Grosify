@@ -23,14 +23,20 @@ interface Props {
   line: NfceReviewLine;
   items: LocalItem[];
   onChange: (patch: Partial<NfceReviewLine>) => void;
+  /** Mostra o input de preço unitário. Default true — NFC-e não muda. */
+  showPrice?: boolean;
+  /** Reservado pro container decidir o passo de loja (nl-list não usa). Default true. */
+  showStore?: boolean;
 }
 
 /**
  * Linha editável da revisão: matcheado (nome do item + trocar), novo (nome
  * pré-preenchido editável) ou ignorado (toggle). Preço/qtd sempre editáveis
- * enquanto não ignorada.
+ * enquanto não ignorada. Generalizada pra nl-list via `showPrice`/`showStore`
+ * (default true → comportamento do NFC-e intacto); nl-list passa false pra
+ * esconder o input de preço (não registra `price_records`).
  */
-export function NfceLineRow({ line, items, onChange }: Props) {
+export function NfceLineRow({ line, items, onChange, showPrice = true }: Props) {
   const { t } = useTranslation();
   const [picking, setPicking] = useState(false);
   const matchedItem = line.itemId ? items.find((i) => i.id === line.itemId) : null;
@@ -101,19 +107,21 @@ export function NfceLineRow({ line, items, onChange }: Props) {
                 style={{ minHeight: 40, padding: '8px 12px', fontSize: 13 }}
               />
             </label>
-            <label className="flex flex-1 flex-col gap-0.5">
-              <span className="kicker">{t('nfce.unitPrice')}</span>
-              <input
-                type="number"
-                inputMode="decimal"
-                min="0"
-                step="0.01"
-                value={(line.priceCents / 100).toFixed(2)}
-                onChange={(e) => onChange({ priceCents: Math.round(Number(e.target.value) * 100) || 0 })}
-                className="gro-field mono"
-                style={{ minHeight: 40, padding: '8px 12px', fontSize: 13 }}
-              />
-            </label>
+            {showPrice && (
+              <label className="flex flex-1 flex-col gap-0.5">
+                <span className="kicker">{t('nfce.unitPrice')}</span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  step="0.01"
+                  value={(line.priceCents / 100).toFixed(2)}
+                  onChange={(e) => onChange({ priceCents: Math.round(Number(e.target.value) * 100) || 0 })}
+                  className="gro-field mono"
+                  style={{ minHeight: 40, padding: '8px 12px', fontSize: 13 }}
+                />
+              </label>
+            )}
           </div>
         </>
       )}

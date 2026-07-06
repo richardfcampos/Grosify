@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { db, type LocalList } from '../db/dexie.js';
 import { createList } from '../db/repositories.js';
 import { HiddenDataBanner } from '../features/billing/hidden-data-banner.js';
+import { NlReview } from '../features/nl-list/nl-review.js';
 import { Badge, Button, Empty, Icon } from '../features/ui/index.js';
 import { useHouseholdCurrency, useHouseholdPlan } from '../lib/use-currency.js';
 
@@ -112,7 +113,11 @@ function NewListSheet({ onClose }: { onClose: () => void }) {
   const [isPrivate, setIsPrivate] = useState(false);
   const [recurrence, setRecurrence] = useState<Recurrence>('monthly');
   const [recurrenceDay, setRecurrenceDay] = useState(1);
+  const [nlPrompt, setNlPrompt] = useState('');
   const [busy, setBusy] = useState(false);
+  // Preenchendo o texto e submetendo, a criação vira revisão de lista gerada
+  // (a lista só nasce ao confirmar a revisão — `NlReview` chama `createList`).
+  const [reviewing, setReviewing] = useState(false);
 
   const weekly = recurrence === 'weekly' || recurrence === 'biweekly';
   // rótulos de dia da semana no idioma atual
@@ -122,6 +127,12 @@ function NewListSheet({ onClose }: { onClose: () => void }) {
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
+    // Campo de texto preenchido → caminho nl-list: abre a revisão em vez de
+    // criar a lista vazia direto (AC NL entrada dupla, ponto a).
+    if (nlPrompt.trim()) {
+      setReviewing(true);
+      return;
+    }
     setBusy(true);
     let budgetCents: number | null = null;
     try {
@@ -142,6 +153,12 @@ function NewListSheet({ onClose }: { onClose: () => void }) {
     onClose();
   }
 
+  if (reviewing) {
+    return (
+      <NlReview prompt={nlPrompt.trim()} target={{ kind: 'new', name: name.trim() }} onClose={onClose} />
+    );
+  }
+
   return (
     <div className="gro-sheet-backdrop" onClick={onClose}>
       <form onClick={(e) => e.stopPropagation()} onSubmit={onSubmit} className="gro-sheet-panel flex flex-col gap-3">
@@ -155,6 +172,18 @@ function NewListSheet({ onClose }: { onClose: () => void }) {
           placeholder={t('lists.listNameHint')}
           className="gro-field"
         />
+
+        <label className="flex flex-col gap-1">
+          <span className="muted text-sm font-medium">{t('nlList.textFieldLabel')}</span>
+          <textarea
+            value={nlPrompt}
+            onChange={(e) => setNlPrompt(e.target.value)}
+            maxLength={500}
+            rows={2}
+            placeholder={t('nlList.textFieldPlaceholder')}
+            className="gro-field"
+          />
+        </label>
 
         <span className="muted text-sm font-medium">{t('lists.icon')}</span>
         <div className="flex flex-wrap gap-1.5">

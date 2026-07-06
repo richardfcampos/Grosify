@@ -288,6 +288,10 @@ export default {
       nfce_provider_error: 'Could not look up the receipt right now. Try again.',
       nfce_quota_free: 'Free plan receipt import limit reached.',
       nfce_quota_pro: 'Monthly import limit reached.',
+      ai_unavailable: 'Text generation is unavailable right now.',
+      ai_generation_failed: "Couldn't generate right now, try again.",
+      prompt_too_short: 'Describe a bit more of what you need.',
+      prompt_too_long: 'Text too long — keep it under 500 characters.',
     },
     billing: {
       plan: 'Plan',
@@ -333,6 +337,7 @@ export default {
       analyticsPaywallPitch: 'Full spending analytics is Pro-only.',
       exportPaywallPitch: 'Exporting prices as CSV is Pro-only.',
       nfcePaywallPitch: "You've reached this month's imported receipt limit on the Free plan.",
+      nlListPaywallPitch: 'Generating lists from text is a Pro-only feature.',
     },
     nfce: {
       importButton: 'Import receipt (QR)',
@@ -356,6 +361,19 @@ export default {
       confirmed: 'Receipt imported successfully.',
       qty: 'Qty',
       unitPrice: 'Unit price',
+    },
+    nlList: {
+      textFieldLabel: 'Describe what you need (optional)',
+      textFieldPlaceholder: 'E.g.: barbecue for 10 people',
+      addByText: 'Add by text',
+      reviewTitle: 'Review generated list',
+      generating: 'Generating items…',
+      noItemsWarning: "I couldn't understand any items in that text. Try describing it differently.",
+      itemsFound: '{{count}} item generated',
+      itemsFound_other: '{{count}} items generated',
+      qty: 'Qty',
+      confirm: 'Add to list',
+      confirming: 'Adding…',
     },
     settings: {
       privacy: 'Privacy policy',

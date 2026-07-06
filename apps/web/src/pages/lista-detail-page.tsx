@@ -11,6 +11,7 @@ import {
   removeListEntry,
   setListEntry,
 } from '../db/repositories.js';
+import { NlReview } from '../features/nl-list/nl-review.js';
 import { PrecoSheet } from '../features/prices/preco-sheet.js';
 import { Badge, Button, Empty, Icon, MoneyValue, useMoneyParts } from '../features/ui/index.js';
 import { useConfirm } from '../lib/confirm.js';
@@ -49,6 +50,7 @@ export function ListaDetailPage() {
 
   const [priceItem, setPriceItem] = useState<{ id: string; name: string } | null>(null);
   const [adding, setAdding] = useState(false);
+  const [addingByText, setAddingByText] = useState(false);
   // membros da casa (online) para atribuir responsável
   const [members, setMembers] = useState<{ userId: string; name: string }[]>([]);
   useEffect(() => {
@@ -225,9 +227,14 @@ export function ListaDetailPage() {
       )}
 
       {entries.length > 0 && (
-        <Button variant="ghost" size="md" fullWidth onClick={() => setAdding(true)}>
-          <Icon name="plus" size={18} /> {t('lists.addItem')}
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="ghost" size="md" className="flex-1" onClick={() => setAdding(true)}>
+            <Icon name="plus" size={18} /> {t('lists.addItem')}
+          </Button>
+          <Button variant="ghost" size="md" className="flex-1" onClick={() => setAddingByText(true)}>
+            <Icon name="plus" size={18} /> {t('nlList.addByText')}
+          </Button>
+        </div>
       )}
 
       {priceItem && (
@@ -243,7 +250,48 @@ export function ListaDetailPage() {
           onClose={() => setAdding(false)}
         />
       )}
+      {addingByText && (
+        <AddByTextSheet listId={id} onClose={() => setAddingByText(false)} />
+      )}
     </main>
+  );
+}
+
+/** Sheet pequeno: textarea de prompt → revisão nl-list na lista já aberta. */
+function AddByTextSheet({ listId, onClose }: { listId: string; onClose: () => void }) {
+  const { t } = useTranslation();
+  const [prompt, setPrompt] = useState('');
+  const [reviewing, setReviewing] = useState(false);
+
+  if (reviewing) {
+    return <NlReview prompt={prompt.trim()} target={{ kind: 'existing', listId }} onClose={onClose} />;
+  }
+
+  return (
+    <div className="gro-sheet-backdrop" onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} className="gro-sheet-panel flex flex-col gap-3">
+        <div className="gro-sheet-grip" />
+        <h2 className="text-lg font-bold">{t('nlList.addByText')}</h2>
+        <textarea
+          autoFocus
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          maxLength={500}
+          rows={3}
+          placeholder={t('nlList.textFieldPlaceholder')}
+          className="gro-field"
+        />
+        <Button
+          variant="primary"
+          size="lg"
+          fullWidth
+          disabled={!prompt.trim()}
+          onClick={() => setReviewing(true)}
+        >
+          {t('nlList.confirm')}
+        </Button>
+      </div>
+    </div>
   );
 }
 

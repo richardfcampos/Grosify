@@ -288,6 +288,10 @@ export default {
       nfce_provider_error: 'Beleg konnte gerade nicht abgerufen werden. Versuche es erneut.',
       nfce_quota_free: 'Limit für Belegimporte im kostenlosen Plan erreicht.',
       nfce_quota_pro: 'Monatliches Importlimit erreicht.',
+      ai_unavailable: 'Text generation is unavailable right now.',
+      ai_generation_failed: "Couldn't generate right now, try again.",
+      prompt_too_short: 'Describe a bit more of what you need.',
+      prompt_too_long: 'Text too long — keep it under 500 characters.',
     },
     billing: {
       plan: 'Plan',
@@ -333,6 +337,7 @@ export default {
       analyticsPaywallPitch: 'Komplette Ausgabenanalyse ist nur für Pro.',
       exportPaywallPitch: 'Preise als CSV zu exportieren ist nur für Pro.',
       nfcePaywallPitch: 'Du hast das Limit für importierte Belege diesen Monat im kostenlosen Plan erreicht.',
+      nlListPaywallPitch: 'Generating lists from text is a Pro-only feature.',
     },
     nfce: {
       importButton: 'Beleg importieren (QR)',
@@ -356,6 +361,19 @@ export default {
       confirmed: 'Beleg erfolgreich importiert.',
       qty: 'Menge',
       unitPrice: 'Stückpreis',
+    },
+    nlList: {
+      textFieldLabel: 'Describe what you need (optional)',
+      textFieldPlaceholder: 'E.g.: barbecue for 10 people',
+      addByText: 'Add by text',
+      reviewTitle: 'Review generated list',
+      generating: 'Generating items…',
+      noItemsWarning: "I couldn't understand any items in that text. Try describing it differently.",
+      itemsFound: '{{count}} item generated',
+      itemsFound_other: '{{count}} items generated',
+      qty: 'Qty',
+      confirm: 'Add to list',
+      confirming: 'Adding…',
     },
     settings: {
       privacy: 'Datenschutz',

@@ -288,6 +288,10 @@ export default {
       nfce_provider_error: 'No se pudo consultar el comprobante ahora. Inténtalo de nuevo.',
       nfce_quota_free: 'Límite de comprobantes del plan gratis alcanzado.',
       nfce_quota_pro: 'Límite mensual de importaciones alcanzado.',
+      ai_unavailable: 'Text generation is unavailable right now.',
+      ai_generation_failed: "Couldn't generate right now, try again.",
+      prompt_too_short: 'Describe a bit more of what you need.',
+      prompt_too_long: 'Text too long — keep it under 500 characters.',
     },
     billing: {
       plan: 'Plan',
@@ -333,6 +337,7 @@ export default {
       analyticsPaywallPitch: 'El análisis completo de gastos es solo para Pro.',
       exportPaywallPitch: 'Exportar precios como CSV es solo para Pro.',
       nfcePaywallPitch: 'Has alcanzado el límite de comprobantes importados este mes en el plan Gratis.',
+      nlListPaywallPitch: 'Generating lists from text is a Pro-only feature.',
     },
     nfce: {
       importButton: 'Importar comprobante (QR)',
@@ -356,6 +361,19 @@ export default {
       confirmed: 'Comprobante importado con éxito.',
       qty: 'Cant.',
       unitPrice: 'Precio unitario',
+    },
+    nlList: {
+      textFieldLabel: 'Describe what you need (optional)',
+      textFieldPlaceholder: 'E.g.: barbecue for 10 people',
+      addByText: 'Add by text',
+      reviewTitle: 'Review generated list',
+      generating: 'Generating items…',
+      noItemsWarning: "I couldn't understand any items in that text. Try describing it differently.",
+      itemsFound: '{{count}} item generated',
+      itemsFound_other: '{{count}} items generated',
+      qty: 'Qty',
+      confirm: 'Add to list',
+      confirming: 'Adding…',
     },
     settings: {
       privacy: 'Política de privacidad',
