@@ -331,6 +331,8 @@ export interface NewStoreInput {
   neighborhood?: string | null;
   lat?: number | null;
   lng?: number | null;
+  /** CNPJ do emitente (import de NFC-e casa a loja por CNPJ em re-imports futuros). */
+  cnpj?: string | null;
 }
 
 export async function createStore(input: NewStoreInput): Promise<string> {
@@ -343,6 +345,7 @@ export async function createStore(input: NewStoreInput): Promise<string> {
     neighborhood: input.neighborhood ?? null,
     lat: input.lat ?? null,
     lng: input.lng ?? null,
+    cnpj: input.cnpj ?? null,
     updatedAt: nowISO(),
     deletedAt: null,
     serverVersion: 0,
@@ -357,6 +360,7 @@ export async function createStore(input: NewStoreInput): Promise<string> {
       neighborhood: input.neighborhood ?? undefined,
       lat: input.lat ?? undefined,
       lng: input.lng ?? undefined,
+      cnpj: input.cnpj ?? undefined,
     },
     rowId: id,
   });

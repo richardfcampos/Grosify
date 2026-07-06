@@ -101,6 +101,7 @@ export const createStorePayload = z.object({
   neighborhood: storeSchema.shape.neighborhood.optional(),
   lat: storeSchema.shape.lat.optional(),
   lng: storeSchema.shape.lng.optional(),
+  cnpj: storeSchema.shape.cnpj.optional(),
 });
 export type CreateStorePayload = z.infer<typeof createStorePayload>;
 
@@ -110,6 +111,7 @@ export const updateStorePayload = z.object({
   neighborhood: storeSchema.shape.neighborhood.optional(),
   lat: storeSchema.shape.lat.optional(),
   lng: storeSchema.shape.lng.optional(),
+  cnpj: storeSchema.shape.cnpj.optional(),
 });
 export type UpdateStorePayload = z.infer<typeof updateStorePayload>;
 

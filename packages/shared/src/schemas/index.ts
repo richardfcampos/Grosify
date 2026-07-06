@@ -65,6 +65,8 @@ export const storeSchema = syncMetaSchema.extend({
   neighborhood: z.string().trim().max(100).nullable(),
   lat: z.number().min(-90).max(90).nullable(),
   lng: z.number().min(-180).max(180).nullable(),
+  /** CNPJ do emitente (import de NFC-e casa a loja por CNPJ; nome sozinho muda entre notas). */
+  cnpj: z.string().trim().max(20).nullable(),
 });
 export type Store = z.infer<typeof storeSchema>;
 

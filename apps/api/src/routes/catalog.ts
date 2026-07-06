@@ -382,6 +382,7 @@ export const catalogRoute = new Hono<HouseholdEnv>()
         neighborhood: p.neighborhood ?? null,
         lat: p.lat ?? null,
         lng: p.lng ?? null,
+        cnpj: p.cnpj ?? null,
       })
       .onConflictDoNothing()
       .returning();
