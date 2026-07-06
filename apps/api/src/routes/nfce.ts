@@ -94,6 +94,9 @@ export const nfceRoute = new Hono<HouseholdEnv>()
         alreadyImported: cached.alreadyImported,
         emitente: cached.rawJson.emitente,
         totalCents: cached.rawJson.totalCents,
+        // Itens brutos (qty/valor/EAN) pra revisão editável no client — `lines[i]`
+        // casa 1:1 com `itens[i]` via lineIndex (matchItemsForHousehold preserva a ordem).
+        itens: cached.rawJson.itens,
         lines: await matchItemsForHousehold(householdId, cached.rawJson.itens),
       });
     }
@@ -125,6 +128,7 @@ export const nfceRoute = new Hono<HouseholdEnv>()
         alreadyImported: false,
         emitente: result.emitente,
         totalCents: result.totalCents,
+        itens: result.itens,
         lines: await matchItemsForHousehold(householdId, result.itens),
       });
     } catch (err) {

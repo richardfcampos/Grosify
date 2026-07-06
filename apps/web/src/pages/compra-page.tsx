@@ -16,8 +16,10 @@ import {
 import { PaywallSheet } from '../features/billing/paywall-sheet.js';
 import { CheckItemSheet } from '../features/shopping/check-item-sheet.js';
 import { UnknownBarcodeSheet } from '../features/brands/unknown-barcode-sheet.js';
+import { NfceReview } from '../features/nfce/nfce-review.js';
 import { ScannerModal } from '../features/scanner/scanner-modal.js';
 import { Button, Icon, MoneyValue, SearchSelect, Stamp, useMoneyParts } from '../features/ui/index.js';
+import { isNfceQr } from '../lib/nfce-import.js';
 import { resizeToWebp } from '../lib/resize-image.js';
 import { useHydrateReceipt } from '../lib/use-hydrate-photo.js';
 import { useObjectUrl } from '../lib/use-object-url.js';
@@ -55,6 +57,7 @@ export function CompraPage() {
   const [scannedBrandId, setScannedBrandId] = useState<string | null>(null);
   const [unknownCode, setUnknownCode] = useState<string | null>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
+  const [nfceQrUrl, setNfceQrUrl] = useState<string | null>(null);
   const [boughtCollapsed, setBoughtCollapsed] = useState(false);
   const [quickAdd, setQuickAdd] = useState(false);
   const itemById = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
@@ -105,10 +108,16 @@ export function CompraPage() {
     [sessionItems],
   );
 
-  async function onScanned(barcode: string) {
-    const resolved = await resolveBarcode(barcode);
+  async function onScanned(rawValue: string) {
+    // QR de NFC-e (chave+UF válidos no p= da URL) abre o fluxo de import em vez
+    // de tratar como código de produto — reusa o mesmo ScannerModal.
+    if (isNfceQr(rawValue)) {
+      setNfceQrUrl(rawValue);
+      return;
+    }
+    const resolved = await resolveBarcode(rawValue);
     if (!resolved) {
-      setUnknownCode(barcode);
+      setUnknownCode(rawValue);
       return;
     }
     openForItem(resolved.itemId, resolved.brandId);
@@ -342,6 +351,7 @@ export function CompraPage() {
         />
       )}
       {scannerOpen && <ScannerModal onDetect={onScanned} onClose={() => setScannerOpen(false)} />}
+      {nfceQrUrl && <NfceReview qrUrl={nfceQrUrl} onClose={() => setNfceQrUrl(null)} />}
       {unknownCode && (
         <UnknownBarcodeSheet
           code={unknownCode}
@@ -544,6 +554,8 @@ function Summary({
   const money = useMoneyParts();
   const plan = useHouseholdPlan();
   const [paywallOpen, setPaywallOpen] = useState(false);
+  const [nfceScannerOpen, setNfceScannerOpen] = useState(false);
+  const [nfceQrUrl, setNfceQrUrl] = useState<string | null>(null);
   const list = useLiveQuery(
     () => (session.listId ? db.lists.get(session.listId) : undefined),
     [session.listId],
@@ -750,6 +762,24 @@ function Summary({
           {t('shopping.toHome')}
         </Button>
       </div>
+
+      <button
+        onClick={() => setNfceScannerOpen(true)}
+        className="tap flex items-center gap-1.5 text-sm font-medium"
+        style={{ color: 'var(--gro-green)' }}
+      >
+        <Icon name="scan" size={16} /> {t('nfce.importButton')}
+      </button>
+      {nfceScannerOpen && (
+        <ScannerModal
+          onDetect={(raw) => {
+            setNfceScannerOpen(false);
+            if (isNfceQr(raw)) setNfceQrUrl(raw);
+          }}
+          onClose={() => setNfceScannerOpen(false)}
+        />
+      )}
+      {nfceQrUrl && <NfceReview qrUrl={nfceQrUrl} onClose={() => setNfceQrUrl(null)} />}
     </main>
   );
 }

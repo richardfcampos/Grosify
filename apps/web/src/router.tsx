@@ -17,6 +17,7 @@ import { CasaPage, ConvitePage } from './pages/household-pages.js';
 import { CompraPage } from './pages/compra-page.js';
 import { ComprarReviewPage } from './pages/comprar-review-page.js';
 import { HistoricoPage } from './pages/historico-page.js';
+import { ImportarNotaPage } from './pages/importar-nota-page.js';
 import { PrivacidadePage } from './pages/privacidade-page.js';
 import { InventarioPage } from './pages/inventario-page.js';
 import { ItemFormPage } from './pages/item-form-page.js';
@@ -137,6 +138,11 @@ const compraRoute = createRoute({
   path: '/compra/$id',
   component: CompraPage,
 });
+const importarNotaRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/importar-nota',
+  component: ImportarNotaPage,
+});
 const ajustesRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/ajustes',
@@ -184,6 +190,7 @@ const routeTree = rootRoute.addChildren([
     historicoRoute,
     inventarioRoute,
     compraRoute,
+    importarNotaRoute,
     ajustesRoute,
     categoriasRoute,
     analyticsRoute,
