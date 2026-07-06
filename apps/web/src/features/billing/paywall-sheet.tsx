@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useHouseholdCurrency } from '../../lib/use-currency.js';
 import { Button } from '../ui/index.js';
 
-export type PaywallFeature = 'photos' | 'analytics' | 'export' | 'nfce';
+export type PaywallFeature = 'photos' | 'analytics' | 'export' | 'nfce' | 'nlList';
 
 interface Props {
   feature: PaywallFeature;
@@ -36,7 +36,9 @@ export function PaywallSheet({ feature, onClose }: Props) {
         ? 'billing.analyticsPaywallPitch'
         : feature === 'nfce'
           ? 'billing.nfcePaywallPitch'
-          : 'billing.exportPaywallPitch';
+          : feature === 'nlList'
+            ? 'billing.nlListPaywallPitch'
+            : 'billing.exportPaywallPitch';
 
   return (
     <div className="gro-sheet-backdrop" onClick={onClose}>

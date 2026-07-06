@@ -23,14 +23,20 @@ interface Props {
   line: NfceReviewLine;
   items: LocalItem[];
   onChange: (patch: Partial<NfceReviewLine>) => void;
+  /** Mostra o input de preço unitário. Default true — NFC-e não muda. */
+  showPrice?: boolean;
+  /** Reservado pro container decidir o passo de loja (nl-list não usa). Default true. */
+  showStore?: boolean;
 }
 
 /**
  * Linha editável da revisão: matcheado (nome do item + trocar), novo (nome
  * pré-preenchido editável) ou ignorado (toggle). Preço/qtd sempre editáveis
- * enquanto não ignorada.
+ * enquanto não ignorada. Generalizada pra nl-list via `showPrice`/`showStore`
+ * (default true → comportamento do NFC-e intacto); nl-list passa false pra
+ * esconder o input de preço (não registra `price_records`).
  */
-export function NfceLineRow({ line, items, onChange }: Props) {
+export function NfceLineRow({ line, items, onChange, showPrice = true }: Props) {
   const { t } = useTranslation();
   const [picking, setPicking] = useState(false);
   const matchedItem = line.itemId ? items.find((i) => i.id === line.itemId) : null;
@@ -90,30 +96,37 @@ export function NfceLineRow({ line, items, onChange }: Props) {
           <div className="flex gap-2">
             <label className="flex flex-1 flex-col gap-0.5">
               <span className="kicker">{t('nfce.qty')}</span>
-              <input
-                type="number"
-                inputMode="decimal"
-                min="0"
-                step="0.001"
-                value={line.qty}
-                onChange={(e) => onChange({ qty: Number(e.target.value) || 0 })}
-                className="gro-field mono"
-                style={{ minHeight: 40, padding: '8px 12px', fontSize: 13 }}
-              />
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  step="0.001"
+                  value={line.qty}
+                  onChange={(e) => onChange({ qty: Number(e.target.value) || 0 })}
+                  className="gro-field mono"
+                  style={{ minHeight: 40, padding: '8px 12px', fontSize: 13 }}
+                />
+                {/* Unidade só aparece sem o campo de preço (modo nl-list) — o NFC-e
+                    já traz a unidade implícita no valor unitário registrado. */}
+                {!showPrice && <span className="muted text-[12px]">{line.raw.unidade}</span>}
+              </div>
             </label>
-            <label className="flex flex-1 flex-col gap-0.5">
-              <span className="kicker">{t('nfce.unitPrice')}</span>
-              <input
-                type="number"
-                inputMode="decimal"
-                min="0"
-                step="0.01"
-                value={(line.priceCents / 100).toFixed(2)}
-                onChange={(e) => onChange({ priceCents: Math.round(Number(e.target.value) * 100) || 0 })}
-                className="gro-field mono"
-                style={{ minHeight: 40, padding: '8px 12px', fontSize: 13 }}
-              />
-            </label>
+            {showPrice && (
+              <label className="flex flex-1 flex-col gap-0.5">
+                <span className="kicker">{t('nfce.unitPrice')}</span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  step="0.01"
+                  value={(line.priceCents / 100).toFixed(2)}
+                  onChange={(e) => onChange({ priceCents: Math.round(Number(e.target.value) * 100) || 0 })}
+                  className="gro-field mono"
+                  style={{ minHeight: 40, padding: '8px 12px', fontSize: 13 }}
+                />
+              </label>
+            )}
           </div>
         </>
       )}

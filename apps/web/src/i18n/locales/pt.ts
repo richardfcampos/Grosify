@@ -288,6 +288,10 @@ export default {
       nfce_provider_error: 'Não foi possível consultar a nota agora. Tente de novo.',
       nfce_quota_free: 'Limite de notas do plano grátis atingido.',
       nfce_quota_pro: 'Limite mensal de importações atingido.',
+      ai_unavailable: 'Geração por texto indisponível no momento.',
+      ai_generation_failed: 'Não consegui gerar agora, tente de novo.',
+      prompt_too_short: 'Descreva um pouco mais o que você precisa.',
+      prompt_too_long: 'Texto muito longo — resuma em até 500 caracteres.',
     },
     billing: {
       plan: 'Plano',
@@ -333,6 +337,7 @@ export default {
       analyticsPaywallPitch: 'Análise de gastos completa é exclusiva do plano Pro.',
       exportPaywallPitch: 'Exportar preços em CSV é exclusivo do plano Pro.',
       nfcePaywallPitch: 'Você atingiu o limite de notas fiscais importadas este mês no plano Grátis.',
+      nlListPaywallPitch: 'Gerar listas por texto é um recurso exclusivo do plano Pro.',
     },
     nfce: {
       importButton: 'Importar nota (QR)',
@@ -356,6 +361,19 @@ export default {
       confirmed: 'Nota importada com sucesso.',
       qty: 'Qtd.',
       unitPrice: 'Preço unitário',
+    },
+    nlList: {
+      textFieldLabel: 'Descreva o que precisa (opcional)',
+      textFieldPlaceholder: 'Ex.: churrasco pra 10 pessoas',
+      addByText: 'Adicionar por texto',
+      reviewTitle: 'Revisar lista gerada',
+      generating: 'Gerando itens…',
+      noItemsWarning: 'Não entendi itens nesse texto. Tente descrever de outro jeito.',
+      itemsFound: '{{count}} item gerado',
+      itemsFound_other: '{{count}} itens gerados',
+      qty: 'Qtd.',
+      confirm: 'Adicionar à lista',
+      confirming: 'Adicionando…',
     },
     settings: {
       privacy: 'Política de privacidade',
