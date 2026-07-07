@@ -4,11 +4,13 @@ import { and, desc, eq, ne } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { v7 as uuidv7 } from 'uuid';
 import { z } from 'zod';
+import { redeemCoupon } from '../billing/coupons.js';
 import { getBillingProvider } from '../billing/index.js';
 import type { BillingCycle } from '../billing/types.js';
 import { db } from '../db/index.js';
 import { households, subscriptions } from '../db/schema.js';
 import { requireHousehold, type HouseholdEnv } from '../middleware/household.js';
+import { rateLimit } from '../middleware/rate-limit.js';
 
 /** Só owner/admin assinam ou cancelam — papéis já existentes no household. */
 function canManageBilling(role: string): boolean {
@@ -29,6 +31,11 @@ const checkoutBody = z.object({
   cycle: z.enum(['monthly', 'yearly']),
   // CPF/CNPJ é exigido pela API BR; vai direto pro provider, nunca persistido (LGPD).
   cpfCnpj: z.string().trim().min(11).max(18),
+});
+
+const redeemBody = z.object({
+  // Normalização (trim + UPPERCASE) acontece no redeemCoupon; aqui só garante não-vazio.
+  code: z.string().trim().min(1).max(64),
 });
 
 export const billingRoute = new Hono<HouseholdEnv>()
@@ -203,4 +210,28 @@ export const billingRoute = new Hono<HouseholdEnv>()
       .where(eq(subscriptions.id, sub.id));
 
     return c.json({ ok: true });
+  })
+
+  // Resgate de cupom de meses grátis de Pro (comp por código, sem gateway). Rate limit
+  // barra brute-force de códigos ANTES do gate de negócio. Só owner/admin resgatam.
+  .post('/redeem-coupon', rateLimit({ windowMs: 60_000, max: 5 }), zValidator('json', redeemBody), async (c) => {
+    const role = c.get('role');
+    if (!canManageBilling(role)) return c.json({ error: 'forbidden' }, 403);
+
+    const hid = c.get('householdId');
+    const { code } = c.req.valid('json');
+
+    const result = await redeemCoupon(hid, code);
+    switch (result.kind) {
+      case 'redeemed':
+        return c.json({ proUntil: result.proUntil.toISOString() });
+      case 'invalid':
+        return c.json({ error: 'coupon_invalid' }, 404);
+      case 'exhausted':
+        return c.json({ error: 'coupon_exhausted' }, 410);
+      case 'expired':
+        return c.json({ error: 'coupon_expired' }, 410);
+      case 'already_redeemed':
+        return c.json({ error: 'coupon_already_redeemed' }, 409);
+    }
   });

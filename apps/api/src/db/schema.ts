@@ -92,6 +92,12 @@ export const households = pgTable('households', {
   currency: text('currency').notNull().default('BRL'),
   /** Entitlement manual (comp/100% off) — vence sobre a assinatura; setável via SQL/admin. */
   planOverride: text('plan_override', { enum: ['pro'] }),
+  /**
+   * Validade do override. null = permanente (comp manual, nunca expira). Quando setado
+   * (via resgate de cupom), o override só vale enquanto `until > now` — resolveEffectivePlan
+   * ignora o override expirado sem limpá-lo (mantém histórico do que foi concedido).
+   */
+  planOverrideUntil: timestamp('plan_override_until', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -607,4 +613,42 @@ export const webhookEvents = pgTable(
     receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [unique('webhook_events_provider_event_uq').on(t.provider, t.eventId)],
+);
+
+/**
+ * Cupom de N meses de Pro (comp por código, sem gateway). Criado manualmente via SQL/admin
+ * — não há UI de criação. `code` é armazenado UPPERCASE (busca case-insensitive normaliza
+ * antes). `maxRedemptions` null = ilimitado; `expiresAt` null = sem prazo de validade.
+ */
+export const coupons = pgTable('coupons', {
+  id: uuid('id').primaryKey(),
+  /** Código UPPERCASE (busca normaliza com UPPER(trim(input))). */
+  code: text('code').notNull().unique(),
+  /** Meses de Pro concedidos por resgate (somados no calendário ao override vigente). */
+  months: integer('months').notNull(),
+  /** Teto de resgates totais; null = ilimitado. */
+  maxRedemptions: integer('max_redemptions'),
+  redeemedCount: integer('redeemed_count').notNull().default(0),
+  /** Validade do cupom em si (não do Pro concedido); null = nunca expira. */
+  expiresAt: timestamp('expires_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * Resgate de um cupom por uma casa. unique(couponId, householdId) garante 1 resgate por
+ * casa por cupom (barra duplo resgate no nível do banco, além da checagem na transação).
+ */
+export const couponRedemptions = pgTable(
+  'coupon_redemptions',
+  {
+    id: uuid('id').primaryKey(),
+    couponId: uuid('coupon_id')
+      .notNull()
+      .references(() => coupons.id, { onDelete: 'cascade' }),
+    householdId: uuid('household_id')
+      .notNull()
+      .references(() => households.id, { onDelete: 'cascade' }),
+    redeemedAt: timestamp('redeemed_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique('coupon_redemptions_coupon_household_uq').on(t.couponId, t.householdId)],
 );

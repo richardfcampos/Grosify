@@ -5,6 +5,7 @@ import { api } from '../../lib/api.js';
 import { useConfirm } from '../../lib/confirm.js';
 import { useHouseholdCurrency, useHouseholdPlan } from '../../lib/use-currency.js';
 import { Badge } from '../ui/index.js';
+import { couponErrorKey, CouponRedeemForm } from './coupon-redeem-form.js';
 import { checkoutErrorKey, PlanCheckoutForm } from './plan-checkout-form.js';
 import { PlanStatusCard, type Subscription } from './plan-status-card.js';
 
@@ -28,6 +29,8 @@ export function PlanSection() {
   const queryClient = useQueryClient();
   const confirm = useConfirm();
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [couponSuccess, setCouponSuccess] = useState<string | null>(null);
 
   const subscription = useQuery({
     queryKey: ['billingSubscription'],
@@ -65,6 +68,29 @@ export function PlanSection() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['membership'] });
       await queryClient.invalidateQueries({ queryKey: ['billingSubscription'] });
+    },
+  });
+
+  const redeem = useMutation({
+    mutationFn: async (code: string): Promise<{ proUntil: string }> => {
+      const res = await api.billing['redeem-coupon'].$post({ json: { code } });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(couponErrorKey(res.status, body));
+      }
+      return res.json();
+    },
+    onSuccess: async (data) => {
+      setCouponError(null);
+      // "Pro até <data>" no locale da UI — invalida membership pro plano efetivo atualizar.
+      const until = new Date(data.proUntil).toLocaleDateString(locale);
+      setCouponSuccess(t('billing.couponSuccess', { date: until }));
+      await queryClient.invalidateQueries({ queryKey: ['membership'] });
+      await queryClient.invalidateQueries({ queryKey: ['billingSubscription'] });
+    },
+    onError: (e: Error) => {
+      setCouponSuccess(null);
+      setCouponError(t(e.message, { defaultValue: t('errors.generic') }));
     },
   });
 
@@ -113,6 +139,16 @@ export function PlanSection() {
           onCancel={onCancel}
         />
       )}
+
+      {/* Cupom de meses grátis — free E pro (pro empilha). Separador visual do bloco acima. */}
+      <div className="mt-1 border-t pt-3" style={{ borderColor: 'var(--gro-border)' }}>
+        <CouponRedeemForm
+          pending={redeem.isPending}
+          error={couponError}
+          successMessage={couponSuccess}
+          onSubmit={(code) => redeem.mutate(code)}
+        />
+      </div>
     </div>
   );
 }

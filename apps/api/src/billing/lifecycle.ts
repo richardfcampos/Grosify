@@ -149,20 +149,34 @@ async function syncHouseholdPlan(
 
 /**
  * Plano efetivo do household com expiração preguiçosa (write-behind, sem cron):
- *   - planOverride ('pro') sempre vence (comp/100% off).
+ *   - planOverride ('pro') vence quando vigente: planOverrideUntil null (permanente,
+ *     comp manual) ou futuro (cupom de meses ainda válido).
  *   - assinatura canceled com currentPeriodEnd já vencido → deve ser free.
  *   - assinatura overdue há mais de 7 dias → deve ser free.
  * Quando o plan materializado está desatualizado (ainda 'pro' num desses casos), corrige
  * o banco na leitura e retorna 'free'. Exportado pra membershipOf usar (fase 3).
+ *
+ * Override expirado (planOverrideUntil < now) NÃO é limpo — só ignorado; mantém o histórico
+ * do que foi concedido (via cupom/comp) e segue pro fluxo normal de assinatura.
  */
 export async function resolveEffectivePlan(householdId: string): Promise<'free' | 'pro'> {
   const [house] = await db
-    .select({ plan: households.plan, planOverride: households.planOverride })
+    .select({
+      plan: households.plan,
+      planOverride: households.planOverride,
+      planOverrideUntil: households.planOverrideUntil,
+    })
     .from(households)
     .where(eq(households.id, householdId))
     .limit(1);
   if (!house) return 'free';
-  if (house.planOverride === 'pro') return 'pro';
+  // Override vigente = 'pro' com until null (permanente) ou ainda futuro.
+  if (
+    house.planOverride === 'pro' &&
+    (house.planOverrideUntil == null || house.planOverrideUntil > new Date())
+  ) {
+    return 'pro';
+  }
 
   // Assinatura não-terminal mais recente (se houver).
   const [sub] = await db
