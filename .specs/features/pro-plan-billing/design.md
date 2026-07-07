@@ -1,20 +1,20 @@
 # Pro Plan + Multi-Gateway Billing — Design
 
 **Spec**: `.specs/features/pro-plan-billing/spec.md`
-**Status**: Draft (aguardando aprovação)
-**Base do scout**: workflow 5 agentes (api-gates, client-paywall, schema-patterns, offline-sync, asaas-api) — file:line citados abaixo vêm daí.
+**Status**: Draft (awaiting approval)
+**Scout base**: 5-agent workflow (api-gates, client-paywall, schema-patterns, offline-sync, asaas-api) — the file:line citations below come from it.
 
 ---
 
-## Abordagens consideradas (Large → exploração obrigatória)
+## Approaches considered (Large → mandatory exploration)
 
-| | Abordagem | Trade-off |
+| | Approach | Trade-off |
 |---|---|---|
-| **A (recomendada)** | **Asaas Subscriptions API**: POST `/v3/customers` + POST `/v3/subscriptions` (billingType `UNDEFINED` → cliente escolhe Pix/cartão na fatura) → redirect pra `invoiceUrl` da 1ª cobrança | ✅ `sub_...` existe ANTES do pagamento → correlação determinística via `externalReference=householdId` + externalId salvo. ✅ fluxo documentado. ❌ exige coletar **CPF/CNPJ** no nosso checkout (POST customers obriga) |
-| B | Asaas Checkout hosted (`/v3/checkouts`, chargeTypes RECURRENT) | ✅ página bonita, Asaas coleta dados do pagador (sem CPF no nosso app). ❌ assinatura só nasce APÓS pagamento → correlação via callback/evento menos documentada; sessão expira; mais estados |
-| C | Stripe-first | ❌ Pix invite-only pra empresa BR; mata o método #1 do mercado primário. Descartada |
+| **A (recommended)** | **Asaas Subscriptions API**: POST `/v3/customers` + POST `/v3/subscriptions` (billingType `UNDEFINED` → customer picks Pix/card on the invoice) → redirect to the `invoiceUrl` of the 1st charge | ✅ `sub_...` exists BEFORE payment → deterministic correlation via `externalReference=householdId` + saved externalId. ✅ documented flow. ❌ requires collecting **CPF/CNPJ** in our checkout (POST customers requires it) |
+| B | Asaas hosted Checkout (`/v3/checkouts`, chargeTypes RECURRENT) | ✅ nice page, Asaas collects the payer's data (no CPF in our app). ❌ the subscription is only born AFTER payment → correlation via callback/event is less documented; the session expires; more states |
+| C | Stripe-first | ❌ Pix is invite-only for BR companies; kills the #1 method of the primary market. Discarded |
 
-**Escolha: A.** Pedir CPF é norma em assinatura BR; correlação determinística vale mais que UX marginal. B fica anotada como evolução de UX.
+**Choice: A.** Asking for CPF is the norm in BR subscriptions; deterministic correlation is worth more than marginal UX. B is noted as a UX evolution.
 
 ---
 
@@ -22,138 +22,138 @@
 
 ```mermaid
 graph TD
-    UI[Ajustes: PlanSection / PaywallSheet] -->|POST /billing/checkout| BR[routes/billing.ts]
+    UI[Settings: PlanSection / PaywallSheet] -->|POST /billing/checkout| BR[routes/billing.ts]
     BR --> F[billing/index.ts factory<br/>providerFor currency]
     F -->|BRL + ASAAS_API_KEY| A[asaas-provider.ts]
-    F -->|outra moeda| S[stripe-provider.ts stub 501]
+    F -->|other currency| S[stripe-provider.ts stub 501]
     A -->|create customer+subscription| ASAAS[(Asaas API)]
-    ASAAS -->|redirect invoiceUrl| PAGADOR
+    ASAAS -->|redirect invoiceUrl| PAYER
     ASAAS -->|POST /webhooks/asaas<br/>asaas-access-token| WH[routes/webhooks.ts]
-    WH -->|evento normalizado| LC[billing/lifecycle.ts<br/>máquina de estados]
+    WH -->|normalized event| LC[billing/lifecycle.ts<br/>state machine]
     LC --> DB[(subscriptions +<br/>households.plan)]
-    DB --> MW[middleware requireHousehold<br/>plan efetivo + lazy expiry]
-    MW --> GATES[gates: items/lists/members/fotos]
+    DB --> MW[middleware requireHousehold<br/>effective plan + lazy expiry]
+    MW --> GATES[gates: items/lists/members/photos]
 ```
 
-**Fonte da verdade = nosso banco.** Provedores só empurram webhooks que convergem pra `subscriptions`; app pergunta "é Pro?" apenas ao banco. `households.plan` segue materializado (middleware/membershipOf já leem — zero mudança nos consumidores); transições de billing o atualizam.
+**Source of truth = our database.** Providers only push webhooks that converge into `subscriptions`; the app asks "is it Pro?" only of the database. `households.plan` stays materialized (middleware/membershipOf already read it — zero change to consumers); billing transitions update it.
 
-**Inversão de dependência (pedido explícito):** espelha `email/index.ts` — porta + factory (único lugar que conhece providers concretos) + `setBillingProvider()` pra testes. Gateway novo = 1 adapter + 1 case.
+**Dependency inversion (explicit request):** mirrors `email/index.ts` — port + factory (the single place that knows the concrete providers) + `setBillingProvider()` for tests. A new gateway = 1 adapter + 1 case.
 
 ---
 
 ## Code Reuse Analysis
 
-| Existente | Local | Uso |
+| Existing | Location | Use |
 |---|---|---|
-| Padrão porta/factory/env-gate | `apps/api/src/email/index.ts` | Copiar estrutura (factory, setProvider p/ testes) |
-| Webhook handler fino + verificação + lib de efeito | `apps/api/src/routes/webhooks.ts` (Resend) + `lib/email-suppression.ts` | Mesmo shape: verifica token → parseia → delega a `billing/lifecycle.ts` → `{ok:true}` |
-| Gate de item já escrito | `apps/api/src/routes/catalog.ts:215-220` (`item_limit_reached` 403, hoje no-op) | Reativar `maxItems` em shared liga sozinho |
-| Plan no contexto da request | `middleware/household.ts:57` (`c.get('plan')`) | Todos os gates de rota usam |
-| Constantes/regras compartilhadas | `packages/shared/src/plans.ts` | Adicionar FREE_MAX_LISTS/MEMBERS, PLAN_PRICES, applyFreeCaps() |
-| Erro `{error: código}` + i18n `errors.*` | padrão da API; `errors.item_limit_reached` já existe nos 6 locales | Novos códigos: `list_limit_reached`, `member_limit_reached`, `pro_required`, `already_subscribed`, `provider_unavailable`, `provider_error` |
-| Harness pglite | `apps/api/src/test/db-integration.test.ts` | Testes de lifecycle/gates (add tabelas novas no TRUNCATE) |
-| CTA "Seja Pro" desabilitado | `ajustes-page.tsx:251-272` | Vira PlanSection real |
-| uuidv7 time-ordered | ids de todas as linhas | **Regra de visibilidade no downgrade: `id asc` = ordem de criação** (sem coluna nova) |
+| Port/factory/env-gate pattern | `apps/api/src/email/index.ts` | Copy the structure (factory, setProvider for tests) |
+| Thin webhook handler + verification + effect lib | `apps/api/src/routes/webhooks.ts` (Resend) + `lib/email-suppression.ts` | Same shape: verify token → parse → delegate to `billing/lifecycle.ts` → `{ok:true}` |
+| Item gate already written | `apps/api/src/routes/catalog.ts:215-220` (`item_limit_reached` 403, currently no-op) | Reactivating `maxItems` in shared wires it up on its own |
+| Plan in the request context | `middleware/household.ts:57` (`c.get('plan')`) | All route gates use it |
+| Shared constants/rules | `packages/shared/src/plans.ts` | Add FREE_MAX_LISTS/MEMBERS, PLAN_PRICES, applyFreeCaps() |
+| `{error: code}` error + i18n `errors.*` | API standard; `errors.item_limit_reached` already exists in the 6 locales | New codes: `list_limit_reached`, `member_limit_reached`, `pro_required`, `already_subscribed`, `provider_unavailable`, `provider_error` |
+| pglite harness | `apps/api/src/test/db-integration.test.ts` | Lifecycle/gate tests (add the new tables to the TRUNCATE) |
+| Disabled "Go Pro" CTA | `ajustes-page.tsx:251-272` | Becomes a real PlanSection |
+| uuidv7 time-ordered | ids of all rows | **Downgrade visibility rule: `id asc` = creation order** (no new column) |
 
 ---
 
 ## Components
 
-### 1. `packages/shared/src/plans.ts` (estende)
-- `FREE_MAX_ITEMS=30` (existe) · `FREE_MAX_LISTS=2` · `FREE_MAX_MEMBERS=2` · `FREE_HISTORY_DAYS=90` (existe)
-- `maxItems/maxLists/maxMembers(plan)` — reativados (pro=∞)
-- `PLAN_PRICES: {BRL:{monthly:1290, yearly:9900}, USD:{monthly:399, yearly:2900}}` (minor units nossos; adapter converte)
-- `applyFreeCaps<T extends {id:string}>(rows, cap, plan)` — pure: pro→tudo; free→sort id asc, slice(cap). Usada client (filtro de leitura) e testável.
+### 1. `packages/shared/src/plans.ts` (extends)
+- `FREE_MAX_ITEMS=30` (exists) · `FREE_MAX_LISTS=2` · `FREE_MAX_MEMBERS=2` · `FREE_HISTORY_DAYS=90` (exists)
+- `maxItems/maxLists/maxMembers(plan)` — reactivated (pro=∞)
+- `PLAN_PRICES: {BRL:{monthly:1290, yearly:9900}, USD:{monthly:399, yearly:2900}}` (our minor units; adapter converts)
+- `applyFreeCaps<T extends {id:string}>(rows, cap, plan)` — pure: pro→everything; free→sort id asc, slice(cap). Used by the client (read filter) and testable.
 
-### 2. `apps/api/src/billing/` (novo módulo — a porta)
+### 2. `apps/api/src/billing/` (new module — the port)
 - `types.ts`: `PaymentProvider { name; createSubscription(p): Promise<{externalId, externalCustomerId, checkoutUrl}>; cancelSubscription(externalId): Promise<void>; verifyAndParseWebhook(req): Promise<BillingEvent|null> }`; `BillingEvent = {eventId, type: 'payment_confirmed'|'payment_overdue'|'payment_refunded'|'chargeback'|'subscription_deleted', externalSubscriptionId, raw}`
-- `asaas-provider.ts`: fetch com headers `access_token` + `User-Agent` (obrigatório); base URL por `ASAAS_BASE_URL` (default sandbox `https://api-sandbox.asaas.com/v3`); `value` em **reais decimais** (converte de cents: `priceCents/100`); cycle map monthly→MONTHLY, yearly→YEARLY; billingType `UNDEFINED`; checkoutUrl = `invoiceUrl` da 1ª cobrança (GET `/subscriptions/{id}/payments`); mapeia eventos: PAYMENT_CONFIRMED|RECEIVED→payment_confirmed, PAYMENT_OVERDUE→payment_overdue, PAYMENT_REFUNDED→payment_refunded, PAYMENT_CHARGEBACK_*→chargeback, SUBSCRIPTION_DELETED|INACTIVATED→subscription_deleted; webhook auth: header `asaas-access-token` === `ASAAS_WEBHOOK_TOKEN`
-- `stripe-provider.ts`: stub — todo método lança `provider_unavailable` (rota → 501)
-- `index.ts`: factory `billingProviderFor(currency)`: BRL→asaas (se `ASAAS_API_KEY`, senão null→501), senão→stripe (se `STRIPE_SECRET_KEY`, senão null→501); `setBillingProvider()` p/ testes
-- `lifecycle.ts`: **lib de efeito (todo o estado muda aqui; testada no pglite)**
-  - `applyBillingEvent(evt)`: idempotência (insert `webhook_events` unique(provider,eventId) — conflito=no-op); localiza subscription por externalId; aplica máquina de estados; sincroniza `households.plan`
-  - `resolveEffectivePlan(householdId)`: lazy expiry — `canceled` com `currentPeriodEnd<now` OU `overdue` com `overdueSince+7d<now` → flip plan free (write-behind); `planOverride` sempre vence. Chamada em membershipOf (barata: só quando há subscription não-terminal)
-  - Máquina: `pending→active` (payment_confirmed) · `active→overdue` (payment_overdue) · `overdue→active` (payment_confirmed) · `*→canceled` (subscription_deleted | refund | chargeback | lazy) · canceled/terminal ignora tudo (guarda contra out-of-order)
+- `asaas-provider.ts`: fetch with headers `access_token` + `User-Agent` (required); base URL via `ASAAS_BASE_URL` (default sandbox `https://api-sandbox.asaas.com/v3`); `value` in **decimal reais** (converts from minor units: `priceCents/100`); cycle map monthly→MONTHLY, yearly→YEARLY; billingType `UNDEFINED`; checkoutUrl = `invoiceUrl` of the 1st charge (GET `/subscriptions/{id}/payments`); maps events: PAYMENT_CONFIRMED|RECEIVED→payment_confirmed, PAYMENT_OVERDUE→payment_overdue, PAYMENT_REFUNDED→payment_refunded, PAYMENT_CHARGEBACK_*→chargeback, SUBSCRIPTION_DELETED|INACTIVATED→subscription_deleted; webhook auth: header `asaas-access-token` === `ASAAS_WEBHOOK_TOKEN`
+- `stripe-provider.ts`: stub — every method throws `provider_unavailable` (route → 501)
+- `index.ts`: factory `billingProviderFor(currency)`: BRL→asaas (if `ASAAS_API_KEY`, otherwise null→501), otherwise→stripe (if `STRIPE_SECRET_KEY`, otherwise null→501); `setBillingProvider()` for tests
+- `lifecycle.ts`: **effect lib (all state changes here; tested in pglite)**
+  - `applyBillingEvent(evt)`: idempotency (insert `webhook_events` unique(provider,eventId) — conflict=no-op); locates the subscription by externalId; applies the state machine; syncs `households.plan`
+  - `resolveEffectivePlan(householdId)`: lazy expiry — `canceled` with `currentPeriodEnd<now` OR `overdue` with `overdueSince+7d<now` → flip plan to free (write-behind); `planOverride` always wins. Called in membershipOf (cheap: only when there is a non-terminal subscription)
+  - Machine: `pending→active` (payment_confirmed) · `active→overdue` (payment_overdue) · `overdue→active` (payment_confirmed) · `*→canceled` (subscription_deleted | refund | chargeback | lazy) · canceled/terminal ignores everything (guards against out-of-order)
 
-### 3. Schema (migração 0026) — server-authoritative, sem colunas sync
+### 3. Schema (migration 0026) — server-authoritative, no sync columns
 ```ts
 subscriptions: { id uuid pk (uuidv7 app), householdId uuid fk cascade, provider text enum['asaas','stripe'],
   externalId text, externalCustomerId text, status text enum['pending','active','overdue','canceled'],
   cycle text enum['monthly','yearly'], currency text, priceCents integer,
   nextDueDate tsz?, currentPeriodEnd tsz?, overdueSince tsz?, canceledAt tsz?,
   createdAt/updatedAt tsz defaultNow }
-// unique index parcial: 1 não-terminal por casa
+// partial unique index: 1 non-terminal per household
 uniqueIndex('subs_active_household').on(householdId).where(status != 'canceled')
 webhook_events: { id uuid pk, provider text, eventId text, type text, receivedAt tsz defaultNow }
 // unique(provider, eventId) → idempotência
-households: + planOverride text enum['pro'] null  // comp/100%: setável via SQL; efetivo = override ?? plan
+households: + planOverride text enum['pro'] null  // comp/100%: settable via SQL; effective = override ?? plan
 ```
-CPF/CNPJ **não é persistido** (LGPD): vai direto pro Asaas; guardamos só `externalCustomerId`.
+CPF/CNPJ is **not persisted** (LGPD): it goes straight to Asaas; we store only `externalCustomerId`.
 
-### 4. `apps/api/src/routes/billing.ts` (novo) + gates em rotas existentes
-- `POST /billing/checkout {cycle, cpfCnpj}` — requireHousehold; role owner|admin (403); moeda = household.currency; provider null→501 `provider_unavailable`; subscription não-terminal existente→409 `already_subscribed` (exceto `pending`>24h: cancela e recria); cria linha `pending` + retorna `{checkoutUrl}`; erro provider→502 `provider_error`
+### 4. `apps/api/src/routes/billing.ts` (new) + gates in existing routes
+- `POST /billing/checkout {cycle, cpfCnpj}` — requireHousehold; role owner|admin (403); currency = household.currency; provider null→501 `provider_unavailable`; existing non-terminal subscription→409 `already_subscribed` (except `pending`>24h: cancel and recreate); creates a `pending` row + returns `{checkoutUrl}`; provider error→502 `provider_error`
 - `GET /billing/subscription` — `{status,cycle,currency,priceCents,nextDueDate,provider} | null`
-- `POST /billing/cancel` — owner|admin; DELETE no provider (best-effort); status `canceled`, `currentPeriodEnd=nextDueDate` (Pro até o fim do pago; lazy flip depois)
-- `POST /webhooks/asaas` — fora de auth (como Resend); token→401; evento não parseado→400; `applyBillingEvent`; sempre log `{event, externalId, resultado}`
-- Gates: `catalog.ts` (existente, liga via shared) · `shopping.ts` POST /lists (novo, count `deletedAt IS NULL` → `list_limit_reached`) · `households.ts /join` (**dentro da transação** existente linhas 403-411: busca plan do `invite.householdId` + count → `member_limit_reached`; checagem antecipada nos 2 creates de convite via `membership.plan` p/ UX) · `uploads.ts` presign (`pro_required` 403 após o check 501) · exclusão de household (LGPD): cancel provider best-effort
+- `POST /billing/cancel` — owner|admin; DELETE at the provider (best-effort); status `canceled`, `currentPeriodEnd=nextDueDate` (Pro until the end of the paid period; lazy flip afterward)
+- `POST /webhooks/asaas` — outside auth (like Resend); token→401; unparsed event→400; `applyBillingEvent`; always log `{event, externalId, result}`
+- Gates: `catalog.ts` (existing, wires via shared) · `shopping.ts` POST /lists (new, count `deletedAt IS NULL` → `list_limit_reached`) · `households.ts /join` (**inside the transaction** at existing lines 403-411: fetches the plan of `invite.householdId` + count → `member_limit_reached`; early check in the 2 invite creates via `membership.plan` for UX) · `uploads.ts` presign (`pro_required` 403 after the 501 check) · household deletion (LGPD): best-effort provider cancel
 
 ### 5. Client (`apps/web`)
-- **Plan em `db.meta`** (persistido no fetch de membership) — preflight offline; desconhecido→fail-open (servidor é autoritativo)
-- **Preflight nos repositories** (`createItem` repositories.ts:46, `createList` :384): count Dexie (índice householdId existe) >= cap → throw `Error('item_limit_reached'|'list_limit_reached')` ANTES do put otimista; form traduz via `errors.*` + CTA upgrade
-- **Reconciliação 4xx no drainOutbox** (engine.ts:171 — hoje delete silencioso): para códigos `*_limit_reached`/`pro_required` em POST: deleta linha otimista local via `entry.rowId` (item+barcodes) e incrementa contador `db.meta['rejectedByPlan']` → banner "alteração rejeitada: limite do plano". Resolve o órfão documentado no STATE.md:44 pros casos de plano
-- **Filtro de leitura + aviso (refinamento do user):** `applyFreeCaps` nas superfícies de catálogo (itens-page, dashboard, listas-page) + `historyCutoff` já existente; hook `useHiddenCounts()` (total local − visível) alimenta **banner persistente "N itens/listas ocultos — o Pro revela"** com CTA → Ajustes/plano. Corrigir inconsistência: `check-item-sheet.tsx:50-58` sem `historyCutoff` (aplicar)
-- **Gate de fotos na captura** (item-form-page.tsx:199, compra-page.tsx:724): free→PaywallSheet em vez do file picker (evita o loop silencioso do sweep: uploads.ts só trata 501; sweep engine.ts:210-224 trataria 403 como skip)
-- **Gates client-only**: analytics-page (upsell full-page se free) + botão print; exportPricesCsv (backup.ts:19) → PaywallSheet. Export JSON LGPD (`/me/export`) **permanece free**
-- **PlanSection em Ajustes** (substitui CTA morto :251-272): free→comparativo+preços+CPF+mensal/anual→redirect `checkoutUrl`; pro→status/próxima cobrança/cancelar(confirm). Retorno do checkout: focus-refetch (já existe tick no focus) + invalidate `['membership']`
-- **PaywallSheet** reutilizável (gro-sheet-*) usado por todos os gates
-- i18n: novas chaves `billing.*`/`errors.*` nos **6 locales**
+- **Plan in `db.meta`** (persisted on the membership fetch) — offline preflight; unknown→fail-open (the server is authoritative)
+- **Preflight in the repositories** (`createItem` repositories.ts:46, `createList` :384): Dexie count (householdId index exists) >= cap → throw `Error('item_limit_reached'|'list_limit_reached')` BEFORE the optimistic put; the form translates via `errors.*` + upgrade CTA
+- **4xx reconciliation in drainOutbox** (engine.ts:171 — currently a silent delete): for codes `*_limit_reached`/`pro_required` on POST: deletes the local optimistic row via `entry.rowId` (item+barcodes) and increments the `db.meta['rejectedByPlan']` counter → banner "change rejected: plan limit". Resolves the orphan documented in STATE.md:44 for the plan cases
+- **Read filter + warning (user refinement):** `applyFreeCaps` on the catalog surfaces (itens-page, dashboard, listas-page) + the existing `historyCutoff`; the `useHiddenCounts()` hook (local total − visible) feeds a **persistent banner "N items/lists hidden — Pro reveals them"** with a CTA → Settings/plan. Fix inconsistency: `check-item-sheet.tsx:50-58` lacks `historyCutoff` (apply it)
+- **Photo gate at capture** (item-form-page.tsx:199, compra-page.tsx:724): free→PaywallSheet instead of the file picker (avoids the silent sweep loop: uploads.ts only handles 501; sweep engine.ts:210-224 would treat 403 as skip)
+- **Client-only gates**: analytics-page (full-page upsell if free) + print button; exportPricesCsv (backup.ts:19) → PaywallSheet. LGPD JSON export (`/me/export`) **stays free**
+- **PlanSection in Settings** (replaces the dead CTA :251-272): free→comparison+prices+CPF+monthly/yearly→redirect `checkoutUrl`; pro→status/next charge/cancel(confirm). Return from checkout: focus-refetch (a focus tick already exists) + invalidate `['membership']`
+- **PaywallSheet** reusable (gro-sheet-*) used by all the gates
+- i18n: new `billing.*`/`errors.*` keys in the **6 locales**
 
 ---
 
 ## Error Handling Strategy
 
-| Cenário | Tratamento | Usuário vê |
+| Scenario | Handling | User sees |
 |---|---|---|
-| Env Asaas ausente | 501 `provider_unavailable` | "Assinatura indisponível no momento" |
-| Moeda ≠ BRL (Stripe stub) | 501 `provider_unavailable` | idem + nota "em breve na sua moeda" |
-| Asaas fora do ar no checkout | 502 `provider_error` | erro inline + tentar de novo |
-| Webhook token inválido | 401, sem efeito | — |
-| Evento duplicado | no-op (unique) | — |
-| Evento out-of-order | máquina ignora transição inválida (log) | — |
-| Free estoura teto online | 403 código tipado | erro traduzido + CTA Pro |
-| Free estoura teto offline | preflight bloqueia; se escapou: 403 no sync→remove otimista+banner | aviso "rejeitado: limite do plano" |
-| Checkout abandonado | `pending`; novo checkout >24h cancela e recria | novo link normal |
+| Asaas env absent | 501 `provider_unavailable` | "Subscription unavailable right now" |
+| Currency ≠ BRL (Stripe stub) | 501 `provider_unavailable` | same + note "coming soon in your currency" |
+| Asaas down at checkout | 502 `provider_error` | inline error + try again |
+| Invalid webhook token | 401, no effect | — |
+| Duplicate event | no-op (unique) | — |
+| Out-of-order event | machine ignores the invalid transition (log) | — |
+| Free exceeds cap online | 403 typed code | translated error + Pro CTA |
+| Free exceeds cap offline | preflight blocks; if it slipped through: 403 on sync→removes optimistic+banner | warning "rejected: plan limit" |
+| Abandoned checkout | `pending`; a new checkout >24h cancels and recreates | normal new link |
 
 ---
 
 ## Risks & Concerns
 
-| Concern | Local | Impacto | Mitigação |
+| Concern | Location | Impact | Mitigation |
 |---|---|---|---|
-| count+insert sem lock (race no teto) | catalog.ts:215-219 (e novos gates) | 2 POSTs simultâneos estouram teto em +1 | Aceito (escala casa 2-4; teto é soft-business); /join único que exige atomicidade e JÁ roda em transação com FOR UPDATE |
-| 4xx dependente sem mapeamento FK→4xx | inventory/movements/prices/sessions | item rejeitado por limite → FK 500 → 5 retries → dead-letter poluído | Replicar mapeamento `entry_ref_missing` (shopping.ts:167) nas rotas dependentes — task própria |
-| `value` Asaas em reais decimais | asaas-provider | erro de conversão = cobrar 100x | `priceCents/100` com teste unitário explícito; BRL sempre 2 casas |
-| uploadBlob engole não-501 | lib/uploads.ts:34,63 + sweep engine.ts:210 | foto de free tentaria subir pra sempre | Gate na captura (primário) + sweep pula quando plan=free |
-| Histórico/analytics/CSV são gates client-only | sync entrega tudo (offline-first) | free "hackeável" via devtools | Aceito e documentado: gates de leitura são soft (dados já são do usuário); gates de escrita são hard no servidor |
-| Fila webhook Asaas interrompe após 15 falhas | infra | eventos param (retidos 14d) | Handler nunca lança (try/catch→200 com log de erro interno); alarme = log |
-| `paymentCreationMode=SUBSCRIPTION` do Pix Automático ambíguo nas docs | asaas | — | **Fora do MVP**: Pix Automático exige PJ 6+ meses; MVP usa assinatura normal (billingType UNDEFINED — Pix manual por ciclo + cartão automático). Pix Automático = evolução futura do adapter |
+| count+insert without a lock (race on the cap) | catalog.ts:215-219 (and new gates) | 2 simultaneous POSTs exceed the cap by +1 | Accepted (household scale 2-4; the cap is soft-business); /join is the only one requiring atomicity and ALREADY runs in a transaction with FOR UPDATE |
+| Dependent 4xx without FK→4xx mapping | inventory/movements/prices/sessions | item rejected by limit → FK 500 → 5 retries → polluted dead-letter | Replicate the `entry_ref_missing` mapping (shopping.ts:167) in the dependent routes — its own task |
+| Asaas `value` in decimal reais | asaas-provider | conversion error = charge 100x | `priceCents/100` with an explicit unit test; BRL always 2 decimals |
+| uploadBlob swallows non-501 | lib/uploads.ts:34,63 + sweep engine.ts:210 | a free photo would try to upload forever | Gate at capture (primary) + sweep skips when plan=free |
+| History/analytics/CSV are client-only gates | sync delivers everything (offline-first) | free "hackable" via devtools | Accepted and documented: read gates are soft (the data is already the user's); write gates are hard on the server |
+| Asaas webhook queue interrupts after 15 failures | infra | events stop (retained 14d) | Handler never throws (try/catch→200 with an internal error log); the alarm = the log |
+| Pix Automático's `paymentCreationMode=SUBSCRIPTION` ambiguous in the docs | asaas | — | **Out of the MVP**: Pix Automático requires a PJ 6+ months old; the MVP uses a normal subscription (billingType UNDEFINED — manual Pix per cycle + automatic card). Pix Automático = future adapter evolution |
 
 ---
 
-## Tech Decisions (não-óbvias)
+## Tech Decisions (non-obvious)
 
-| Decisão | Escolha | Rationale |
+| Decision | Choice | Rationale |
 |---|---|---|
-| Checkout | invoiceUrl da assinatura (abordagem A) | correlação determinística; sub_ existe antes do pagamento |
-| CPF/CNPJ | coletado no checkout, enviado ao Asaas, **não persistido** | obrigatório na API; LGPD-friendly |
-| Plan efetivo | `planOverride ?? households.plan` materializado + lazy expiry em membershipOf | zero cron; consumidores existentes intactos |
-| Ordem de visibilidade no downgrade | `id asc` (uuidv7 é time-ordered) | ordem de criação sem coluna nova |
-| Pix Automático | fora do MVP | exige PJ 6+ meses; UNDEFINED cobre Pix por ciclo |
-| Provider travado na assinatura | coluna `provider` na linha | mudança de moeda não re-roteia assinatura ativa |
-| **Supersede STATE.md 2026-06-13** | billing = **Asaas (BR) + Stripe stub**, não mais Mercado Pago | decisão do usuário nesta feature (registrar no STATE.md ao fechar) |
+| Checkout | the subscription's invoiceUrl (approach A) | deterministic correlation; sub_ exists before payment |
+| CPF/CNPJ | collected at checkout, sent to Asaas, **not persisted** | required by the API; LGPD-friendly |
+| Effective plan | `planOverride ?? households.plan` materialized + lazy expiry in membershipOf | zero cron; existing consumers intact |
+| Downgrade visibility order | `id asc` (uuidv7 is time-ordered) | creation order without a new column |
+| Pix Automático | out of the MVP | requires a PJ 6+ months old; UNDEFINED covers Pix per cycle |
+| Provider pinned on the subscription | `provider` column on the row | a currency change does not re-route an active subscription |
+| **Supersedes STATE.md 2026-06-13** | billing = **Asaas (BR) + Stripe stub**, no longer Mercado Pago | user decision in this feature (record in STATE.md at close) |
 
 ---
 
 ## Unresolved questions
-1. Cancelamento Asaas: DELETE remove cobranças pendentes — confirmar em sandbox que não gera evento que a máquina interprete errado (SUBSCRIPTION_DELETED esperado).
-2. `pending` >24h: cancela-e-recria assume DELETE idempotente em sub sem pagamento — validar sandbox.
+1. Asaas cancellation: DELETE removes pending charges — confirm in sandbox that it does not generate an event the machine misinterprets (SUBSCRIPTION_DELETED expected).
+2. `pending` >24h: cancel-and-recreate assumes an idempotent DELETE on a subscription with no payment — validate in sandbox.
