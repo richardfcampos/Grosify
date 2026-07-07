@@ -61,7 +61,7 @@ afterAll(async () => {
 
 beforeEach(async () => {
   await pg.exec(
-    `TRUNCATE subscriptions, webhook_events, household_members, households, "user" RESTART IDENTITY CASCADE;`,
+    `TRUNCATE coupon_redemptions, coupons, subscriptions, webhook_events, household_members, households, "user" RESTART IDENTITY CASCADE;`,
   );
   sessionHolder.user = null;
 });

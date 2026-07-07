@@ -197,6 +197,13 @@
       "when": 1783260744858,
       "tag": "0027_wise_titania",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1783401441205,
+      "tag": "0028_tan_dragon_lord",
+      "breakpoints": true
     }
   ]
 }
