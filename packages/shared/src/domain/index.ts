@@ -189,3 +189,4 @@ export function estimateTotal(lines: EstimateLine[]): EstimateTotal {
 
 export * from './currency.js';
 export * from './replenishment-forecast.js';
+export * from './price-insights.js';

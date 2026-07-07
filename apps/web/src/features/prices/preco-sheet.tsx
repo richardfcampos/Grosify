@@ -17,8 +17,10 @@ import { recordPrice } from '../../db/repositories.js';
 import { BrandPicker } from '../brands/brand-picker.js';
 import { PriceScanModal } from '../scanner/price-scan-modal.js';
 import { StarRating } from './star-rating.js';
+import { PriceInsightsSection } from './price-insights-section.js';
 import { Button } from '../ui/index.js';
 import { useFormatMoney, useHouseholdCurrency, useHouseholdPlan } from '../../lib/use-currency.js';
+import { usePriceInsights } from '../../lib/use-price-insights.js';
 
 interface Props {
   itemId: string;
@@ -71,6 +73,8 @@ export function PrecoSheet({ itemId, itemName, onClose }: Props) {
   const [busy, setBusy] = useState(false);
 
   const cheapest = useMemo(() => cheapestStore(prices), [prices]);
+  // insights Pro operam no histórico COMPLETO (allPrices), sem o cutoff 90d do free
+  const insights = usePriceInsights(itemId, allPrices);
   const storeName = (id: string) => stores.find((s) => s.id === id)?.name ?? '—';
   const brandName = (id: string | null) => (id ? brands.find((b) => b.id === id)?.name ?? null : null);
   const fmtDate = (iso: string) => new Date(iso).toLocaleDateString(i18n.resolvedLanguage);
@@ -148,6 +152,14 @@ export function PrecoSheet({ itemId, itemName, onClose }: Props) {
             )}
           </div>
         )}
+
+        <PriceInsightsSection
+          plan={plan}
+          insights={insights}
+          fmt={fmt}
+          storeName={storeName}
+          brandName={brandName}
+        />
 
         {stores.length === 0 ? (
           <p className="text-sm text-amber-700">{t('prices.noStores')}</p>

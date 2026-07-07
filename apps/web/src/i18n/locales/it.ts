@@ -186,6 +186,16 @@ export default {
       searchStore: 'Cerca negozio…',
       noStores: 'Aggiungi prima un negozio.',
     },
+    priceInsights: {
+      title: 'Buy now or wait',
+      teaser: 'Buy now or wait — Pro',
+      verdict: {
+        buy: 'Good moment: {{current}} is below the {{avg}} average.',
+        wait: 'Better to wait: {{current}} is above the {{avg}} average and rising.',
+        neutral: 'Price steady near the {{avg}} average.',
+      },
+      swap: '{{cheaper}} is {{pct}}% cheaper than {{pricier}} at {{store}}.',
+    },
     brands: {
       label: 'Marca',
       none: 'Senza marca',
@@ -344,6 +354,7 @@ export default {
       nfcePaywallPitch: 'Hai raggiunto il limite di ricevute importate questo mese nel piano gratuito.',
       nlListPaywallPitch: 'Generare liste dal testo è una funzione esclusiva del piano Pro.',
       forecastPaywallPitch: 'Know when each item will run out — the replenishment forecast is Pro-only.',
+      priceInsightsPaywallPitch: 'Find out when to buy and which brand is cheaper — price insights are Pro-only.',
     },
     nfce: {
       importButton: 'Importa ricevuta (QR)',

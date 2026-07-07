@@ -186,6 +186,16 @@ export default {
       searchStore: 'Search store…',
       noStores: 'Add a store first.',
     },
+    priceInsights: {
+      title: 'Buy now or wait',
+      teaser: 'Buy now or wait — Pro',
+      verdict: {
+        buy: 'Good moment: {{current}} is below the {{avg}} average.',
+        wait: 'Better to wait: {{current}} is above the {{avg}} average and rising.',
+        neutral: 'Price steady near the {{avg}} average.',
+      },
+      swap: '{{cheaper}} is {{pct}}% cheaper than {{pricier}} at {{store}}.',
+    },
     brands: {
       label: 'Brand',
       none: 'No brand',
@@ -344,6 +354,7 @@ export default {
       nfcePaywallPitch: "You've reached this month's imported receipt limit on the Free plan.",
       nlListPaywallPitch: 'Générer des listes à partir de texte est une fonction exclusive du plan Pro.',
       forecastPaywallPitch: 'Know when each item will run out — the replenishment forecast is Pro-only.',
+      priceInsightsPaywallPitch: 'Find out when to buy and which brand is cheaper — price insights are Pro-only.',
     },
     nfce: {
       importButton: 'Import receipt (QR)',

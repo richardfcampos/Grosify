@@ -186,6 +186,16 @@ export default {
       searchStore: 'Buscar loja…',
       noStores: 'Cadastre uma loja primeiro.',
     },
+    priceInsights: {
+      title: 'Compre agora ou espere',
+      teaser: 'Compre agora ou espere — Pro',
+      verdict: {
+        buy: 'Bom momento: {{current}} está abaixo da média de {{avg}}.',
+        wait: 'Melhor esperar: {{current}} está acima da média de {{avg}} e subindo.',
+        neutral: 'Preço estável perto da média de {{avg}}.',
+      },
+      swap: '{{cheaper}} está {{pct}}% mais barata que {{pricier}} em {{store}}.',
+    },
     brands: {
       label: 'Marca',
       none: 'Sem marca',
@@ -344,6 +354,7 @@ export default {
       nfcePaywallPitch: 'Você atingiu o limite de notas fiscais importadas este mês no plano Grátis.',
       nlListPaywallPitch: 'Gerar listas por texto é um recurso exclusivo do plano Pro.',
       forecastPaywallPitch: 'Saiba quando cada item vai acabar — a previsão de reposição é exclusiva do plano Pro.',
+      priceInsightsPaywallPitch: 'Descubra se é hora de comprar e qual marca é mais barata — os insights de preço são exclusivos do plano Pro.',
     },
     nfce: {
       importButton: 'Importar nota (QR)',
