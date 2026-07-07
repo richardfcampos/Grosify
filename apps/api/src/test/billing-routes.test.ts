@@ -35,7 +35,7 @@ vi.mock('../auth.js', () => ({
 // importa DEPOIS dos mocks
 const { billingRoute } = await import('../routes/billing.js');
 const { setBillingProvider, resetBillingProviders } = await import('../billing/index.js');
-const { applyBillingEvent } = await import('../billing/lifecycle.js');
+const { applyBillingEvent, resolveEffectivePlan } = await import('../billing/lifecycle.js');
 
 const app = new Hono().route('/billing', billingRoute);
 
@@ -100,10 +100,15 @@ function fakeProvider(over: Partial<PaymentProvider> = {}): PaymentProvider {
   };
 }
 
-function post(path: string, body: unknown) {
+function post(path: string, body: unknown, ip?: string) {
   return app.request(path, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      // IP distinto isola o bucket do rate limit por teste (chave = ip:path). O limite
+      // continua real: várias chamadas do MESMO ip ainda batem no 429.
+      ...(ip ? { 'x-forwarded-for': ip } : {}),
+    },
     body: JSON.stringify(body),
   });
 }
@@ -123,6 +128,10 @@ async function housePlan(hid: string) {
     .from(schema.households)
     .where(eq(schema.households.id, hid));
   return h!.plan;
+}
+/** Plano efetivo (materializado + override) — o resgate de cupom age via override. */
+async function housePlanEffective(hid: string) {
+  return resolveEffectivePlan(hid);
 }
 
 describe('POST /billing/checkout', () => {
@@ -385,5 +394,106 @@ describe('POST /billing/cancel (BILL-03 AC2)', () => {
     const res = await post('/billing/cancel', {});
     expect(res.status).toBe(403);
     expect(await res.json()).toEqual({ error: 'forbidden' });
+  });
+});
+
+describe('POST /billing/redeem-coupon (CUP-1)', () => {
+  async function seedCoupon(opts: {
+    code: string;
+    months: number;
+    maxRedemptions?: number | null;
+    redeemedCount?: number;
+    expiresAt?: Date | null;
+  }) {
+    await db()
+      .insert(schema.coupons)
+      .values({
+        id: uuidv7(),
+        code: opts.code.toUpperCase(),
+        months: opts.months,
+        maxRedemptions: opts.maxRedemptions ?? null,
+        redeemedCount: opts.redeemedCount ?? 0,
+        expiresAt: opts.expiresAt ?? null,
+      });
+  }
+
+  it('owner resgata cupom válido → 200 {proUntil} e casa vira pro (CUP-1.5)', async () => {
+    const { hid } = await seed('owner');
+    await seedCoupon({ code: 'WELCOME3', months: 3 });
+
+    const res = await post('/billing/redeem-coupon', { code: 'welcome3' }, '10.0.0.1');
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { proUntil: string };
+    expect(typeof body.proUntil).toBe('string');
+    expect(new Date(body.proUntil).getTime()).toBeGreaterThan(Date.now());
+    // efetivo vira pro (membership resolve via override)
+    expect(await housePlanEffective(hid)).toBe('pro');
+  });
+
+  it('admin também resgata (CUP-1.7)', async () => {
+    await seed('admin');
+    await seedCoupon({ code: 'ADM', months: 1 });
+    const res = await post('/billing/redeem-coupon', { code: 'ADM' }, '10.0.0.2');
+    expect(res.status).toBe(200);
+  });
+
+  it('código inexistente → 404 coupon_invalid', async () => {
+    await seed('owner');
+    const res = await post('/billing/redeem-coupon', { code: 'NOPE' }, '10.0.0.3');
+    expect(res.status).toBe(404);
+    expect(await res.json()).toEqual({ error: 'coupon_invalid' });
+  });
+
+  it('cupom esgotado → 410 coupon_exhausted', async () => {
+    await seed('owner');
+    await seedCoupon({ code: 'FULL', months: 1, maxRedemptions: 1, redeemedCount: 1 });
+    const res = await post('/billing/redeem-coupon', { code: 'FULL' }, '10.0.0.4');
+    expect(res.status).toBe(410);
+    expect(await res.json()).toEqual({ error: 'coupon_exhausted' });
+  });
+
+  it('cupom expirado → 410 coupon_expired', async () => {
+    await seed('owner');
+    await seedCoupon({ code: 'OLD', months: 1, expiresAt: new Date(Date.now() - DAY_MS) });
+    const res = await post('/billing/redeem-coupon', { code: 'OLD' }, '10.0.0.5');
+    expect(res.status).toBe(410);
+    expect(await res.json()).toEqual({ error: 'coupon_expired' });
+  });
+
+  it('já resgatado pela casa → 409 coupon_already_redeemed (CUP-1.4)', async () => {
+    await seed('owner');
+    await seedCoupon({ code: 'ONCE', months: 1 });
+    expect((await post('/billing/redeem-coupon', { code: 'ONCE' }, '10.0.0.6')).status).toBe(200);
+    const res = await post('/billing/redeem-coupon', { code: 'ONCE' }, '10.0.0.6');
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: 'coupon_already_redeemed' });
+  });
+
+  it('member → 403 forbidden (CUP-1.7)', async () => {
+    await seed('member');
+    await seedCoupon({ code: 'ANY', months: 1 });
+    const res = await post('/billing/redeem-coupon', { code: 'ANY' }, '10.0.0.7');
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual({ error: 'forbidden' });
+  });
+
+  it('viewer → 403 (read_only pelo middleware)', async () => {
+    await seed('viewer');
+    await seedCoupon({ code: 'ANY2', months: 1 });
+    const res = await post('/billing/redeem-coupon', { code: 'ANY2' }, '10.0.0.8');
+    expect(res.status).toBe(403);
+  });
+
+  it('rate limit: 6ª chamada do mesmo IP em 1min → 429 (CUP-1.9)', async () => {
+    await seed('owner');
+    // 5 permitidas (todas coupon_invalid, código inexistente), a 6ª é barrada pelo limiter
+    for (let i = 0; i < 5; i++) {
+      const r = await post('/billing/redeem-coupon', { code: `X${i}` }, '10.9.9.9');
+      expect(r.status).toBe(404);
+    }
+    const sixth = await post('/billing/redeem-coupon', { code: 'X6' }, '10.9.9.9');
+    expect(sixth.status).toBe(429);
+    expect(await sixth.json()).toEqual({ error: 'rate_limited' });
   });
 });
