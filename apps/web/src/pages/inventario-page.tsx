@@ -7,7 +7,10 @@ import { db, type LocalItem } from '../db/dexie.js';
 import { adjustInventory, logConsumption, resolveBarcode, setInventory } from '../db/repositories.js';
 import { ScannerModal } from '../features/scanner/scanner-modal.js';
 import { UnknownBarcodeSheet } from '../features/brands/unknown-barcode-sheet.js';
+import { ForecastBadge, ForecastTeaser } from '../features/forecast/forecast-badge.js';
 import { Badge, Button, Icon, SectionTitle } from '../features/ui/index.js';
+import { useHouseholdPlan } from '../lib/use-currency.js';
+import { useReplenishmentForecast } from '../lib/use-replenishment-forecast.js';
 
 type StockStatus = 'ok' | 'low' | 'out';
 type Filter = 'all' | 'low' | 'out';
@@ -29,6 +32,8 @@ export function InventarioPage() {
   const [active, setActive] = useState<LocalItem | null>(null);
   const [unknownCode, setUnknownCode] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>('all');
+  const plan = useHouseholdPlan();
+  const forecast = useReplenishmentForecast();
 
   const items = useLiveQuery(
     () => db.items.filter((i) => i.deletedAt === null).toArray(),
@@ -101,6 +106,8 @@ export function InventarioPage() {
         </Button>
       </div>
 
+      {plan === 'free' && rows.length > 0 && <ForecastTeaser />}
+
       {rows.length === 0 ? (
         <p className="muted mt-6 text-center">{t('catalog.noItems')}</p>
       ) : (
@@ -112,6 +119,7 @@ export function InventarioPage() {
               onHand={onHand}
               status={status}
               recommended={recommendedByItem.get(item.id)}
+              daysLeft={forecast.get(item.id)}
               onOpen={() => setActive(item)}
             />
           ))}
@@ -155,12 +163,14 @@ function InventoryRow({
   onHand,
   status,
   recommended,
+  daysLeft,
   onOpen,
 }: {
   item: LocalItem;
   onHand: number;
   status: StockStatus;
   recommended: number | undefined;
+  daysLeft: number | undefined;
   onOpen: () => void;
 }) {
   const { t } = useTranslation();
@@ -174,6 +184,7 @@ function InventoryRow({
           {need > 0 && ` · ${t('restock.toBuy')} ${need} ${t(`catalog.units.${item.unit}`)}`}
         </p>
       </div>
+      <ForecastBadge daysLeft={daysLeft} />
       {status !== 'ok' && <Badge tone="neutral">{t(`inventory.status.${status}`)}</Badge>}
       <div className="flex items-center gap-2">
         <span className="kicker">{t('lists.onHand')}</span>

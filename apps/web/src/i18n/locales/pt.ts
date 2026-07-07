@@ -112,6 +112,11 @@ export default {
       doInventory: 'Fazer inventário',
       invite: 'Convidar alguém',
     },
+    forecast: {
+      daysLeft_one: 'acaba em ~{{count}}d',
+      daysLeft_other: 'acaba em ~{{count}}d',
+      teaser: 'Previsão de reposição — Pro',
+    },
     nav: {
       home: 'Início',
       shop: 'Comprar',
@@ -338,6 +343,7 @@ export default {
       exportPaywallPitch: 'Exportar preços em CSV é exclusivo do plano Pro.',
       nfcePaywallPitch: 'Você atingiu o limite de notas fiscais importadas este mês no plano Grátis.',
       nlListPaywallPitch: 'Gerar listas por texto é um recurso exclusivo do plano Pro.',
+      forecastPaywallPitch: 'Saiba quando cada item vai acabar — a previsão de reposição é exclusiva do plano Pro.',
     },
     nfce: {
       importButton: 'Importar nota (QR)',
