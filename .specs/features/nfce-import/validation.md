@@ -1,150 +1,150 @@
 # Validation — nfce-import
 
 **Verdict: PASS ✅**
-**Verifier:** independente (não-autor). Método: evidência-ou-zero (file:line + assertion) + sensor de mutação.
-**Data:** 2026-07-06
-**Range de commits:** `2224ccb`..`0fb515e` (spec/design/tasks → HEAD). 15 tasks T1-T15 + fix parse v2 `fa70dd5` + fix vitest `0fb515e`.
+**Verifier:** independent (non-author). Method: evidence-or-zero (file:line + assertion) + mutation sensor.
+**Date:** 2026-07-06
+**Commit range:** `2224ccb`..`0fb515e` (spec/design/tasks → HEAD). 15 tasks T1-T15 + v2 parse fix `fa70dd5` + vitest fix `0fb515e`.
 
 ---
 
 ## Gate
 
-| Comando | Resultado |
+| Command | Result |
 |---|---|
-| `pnpm --filter @grosify/api typecheck` | ✅ pass (tsc --noEmit, 0 erros) |
-| `pnpm --filter @grosify/web typecheck` | ✅ pass (0 erros; ui já buildado) |
-| `pnpm --filter @grosify/api test` | ✅ **21 arquivos, 276 testes, 0 failed** |
-| `pnpm --filter @grosify/web test` | ✅ **5 arquivos, 22 testes, 0 failed** (2 nfce + 3 pré-existentes) |
+| `pnpm --filter @grosify/api typecheck` | ✅ pass (tsc --noEmit, 0 errors) |
+| `pnpm --filter @grosify/web typecheck` | ✅ pass (0 errors; ui already built) |
+| `pnpm --filter @grosify/api test` | ✅ **21 files, 276 tests, 0 failed** |
+| `pnpm --filter @grosify/web test` | ✅ **5 files, 22 tests, 0 failed** (2 nfce + 3 pre-existing) |
 
-Contagens batem com o esperado (~276 api / ~22 web). Nenhuma falha, nenhum skip suspeito.
+Counts match expectations (~276 api / ~22 web). No failures, no suspicious skips.
 
 ---
 
-## Cobertura ancorada no spec (por AC)
+## Coverage anchored in the spec (per AC)
 
-### P1 — Escanear QR e importar preços (NFCE-01/02)
+### P1 — Scan a QR and import prices (NFCE-01/02)
 
-| AC | Evidência | Outcome |
+| AC | Evidence | Outcome |
 |---|---|---|
-| 1 — QR URL SEFAZ → extrai chave+UF, abre import (não trata como produto) | `nfce-shared.test.ts:19-76` (parseNfceQr) + `nfce-import.test.ts:18-26` (isNfceQr true p/ SEFAZ, false p/ produto) | ✅ chave extraída, produto recusado |
-| 2 — UF atendida → itens {desc,qtd,un,unitCents,totalCents}+emitente{cnpj,nome} | `svrs-parser.test.ts:20-49`, `sp-parser.test.ts:14-43`, `infosimples-provider.test.ts:66-101`; rota `nfce-routes.test.ts:149-171` | ✅ shape completo + cents |
-| 3 — tela revisão matcheado/novo/ignorar editável | inspeção: `nfce-review.tsx:100-177` + `nfce-line-row.tsx:33-137` (match→trocar, novo→criar inline, ignore toggle, qty/preço editáveis) | ✅ por inspeção |
-| 4 — confirm cria 1 price/linha source='import'; item novo só opt-in | `nfce-confirm.test.ts:48-91` (matcheado→1 price source=import, 0 item novo), `:93-124` (novo→item+price) | ✅ `prices[0].source==='import'` |
-| 5 — mesma chave cacheada, sem re-consultar, avisa | `nfce-routes.test.ts:183-212` (cached:true, fetchItems 1x, alreadyImported true) | ✅ |
-| 6 — QR v2 E v3 funcionam (chave=campo 1) | `nfce-shared.test.ts:20-43` (v2 5/6/8 campos + v3 3/4 campos) | ✅ ambos |
+| 1 — SEFAZ URL QR → extracts key+state, opens import (doesn't treat as product) | `nfce-shared.test.ts:19-76` (parseNfceQr) + `nfce-import.test.ts:18-26` (isNfceQr true for SEFAZ, false for product) | ✅ key extracted, product refused |
+| 2 — served state → items {desc,qty,unit,unitCents,totalCents}+issuer{cnpj,nome} | `svrs-parser.test.ts:20-49`, `sp-parser.test.ts:14-43`, `infosimples-provider.test.ts:66-101`; route `nfce-routes.test.ts:149-171` | ✅ full shape + cents |
+| 3 — review screen matched/new/ignore editable | inspection: `nfce-review.tsx:100-177` + `nfce-line-row.tsx:33-137` (match→swap, new→create inline, ignore toggle, qty/price editable) | ✅ by inspection |
+| 4 — confirm creates 1 price/line source='import'; new item only opt-in | `nfce-confirm.test.ts:48-91` (matched→1 price source=import, 0 new item), `:93-124` (new→item+price) | ✅ `prices[0].source==='import'` |
+| 5 — same key cached, without re-querying, warns | `nfce-routes.test.ts:183-212` (cached:true, fetchItems 1x, alreadyImported true) | ✅ |
+| 6 — QR v2 AND v3 work (key=field 1) | `nfce-shared.test.ts:20-43` (v2 5/6/8 fields + v3 3/4 fields) | ✅ both |
 
-### P1 — Matching híbrido que degrada (NFCE-03)
+### P1 — Hybrid matching that degrades (NFCE-03)
 
-| AC | Evidência | Outcome |
+| AC | Evidence | Outcome |
 |---|---|---|
-| 1 — token exato pós-normalização casa por fuzzy sem embedding | `matching.test.ts:23-29` ("ARROZ TP1 5KG CAMIL"→arroz, method fuzzy, conf>0.7) | ✅ |
-| 2 — ambíguo E GEMINI_API_KEY → cosine desempata | `matching.test.ts:111-126` (MACARRAO→massa via embed mockado, method embedding) | ✅ |
-| 3 — sem GEMINI_API_KEY → só fuzzy, nunca falha | `matching.test.ts:84-93` (fetch não chamado, resolve fuzzy) | ✅ |
-| 4 — abaixo do threshold → "novo" nome pré-preenchido | `matching.test.ts:39-42,95-100` (suggestedName='ARROZ 5KG') | ✅ |
-| 5 — catálogo vazio → tudo "novo", sem erro | `matching.test.ts:43-45,95-100`; rota `nfce-routes.test.ts:173-179` | ✅ |
-| 6 — embedding cacheado reusado; só sem-cache chama API | `nfce-embedding-cache.test.ts:70-113` (cache hit sem fetch; batch parcial só pendentes) | ✅ |
+| 1 — exact token post-normalization matches via fuzzy without embedding | `matching.test.ts:23-29` ("ARROZ TP1 5KG CAMIL"→arroz, method fuzzy, conf>0.7) | ✅ |
+| 2 — ambiguous AND GEMINI_API_KEY → cosine breaks the tie | `matching.test.ts:111-126` (MACARRAO→massa via mocked embed, method embedding) | ✅ |
+| 3 — without GEMINI_API_KEY → fuzzy only, never fails | `matching.test.ts:84-93` (fetch not called, resolves fuzzy) | ✅ |
+| 4 — below the threshold → "new" name pre-filled | `matching.test.ts:39-42,95-100` (suggestedName='ARROZ 5KG') | ✅ |
+| 5 — empty catalog → everything "new", no error | `matching.test.ts:43-45,95-100`; route `nfce-routes.test.ts:173-179` | ✅ |
+| 6 — cached embedding reused; only non-cached calls the API | `nfce-embedding-cache.test.ts:70-113` (cache hit without fetch; partial batch only for the pending ones) | ✅ |
 
-### P1 — Gate de plano (NFCE-04)
+### P1 — Plan gate (NFCE-04)
 
-| AC | Evidência | Outcome |
+| AC | Evidence | Outcome |
 |---|---|---|
-| 1 — Free 2/mês → 3ª = 403 `nfce_quota_free` | `nfce-quota.test.ts:142-154` (status 403, body exato, não grava 3ª) | ✅ |
-| 2 — Pro 60/mês → 61ª = 429 `nfce_quota_pro` | `nfce-quota.test.ts:168-176` (429 + body); boundary `:178-185` (59→60ª passa) | ✅ `>=60` |
-| 3 — re-scan cacheado NÃO conta quota | `nfce-quota.test.ts:207-219` (5 re-scans, used=1, 2º import passa) | ✅ |
-| 4 — só parsed/confirmed contam; failed não | `nfce-quota.test.ts:189-205` (3 BA-failed não consomem Free) | ✅ |
-| 5 — virada de mês zera contador | `nfce-quota.test.ts:222-238` (lastMonth não conta, used=0) | ✅ (janela UTC `nfce-import-service.ts:63-79`) |
+| 1 — Free 2/month → 3rd = 403 `nfce_quota_free` | `nfce-quota.test.ts:142-154` (status 403, exact body, doesn't save the 3rd) | ✅ |
+| 2 — Pro 60/month → 61st = 429 `nfce_quota_pro` | `nfce-quota.test.ts:168-176` (429 + body); boundary `:178-185` (59→60th passes) | ✅ `>=60` |
+| 3 — cached re-scan does NOT count toward quota | `nfce-quota.test.ts:207-219` (5 re-scans, used=1, 2nd import passes) | ✅ |
+| 4 — only parsed/confirmed count; failed doesn't | `nfce-quota.test.ts:189-205` (3 BA-failed don't consume Free) | ✅ |
+| 5 — month turnover resets the counter | `nfce-quota.test.ts:222-238` (lastMonth doesn't count, used=0) | ✅ (UTC window `nfce-import-service.ts:63-79`) |
 
-### P2 — Roteamento por UF via porta NfceLookup (NFCE-05)
+### P2 — Routing per state via the NfceLookup port (NFCE-05)
 
-| AC | Evidência | Outcome |
+| AC | Evidence | Outcome |
 |---|---|---|
-| 1 — porta + roteador único; svrs/sp/mg parser, SE adapter±token, senão erro | `router.test.ts:43-127` + `index.ts:55-90` | ✅ espelha email/index |
-| 2 — UF com parser → fetch UA browser + parse HTML | `portal-fetch.ts:29-67` (BROWSER_UA, timeout, retry); `errors.test.ts:36-44` | ✅ |
-| 3 — SE + INFOSIMPLES_TOKEN → adapter JSON | `infosimples-provider.test.ts:144-148`, `router.test.ts:71-75` | ✅ |
-| 4 — SE sem token → 501 `state_unsupported` | `router.test.ts:77-87`, `nfce-routes.test.ts:237-243` (501) | ✅ |
-| 5 — UF sem rota → 422 `uf_unsupported` com sigla | `router.test.ts:89-99` (uf=BA), `nfce-routes.test.ts:225-235` (422, body.uf=BA) | ✅ |
-| 6 — tabela de URLs embutida no código | `packages/shared/src/nfce.ts:173-203` (NFCE_UF_ROUTES const); `nfce-shared.test.ts:135-160` | ✅ |
+| 1 — port + single router; svrs/sp/mg parser, SE adapter±token, otherwise error | `router.test.ts:43-127` + `index.ts:55-90` | ✅ mirrors email/index |
+| 2 — state with parser → fetch browser UA + parse HTML | `portal-fetch.ts:29-67` (BROWSER_UA, timeout, retry); `errors.test.ts:36-44` | ✅ |
+| 3 — SE + INFOSIMPLES_TOKEN → JSON adapter | `infosimples-provider.test.ts:144-148`, `router.test.ts:71-75` | ✅ |
+| 4 — SE without token → 501 `state_unsupported` | `router.test.ts:77-87`, `nfce-routes.test.ts:237-243` (501) | ✅ |
+| 5 — state without route → 422 `uf_unsupported` with abbreviation | `router.test.ts:89-99` (uf=BA), `nfce-routes.test.ts:225-235` (422, body.uf=BA) | ✅ |
+| 6 — URL table embedded in the code | `packages/shared/src/nfce.ts:173-203` (NFCE_UF_ROUTES const); `nfce-shared.test.ts:135-160` | ✅ |
 
-### P2 — Tela de revisão editável (NFCE-06)
+### P2 — Editable review screen (NFCE-06)
 
-| AC | Evidência | Outcome |
+| AC | Evidence | Outcome |
 |---|---|---|
-| 1 — cada linha: desc, valor, match+confiança, trocar/criar/ignorar | inspeção `nfce-line-row.tsx:43-119` | ✅ por inspeção |
-| 2 — trocar match: buscar existente OU criar inline | inspeção `nfce-line-row.tsx:121-198` (ItemPickerSheet: busca + criar) | ✅ por inspeção |
-| 3 — confirm: só não-ignoradas→price; "criar"→item+addBarcode(EAN) | `nfce-confirm.test.ts:93-147` (item+barcode antes do preço; sem EAN→sem barcode), `:149-162` (lista vazia→0) | ✅ |
-| 4 — loja por CNPJ: casar/criar 1x por import | `nfce-confirm.test.ts:164-227` (reusa por CNPJ; cria nova com cnpj); inspeção `nfce-store-step.tsx:25-58` | ✅ |
-| 5 — strings nos 6 idiomas (`nfce.*`) | `nfce:` block presente em pt/en/es/it/de/fr | ✅ (grep 6/6) |
+| 1 — each line: desc, value, match+confidence, swap/create/ignore | inspection `nfce-line-row.tsx:43-119` | ✅ by inspection |
+| 2 — swap match: search existing OR create inline | inspection `nfce-line-row.tsx:121-198` (ItemPickerSheet: search + create) | ✅ by inspection |
+| 3 — confirm: only non-ignored→price; "create"→item+addBarcode(EAN) | `nfce-confirm.test.ts:93-147` (item+barcode before the price; no EAN→no barcode), `:149-162` (empty list→0) | ✅ |
+| 4 — store by CNPJ: match/create 1x per import | `nfce-confirm.test.ts:164-227` (reuses by CNPJ; creates a new one with cnpj); inspection `nfce-store-step.tsx:25-58` | ✅ |
+| 5 — strings in all 6 languages (`nfce.*`) | `nfce:` block present in pt/en/es/it/de/fr | ✅ (grep 6/6) |
 
-### P3 — Feedback de erro por UF/portal (NFCE-07)
+### P3 — Error feedback per state/portal (NFCE-07)
 
-| AC | Evidência | Outcome |
+| AC | Evidence | Outcome |
 |---|---|---|
-| 1 — UF não suportada → `errors.uf_unsupported` | `nfce-import.ts:54-71,88-92` (code→NfceImportError); locale key 6/6 | ✅ |
-| 2 — portal timeout → `nfce_portal_error` sem quota | `nfce-import.test.ts:76-85`; `nfce-routes.test.ts:245-259` (504, status failed) | ✅ |
-| 3 — QR não-NFC-e → `nfce_invalid_qr`, não abre revisão | `nfce-import.test.ts:68-74` (recusa sem chamar servidor) | ✅ |
+| 1 — unsupported state → `errors.uf_unsupported` | `nfce-import.ts:54-71,88-92` (code→NfceImportError); locale key 6/6 | ✅ |
+| 2 — portal timeout → `nfce_portal_error` without quota | `nfce-import.test.ts:76-85`; `nfce-routes.test.ts:245-259` (504, status failed) | ✅ |
+| 3 — non-NFC-e QR → `nfce_invalid_qr`, doesn't open the review | `nfce-import.test.ts:68-74` (refuses without calling the server) | ✅ |
 
 ### Edge Cases (spec §Edge Cases)
 
-| Edge | Evidência | Outcome |
+| Edge | Evidence | Outcome |
 |---|---|---|
-| QR ilegível/rawValue não-URL → `nfce_invalid_qr` sem lookup | `nfce-shared.test.ts:69-75`; `nfce-routes.test.ts:216-223` | ✅ |
-| chave 44 díg. mas UF inválida → `nfce_invalid_key` | `nfce-shared.test.ts:125-128` (ufFromChave null); rota `nfce.ts:85-87` | ✅ |
-| HTML mudou, 0 itens → `nfce_parse_failed`, não vazio silencioso | `svrs-parser.test.ts:87-103`, `sp-parser.test.ts:52-68`, `errors.test.ts:46-53` | ✅ |
-| nota já importada → cache, avisa, não conta, não duplica | `nfce-routes.test.ts:183-212` | ✅ |
-| quota estourou ANTES do portal | `nfce.ts:104-111` (quota antes de lookupFor); `nfce-quota.test.ts:152-154` (não grava) | ✅ |
-| matching ambíguo (empate) → "novo", nunca casa errado | `matching.test.ts:47-54` (REFRIGERANTE empata→null) | ✅ |
-| catálogo vazio → tudo novo | coberto em NFCE-03 AC5 | ✅ |
-| Infosimples fora/token inválido → `nfce_provider_error` 502 | `infosimples-provider.test.ts:112-141`; `nfce-routes.test.ts:261-274` | ✅ |
-| 2 membros mesma nota → unique(household,chave) 1 registro, 2º cache | migração `0027:12` unique + `nfce-routes.test.ts:198` (1 row) | ✅ |
-| CPF no HTML/JSON → descartado, nunca persistido/logado | `svrs-parser.test.ts:51-57,80-84`, `sp-parser.test.ts:45-49`, `infosimples-provider.test.ts:103-109`, `errors.test.ts:89-119` (log) | ✅ |
+| illegible QR/non-URL rawValue → `nfce_invalid_qr` without lookup | `nfce-shared.test.ts:69-75`; `nfce-routes.test.ts:216-223` | ✅ |
+| 44-digit key but invalid state → `nfce_invalid_key` | `nfce-shared.test.ts:125-128` (ufFromChave null); route `nfce.ts:85-87` | ✅ |
+| HTML changed, 0 items → `nfce_parse_failed`, not silently empty | `svrs-parser.test.ts:87-103`, `sp-parser.test.ts:52-68`, `errors.test.ts:46-53` | ✅ |
+| receipt already imported → cache, warns, doesn't count, doesn't duplicate | `nfce-routes.test.ts:183-212` | ✅ |
+| quota exceeded BEFORE the portal | `nfce.ts:104-111` (quota before lookupFor); `nfce-quota.test.ts:152-154` (doesn't save) | ✅ |
+| ambiguous matching (tie) → "new", never matches wrong | `matching.test.ts:47-54` (REFRIGERANTE ties→null) | ✅ |
+| empty catalog → everything new | covered in NFCE-03 AC5 | ✅ |
+| Infosimples down/invalid token → `nfce_provider_error` 502 | `infosimples-provider.test.ts:112-141`; `nfce-routes.test.ts:261-274` | ✅ |
+| 2 members same receipt → unique(household,chave) 1 record, 2nd cache | migration `0027:12` unique + `nfce-routes.test.ts:198` (1 row) | ✅ |
+| CPF in HTML/JSON → discarded, never persisted/logged | `svrs-parser.test.ts:51-57,80-84`, `sp-parser.test.ts:45-49`, `infosimples-provider.test.ts:103-109`, `errors.test.ts:89-119` (log) | ✅ |
 
-**Total: 34/34 ACs cobertos por file:line + Edge Cases. UI pura (NFCE-06 AC1/AC2, revisão/loja) verificada por inspeção (componente + condição + chaves i18n 6/6).**
+**Total: 34/34 ACs covered by file:line + Edge Cases. Pure UI (NFCE-06 AC1/AC2, review/store) verified by inspection (component + condition + i18n keys 6/6).**
 
 ---
 
-## Auditoria dos desvios da Fase 5 (contratos server estendidos em fase client)
+## Audit of the Phase 5 deviations (server contracts extended in a client phase)
 
-| Desvio | Aditivo? | Quebra consumidor? | Testado? | Veredicto |
+| Deviation | Additive? | Breaks a consumer? | Tested? | Verdict |
 |---|---|---|---|---|
-| Resposta do lookup ganha `itens` brutos | Sim (campo novo na resposta da rota, não no wire de sync) | Não — consumidores existentes não leem essa rota | `nfce-routes.test.ts:161-170`, `nfce-import.test.ts:64-65` | ✅ ok |
-| `cnpj` no wire de stores (schema/payload/rota) | Sim — `storeSchema.cnpj nullable`, `createStorePayload.cnpj optional`, catalog rota `p.cnpj ?? null` | Não — nullable+optional; POST /stores existente sem cnpj → null | schema `index.ts:68-70`; `nfce-confirm.test.ts:204-227` (cnpj gravado) | ✅ ok |
-| `'import'` em PRICE_SOURCES/createPricePayload/rota preços | Sim — enum aditivo com `default('manual')`; `source: p.source ?? 'manual'` | Não — callers sem source → 'manual' (comportamento idêntico ao anterior; diff shopping.ts é 1 linha backward-compat) | `nfce-confirm.test.ts:85,123` (source=import); repositório `recordPrice:509-538` threading no body | ✅ ok |
+| The lookup response gains raw `itens` | Yes (a new field in the route response, not in the sync wire) | No — existing consumers don't read this route | `nfce-routes.test.ts:161-170`, `nfce-import.test.ts:64-65` | ✅ ok |
+| `cnpj` in the stores wire (schema/payload/route) | Yes — `storeSchema.cnpj nullable`, `createStorePayload.cnpj optional`, catalog route `p.cnpj ?? null` | No — nullable+optional; existing POST /stores without cnpj → null | schema `index.ts:68-70`; `nfce-confirm.test.ts:204-227` (cnpj saved) | ✅ ok |
+| `'import'` in PRICE_SOURCES/createPricePayload/prices route | Yes — additive enum with `default('manual')`; `source: p.source ?? 'manual'` | No — callers without a source → 'manual' (behavior identical to before; the shopping.ts diff is 1 backward-compat line) | `nfce-confirm.test.ts:85,123` (source=import); repository `recordPrice:509-538` threading it into the body | ✅ ok |
 
-Todos os 3 desvios são **puramente aditivos e backward-compatible**; nenhum consumidor existente quebra (typecheck+276 testes verdes confirmam).
+All 3 deviations are **purely additive and backward-compatible**; no existing consumer breaks (typecheck + 276 green tests confirm).
 
-### Outros pontos de atenção auditados
+### Other audited points of attention
 
-- **Parse v2 5-8 campos (fix `fa70dd5`)**: teste **pina exatamente 5 campos** — `nfce-shared.test.ts:20-23` (`chave|2|1|1|A1B2C3D4E5F6`); + 6 (`:25`), + 8 (`:30`), + rejeita <5 (`:64-67`). Guarda de regressão presente. ✅
-- **Payload {qrUrl} re-validado server-side** (design dizia {chave,url}): a rota deriva chave/UF de `parseNfceQr(qrUrl)` + `ufFromChave` (`nfce.ts:82-87`) — **UF nunca vem do body** (satisfaz spec §Implicit-Dimensions "UF via chave, nunca body" e NFCE-01 AC1). Desvio de design **melhora** a postura (chave não é confiável do client). ACs continuam satisfeitos. ✅
-- **LGPD rawJson sem CPF**: parser nunca extrai CPF (svrs/sp/mg reusam `svrs-html`/`sp-html`, sem seletor de CPF); adapter descarta; log mascara chave (8 díg.) e só carrega `{uf,status,chave}`. Provado por teste em todos os caminhos (parsers + adapter + log). Mutation 6 confirma. ✅
+- **v2 parse 5-8 fields (fix `fa70dd5`)**: the test **pins exactly 5 fields** — `nfce-shared.test.ts:20-23` (`chave|2|1|1|A1B2C3D4E5F6`); + 6 (`:25`), + 8 (`:30`), + rejects <5 (`:64-67`). Regression guard present. ✅
+- **{qrUrl} payload re-validated server-side** (design said {chave,url}): the route derives key/state from `parseNfceQr(qrUrl)` + `ufFromChave` (`nfce.ts:82-87`) — **the state never comes from the body** (satisfies spec §Implicit-Dimensions "state from the key, never the body" and NFCE-01 AC1). The design deviation **improves** the posture (the key isn't trusted from the client). The ACs remain satisfied. ✅
+- **LGPD rawJson without CPF**: the parser never extracts CPF (svrs/sp/mg reuse `svrs-html`/`sp-html`, no CPF selector); the adapter discards it; the log masks the key (8 digits) and only carries `{uf,status,chave}`. Proved by a test on every path (parsers + adapter + log). Mutation 6 confirms. ✅
 
 ---
 
-## Sensor de mutação (7 mutações, 7 killed, 0 survived)
+## Mutation sensor (7 mutations, 7 killed, 0 survived)
 
-| # | Mutação | Arquivo:local | Teste que pegou | Resultado |
+| # | Mutation | File:location | Test that caught it | Result |
 |---|---|---|---|---|
-| 1 (a) | quota Free `>=` → `>` (off-by-one deixa 3ª passar) | `routes/nfce.ts:106` | `nfce-quota.test.ts:149` | **KILLED** |
-| 2 (b) | cache: `findCachedImport` sempre retorna null | `nfce-import-service.ts:49` | `nfce-routes.test.ts:209` + quota re-scan (2 falhas) | **KILLED** |
-| 3 (c) | conversão cents `*100` → `*10` | `parsers/html-parse.ts:37` | 6 testes de parser (risco 100x) | **KILLED** |
-| 4 (d) | remove guarda de divergência >1% do total | `parsers/html-parse.ts:150` | `svrs-parser.test.ts:119` | **KILLED** |
-| 5 (e) | inverte threshold fuzzy (`<` → `>`) | `matching.ts:114` | 4 testes de matching | **KILLED** |
-| 6 (g) | LGPD: parser vaza CPF do consumidor no emitente | `parsers/svrs-html.ts:68` | 3 testes LGPD (RS+MG) | **KILLED** |
-| 7 (f) | status machine: `failed` → `parsed` (failed contaria quota) | `nfce-import-service.ts:140` | 4 testes (route error status + quota "failed não conta") | **KILLED** |
+| 1 (a) | quota Free `>=` → `>` (off-by-one lets the 3rd pass) | `routes/nfce.ts:106` | `nfce-quota.test.ts:149` | **KILLED** |
+| 2 (b) | cache: `findCachedImport` always returns null | `nfce-import-service.ts:49` | `nfce-routes.test.ts:209` + quota re-scan (2 failures) | **KILLED** |
+| 3 (c) | cents conversion `*100` → `*10` | `parsers/html-parse.ts:37` | 6 parser tests (100x risk) | **KILLED** |
+| 4 (d) | remove the >1% total divergence guard | `parsers/html-parse.ts:150` | `svrs-parser.test.ts:119` | **KILLED** |
+| 5 (e) | invert the fuzzy threshold (`<` → `>`) | `matching.ts:114` | 4 matching tests | **KILLED** |
+| 6 (g) | LGPD: parser leaks the consumer's CPF into the issuer | `parsers/svrs-html.ts:68` | 3 LGPD tests (RS+MG) | **KILLED** |
+| 7 (f) | status machine: `failed` → `parsed` (failed would count toward quota) | `nfce-import-service.ts:140` | 4 tests (route error status + quota "failed doesn't count") | **KILLED** |
 
-Cobre os pontos mais críticos: gate de custo (quota/cache/status), correção monetária (cents/divergência), matching e LGPD. **0 sobreviventes** = suíte mata mutantes no coração do gate de custo, do dinheiro e da privacidade.
-
----
-
-## Gaps ranqueados
-
-Nenhum gap bloqueante. Observações menores (não-bloqueantes, sem ação exigida):
-
-1. **(informativo) `parseNfceQr` exige host SEFAZ conhecido** (`nfce.ts:40,67-84`) — um QR de NFC-e válido de uma UF cujo host não está em `KNOWN_SEFAZ_HOSTS` seria recusado como `nfce_invalid_qr` mesmo tendo chave válida. É uma **restrição mais segura** que o spec (que só exige chave 44 díg. no campo 1); pode recusar notas legítimas de hosts não-listados até a lista crescer. Consistente com "MVP cobre UFs confirmadas". Não é regressão.
-2. **(informativo) Cobertura de UI de revisão é por inspeção** (sem harness de render) — alinhado com a Test Coverage Matrix das tasks (`UI revisão/scanner: none, typecheck+build gate`). A lógica de confirm (o que grava) É testada (`nfce-confirm.test.ts`). Aceitável por design.
+Covers the most critical points: the cost gate (quota/cache/status), monetary correctness (cents/divergence), matching, and LGPD. **0 survivors** = the suite kills mutants at the heart of the cost gate, the money, and the privacy.
 
 ---
 
-## Tree final
+## Ranked gaps
 
-`git status --short`: **limpo** exceto `validation.md` (este arquivo) + `tasks.md` (marca de status, já presente antes da verificação). **Nenhum arquivo de código tocado** — todas as 7 mutações revertidas e confirmadas limpas via `git checkout` + `git status --short`.
+No blocking gaps. Minor observations (non-blocking, no action required):
+
+1. **(informative) `parseNfceQr` requires a known SEFAZ host** (`nfce.ts:40,67-84`) — a valid NFC-e QR from a state whose host isn't in `KNOWN_SEFAZ_HOSTS` would be refused as `nfce_invalid_qr` even with a valid key. It's a **stricter restriction** than the spec (which only requires a 44-digit key in field 1); it may refuse legitimate receipts from unlisted hosts until the list grows. Consistent with "MVP covers confirmed states". Not a regression.
+2. **(informative) Review UI coverage is by inspection** (no render harness) — aligned with the tasks' Test Coverage Matrix (`review UI/scanner: none, typecheck+build gate`). The confirm logic (what gets saved) IS tested (`nfce-confirm.test.ts`). Acceptable by design.
+
+---
+
+## Final tree
+
+`git status --short`: **clean** except `validation.md` (this file) + `tasks.md` (status marker, already present before the verification). **No code file touched** — all 7 mutations reverted and confirmed clean via `git checkout` + `git status --short`.

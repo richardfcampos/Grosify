@@ -1,39 +1,39 @@
 # Grosify
 
-## Visão
+## Vision
 
-App de compras domésticas para famílias brasileiras (UI pt-BR). Resolve: "quanto vou gastar este mês, onde está mais barato, e o que realmente preciso comprar?"
+Household grocery shopping app for Brazilian families (pt-BR UI). Solves: "how much am I going to spend this month, where is it cheapest, and what do I actually need to buy?"
 
-## Problema
+## Problem
 
-Famílias compram os mesmos itens todo mês, mas não sabem: quanto têm em casa, qual mercado está mais barato, se preços subiram, nem quanto vai custar a compra antes de ir.
+Families buy the same items every month, but they don't know: how much they have at home, which store is cheapest, whether prices went up, or how much the shopping trip will cost before they go.
 
-## Solução
+## Solution
 
-- **Múltiplas listas de compras** ("Compras do mês", "Churrasco", "Aniversário"), cada uma recorrente ou avulsa; recorrentes têm quantidades mensais padrão por item
-- **Inventário pré-compra**: conta o que tem em casa → calcula o que falta
-- **Histórico de preços** por loja/data: loja mais barata, alerta de aumento
-- **Modo compra**: scanner de código de barras, registro de preço real, total corrente vs estimado, aviso "tem mais barato em X"
-- **Offline-first**: funciona no mercado sem sinal; sync quando voltar
-- **Household**: casa compartilhada entre membros (convite por código/link)
+- **Multiple shopping lists** ("Monthly groceries", "Barbecue", "Birthday"), each one recurring or one-off; recurring lists have default monthly quantities per item
+- **Pre-purchase inventory**: counts what you have at home → calculates what's missing
+- **Price history** by store/date: cheapest store, price-increase alert
+- **Shopping mode**: barcode scanner, real-price recording, running total vs. estimate, "it's cheaper at X" warning
+- **Offline-first**: works in the store with no signal; syncs when it comes back
+- **Household**: home shared among members (invite by code/link)
 
-## Plataformas
+## Platforms
 
-Web primeiro (PWA mobile-first). App Expo (iOS/Android) na fase 7, reusando packages.
+Web first (mobile-first PWA). Expo app (iOS/Android) in phase 7, reusing packages.
 
-## Monetização
+## Monetization
 
-Freemium + assinatura:
-- **Free**: 1 casa, 30 itens, histórico de preços 90 dias
-- **Pro** (~R$9,90/mês): itens ilimitados, histórico completo, export
-- Assinatura pertence ao household (paga pelo owner). Enforcement no servidor (sync push).
-- Stripe (verificar Pix recorrente; fallback Mercado Pago atrás de interface)
+Freemium + subscription:
+- **Free**: 1 household, 30 items, 90-day price history
+- **Pro** (~R$9,90/month): unlimited items, full history, export
+- Subscription belongs to the household (paid by the owner). Enforcement on the server (sync push).
+- Stripe (verify recurring Pix; Mercado Pago fallback behind an interface)
 
-## Princípios
+## Principles
 
-YAGNI / KISS / DRY. Tech boring e provada. Custo de infra inicial ≈ $6/mês. Tudo household-scoped (segurança). Dinheiro sempre em centavos (integer).
+YAGNI / KISS / DRY. Boring, proven tech. Initial infra cost ≈$6/month. Everything household-scoped (security). Money always in minor units (integer).
 
-## Métricas de sucesso (MVP)
+## Success metrics (MVP)
 
-- Dogfood: compra do mês feita 100% no app, offline no mercado
-- Alpha com família usando lista + preços antes da fase 4
+- Dogfood: monthly shopping trip done 100% in the app, offline at the store
+- Alpha with a family using lists + prices before phase 4

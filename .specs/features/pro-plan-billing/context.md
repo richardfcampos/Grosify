@@ -6,42 +6,42 @@
 
 ## Feature Boundary
 
-Gates Free/Pro reais + assinatura Pro (mensal/anual, BRL via Asaas live) + porta `PaymentProvider` strategy/DI com Stripe stub (501) roteado por moeda + UI de plano em Ajustes + override de entitlement (comp/100%).
+Real Free/Pro gates + Pro subscription (monthly/yearly, BRL via Asaas live) + `PaymentProvider` strategy/DI port with a Stripe stub (501) routed by currency + plan UI in Settings + entitlement override (comp/100%).
 
 ## Implementation Decisions
 
-### Gates Free/Pro (user escolheu "pacote completo")
-- Free: 2 membros, 30 itens, 2 listas, 90d histórico
-- Pro: ilimitado + fotos + alertas de preço + analytics + export
-- Reativa `maxItems` (hoje suspenso em `packages/shared/src/plans.ts`)
+### Free/Pro gates (user chose "the complete package")
+- Free: 2 members, 30 items, 2 lists, 90d history
+- Pro: unlimited + photos + price alerts + analytics + export
+- Reactivates `maxItems` (currently suspended in `packages/shared/src/plans.ts`)
 
-### Gateways (user escolheu "Asaas live + Stripe stub")
-- Asaas funcional: Pix, cartão, Pix Automático; env-gated (`ASAAS_API_KEY` ausente → 501)
-- Stripe: adapter stub 501; porta/factory prontos; roteia `BRL→asaas, senão→stripe`
-- Inversão de dependência espelhando `apps/api/src/email/index.ts` (factory = único lugar com providers concretos)
+### Gateways (user chose "Asaas live + Stripe stub")
+- Asaas functional: Pix, card, Pix Automático; env-gated (`ASAAS_API_KEY` absent → 501)
+- Stripe: stub adapter 501; port/factory ready; routes `BRL→asaas, otherwise→stripe`
+- Dependency inversion mirroring `apps/api/src/email/index.ts` (factory = the single place with concrete providers)
 
-### Preço/ciclo (user escolheu "mensal + anual")
-- BRL: R$ 12,90/mês, R$ 99/ano — `PLAN_PRICES` em shared
-- USD (Stripe futuro): $3.99/mês, $29/ano
-- Sem lifetime
+### Price/cycle (user chose "monthly + yearly")
+- BRL: R$12,90/month, R$99/year — `PLAN_PRICES` in shared
+- USD (Stripe future): $3.99/month, $29/year
+- No lifetime
 
-### Downgrade (user escolheu "filtro de leitura")
-- Mesmo padrão do `historyCutoff`: dados acima do teto ficam invisíveis, nada apagado, volta no re-upgrade
-- Regra determinística: 30 itens mais antigos (createdAt asc) permanecem visíveis
-- **Aviso obrigatório (refinamento do user):** client mostra aviso persistente com contagem do que está oculto + CTA "upgrade revela" — invisível nunca é silencioso
+### Downgrade (user chose "read filter")
+- Same pattern as `historyCutoff`: data above the cap becomes invisible, nothing deleted, returns on re-upgrade
+- Deterministic rule: the 30 oldest items (createdAt asc) remain visible
+- **Mandatory warning (user refinement):** the client shows a persistent warning with the count of what is hidden + a "upgrade reveals" CTA — invisible is never silent
 
 ### Agent's Discretion
-- Shape exato da tabela `subscriptions` + `webhook_events`
-- UX do paywall no client (sheet vs banner)
-- Polling vs focus-refetch pós-checkout
+- Exact shape of the `subscriptions` + `webhook_events` tables
+- Paywall UX on the client (sheet vs banner)
+- Polling vs focus-refetch after checkout
 
-### Declined / Undiscussed Gray Areas → Assumptions (logadas no spec)
-- Checkout hosted (redirect), grace 7d em overdue, comp via `planOverride`, owner/admin only, 1 assinatura ativa por household
+### Declined / Undiscussed Gray Areas → Assumptions (logged in the spec)
+- Hosted checkout (redirect), 7d grace on overdue, comp via `planOverride`, owner/admin only, 1 active subscription per household
 
 ## Specific References
-- "strategy com inversão de dependências pra poder mudar fácil de gateway" — pedido explícito do usuário
-- Padrão de referência: camada de e-mail (porta + adapters + env-gate + noop)
+- "strategy with dependency inversion so the gateway is easy to swap" — explicit user request
+- Reference pattern: the email layer (port + adapters + env-gate + noop)
 
 ## Deferred Ideas
-- Stripe live (quando houver pagante internacional)
-- Lifetime deal de lançamento; cupons parciais; NFC-e scan como killer-feature Pro; retail media/cashback/dados B2B
+- Stripe live (once there is an international paying customer)
+- Launch lifetime deal; partial coupons; NFC-e scan as a Pro killer feature; retail media/cashback/B2B data

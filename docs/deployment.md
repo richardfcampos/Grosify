@@ -1,84 +1,84 @@
 # Deploy — Grosify
 
-Custo inicial ≈ US$5/mês. Combinação recomendada:
+Initial cost ≈ US$5/month. Recommended combination:
 
-| Parte | Serviço | Plano |
+| Part | Service | Plan |
 |---|---|---|
-| Banco | **Neon** (Postgres) | Free → Launch |
-| API | **Railway** (Dockerfile) | Hobby (~$5/mês) |
+| Database | **Neon** (Postgres) | Free → Launch |
+| API | **Railway** (Dockerfile) | Hobby (~$5/month) |
 | Web (PWA) | **Cloudflare Pages** | Free |
-| Fotos (fase futura) | **Cloudflare R2** | Free 10GB |
+| Photos (future phase) | **Cloudflare R2** | Free 10GB |
 
-## ⚠️ Crítico: domínios e cookies de sessão
+## ⚠️ Critical: domains and session cookies
 
-O cookie de sessão (Better Auth) só é enviado do web pra API se forem **same-site**.
+The session cookie (Better Auth) is only sent from the web to the API if they are **same-site**.
 
-- **Recomendado:** domínio próprio com subdomínios — `grosify.app` (web) + `api.grosify.app` (API). Aí `SameSite=Lax` funciona e é mais seguro. Deixe `CROSS_SITE_COOKIES` desligado.
-- **Alternativa (domínios diferentes, ex. `*.pages.dev` + `*.railway.app`):** setar `CROSS_SITE_COOKIES=true` na API (usa `SameSite=None; Secure`). Funciona, mas exija HTTPS (já é o caso nesses serviços).
+- **Recommended:** your own domain with subdomains — `grosify.app` (web) + `api.grosify.app` (API). Then `SameSite=Lax` works and is more secure. Leave `CROSS_SITE_COOKIES` off.
+- **Alternative (different domains, e.g. `*.pages.dev` + `*.railway.app`):** set `CROSS_SITE_COOKIES=true` on the API (uses `SameSite=None; Secure`). It works, but requires HTTPS (already the case on these services).
 
-## 1. Banco — Neon
+## 1. Database — Neon
 
-1. Cria projeto em neon.tech → copia a connection string (`postgres://...?sslmode=require`).
-2. Guarda como `DATABASE_URL`.
+1. Create a project at neon.tech → copy the connection string (`postgres://...?sslmode=require`).
+2. Save it as `DATABASE_URL`.
 
 ## 2. API — Railway
 
-1. Novo projeto → Deploy from GitHub repo (este repo).
-2. Railway detecta `apps/api/Dockerfile` (ou aponte: build context = raiz, Dockerfile = `apps/api/Dockerfile`).
-3. Variáveis de ambiente:
+1. New project → Deploy from GitHub repo (this repo).
+2. Railway detects `apps/api/Dockerfile` (or point it: build context = root, Dockerfile = `apps/api/Dockerfile`).
+3. Environment variables:
    ```
    DATABASE_URL=<neon>
-   BETTER_AUTH_SECRET=<32+ chars aleatórios>
-   BETTER_AUTH_URL=https://api.grosify.app        # URL pública da API
-   WEB_ORIGIN=https://grosify.app                 # origem do web (CORS)
+   BETTER_AUTH_SECRET=<32+ random chars>
+   BETTER_AUTH_URL=https://api.grosify.app        # public API URL
+   WEB_ORIGIN=https://grosify.app                 # web origin (CORS)
    NODE_ENV=production
-   CROSS_SITE_COOKIES=false                        # true só se web/API em domínios diferentes
+   CROSS_SITE_COOKIES=false                        # true only if web/API are on different domains
    ```
-   (Railway injeta `PORT` automaticamente — o servidor lê de `process.env.PORT`.)
-4. **Migrações — automáticas.** O `railway.json` (raiz do repo) define
-   `deploy.preDeployCommand: pnpm --filter @grosify/api db:migrate`. O Railway roda isso
-   na imagem nova **antes** de trocar o tráfego; se falhar, o deploy aborta e a versão
-   antiga fica de pé (sem janela de coluna faltando → 500). Nada manual.
-   - Requisito (já atendido): `drizzle-kit` na imagem (`--prod=false` no Dockerfile) + pasta
-     `apps/api/drizzle/` copiada. `DATABASE_URL` vem do env do serviço.
-   - Confirme no dashboard que **Config-as-code** está ativo (Settings → o serviço lê
-     `railway.json`). Alternativa sem arquivo: setar o mesmo comando em Settings → Deploy →
+   (Railway injects `PORT` automatically — the server reads it from `process.env.PORT`.)
+4. **Migrations — automatic.** `railway.json` (repo root) defines
+   `deploy.preDeployCommand: pnpm --filter @grosify/api db:migrate`. Railway runs it
+   on the new image **before** switching traffic; if it fails, the deploy aborts and the old
+   version stays up (no window of a missing column → 500). Nothing manual.
+   - Requirement (already met): `drizzle-kit` in the image (`--prod=false` in the Dockerfile) + the
+     `apps/api/drizzle/` folder copied in. `DATABASE_URL` comes from the service env.
+   - Confirm in the dashboard that **Config-as-code** is enabled (Settings → the service reads
+     `railway.json`). Alternative without a file: set the same command in Settings → Deploy →
      Pre-deploy Command.
 
 ## 3. Web — Cloudflare Pages
 
-1. Pages → Connect to Git → este repo.
+1. Pages → Connect to Git → this repo.
 2. Build:
    - **Build command:** `corepack enable && pnpm install --frozen-lockfile && pnpm turbo build --filter=@grosify/web`
-     (precisa do `turbo` pra buildar `@grosify/ui` antes — ele exporta `./style.css` de `dist/ui.css`; `pnpm --filter @grosify/web build` sozinho pula as deps e quebra com `failed to resolve "@grosify/ui/style.css"`)
+     (needs `turbo` to build `@grosify/ui` first — it exports `./style.css` from `dist/ui.css`; `pnpm --filter @grosify/web build` alone skips the deps and breaks with `failed to resolve "@grosify/ui/style.css"`)
    - **Output directory:** `apps/web/dist`
-   - **Root directory:** `/` (raiz do monorepo)
-3. Variável de build:
+   - **Root directory:** `/` (monorepo root)
+3. Build variable:
    ```
    VITE_API_URL=https://api.grosify.app
    ```
-4. SPA routing já coberto por `apps/web/public/_redirects` (`/* /index.html 200`).
+4. SPA routing is already covered by `apps/web/public/_redirects` (`/* /index.html 200`).
 
-## 4. Pós-deploy — checklist
+## 4. Post-deploy — checklist
 
 - [ ] `curl https://api.grosify.app/health` → `{"ok":true}`
-- [ ] Criar conta no web → criar casa → confirmar que persiste (cookie de sessão indo pra API)
-- [ ] Se login não persistir: verificar same-site/`CROSS_SITE_COOKIES` e `WEB_ORIGIN` no CORS
-- [ ] Testar offline (DevTools offline) → criar item → reconectar → sincroniza
+- [ ] Create an account on the web → create a household → confirm it persists (session cookie reaching the API)
+- [ ] If login doesn't persist: check same-site/`CROSS_SITE_COOKIES` and `WEB_ORIGIN` in CORS
+- [ ] Test offline (DevTools offline) → create an item → reconnect → it syncs
 
-## Fotos (R2) — só falta a credencial
+## Photos (R2) — only the credential is missing
 
-O código de upload/download via presigned URL **já está pronto** (servidor + client),
-gated em env: sem as 4 variáveis abaixo a API responde `501 storage_disabled` e o app
-segue com o blob local no Dexie (sem quebrar). Pra ligar de verdade:
+The upload/download code via presigned URL **is already done** (server + client),
+gated on env: without the 4 variables below the API responds `501 storage_disabled` and the app
+carries on with the local blob in Dexie (without breaking). To turn it on for real:
 
-1. **Ativar R2** no dashboard Cloudflare (R2 → Enable; 10GB grátis, pode pedir cartão).
-2. **Criar bucket** `grosify-photos`.
-3. **Criar credencial S3** (R2 → Manage R2 API Tokens → Create → Object Read & Write).
-   Anota `access_key_id`, `secret_access_key` e o Account ID.
-4. **Setar na API** (Railway): `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`,
-   `R2_BUCKET=grosify-photos`. Reinicia.
+1. **Enable R2** in the Cloudflare dashboard (R2 → Enable; 10GB free, may ask for a card).
+2. **Create a bucket** `grosify-photos`.
+3. **Create an S3 credential** (R2 → Manage R2 API Tokens → Create → Object Read & Write).
+   Note the `access_key_id`, `secret_access_key`, and the Account ID.
+4. **Set on the API** (Railway): `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`,
+   `R2_BUCKET=grosify-photos`. Restart.
 
-Com isso liga sozinho: o sweep do sync sobe fotos locais que ainda não têm key
-(inclui fotos tiradas offline, ex.: recibo no mercado) e os outros membros baixam
-sob demanda. Bucket é privado; URLs de download expiram (re-presign no display).
+That turns it on by itself: the sync sweep uploads local photos that don't yet have a key
+(including photos taken offline, e.g. a receipt at the store) and the other members download them
+on demand. The bucket is private; download URLs expire (re-presign on display).
