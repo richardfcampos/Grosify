@@ -48,6 +48,48 @@ A payment platform that processes monthly Pro subscriptions via Pix or card. Wit
 
 ---
 
+## 1b. Stripe — Payment (Billing, non-BRL currencies)
+
+### What it is
+The gateway for international (non-BRL) households, on the same `PaymentProvider` port as Asaas. Prices are charged in USD (`PLAN_PRICES.USD`). Checkout redirects to the subscription's hosted invoice page. Without a credential: non-BRL `/billing` routes return 501; nothing changes for BRL households (they keep using Asaas).
+
+> **Status: live validation pending a Stripe account.** The adapter is implemented and unit/integration-tested (request shape, form-encoding, webhook HMAC, event mapping), but no real charge/webhook round-trip has been run — there's no Stripe test key yet. Do the steps below once an account exists.
+
+### Step by step (when opening a Stripe account)
+
+1. **Create an account and get the secret key**
+   - Go to [dashboard.stripe.com](https://dashboard.stripe.com)
+   - In test mode, **Developers → API keys** → copy the **Secret key** (`sk_test_...`)
+
+2. **Create the webhook endpoint**
+   - **Developers → Webhooks → Add endpoint**
+   - URL: `https://api.grosify.com.br/webhooks/stripe`
+   - Select these **5 events**:
+     - `invoice.paid` (or `invoice.payment_succeeded`) — confirms payment
+     - `invoice.payment_failed` — marks overdue
+     - `customer.subscription.deleted` — cancels
+     - `charge.refunded` — refund → cancel
+     - `charge.dispute.created` — chargeback → cancel
+   - After creating, copy the **Signing secret** (`whsec_...`)
+
+3. **Environment variables** (Railway)
+   ```
+   STRIPE_SECRET_KEY=<sk_test_... or live sk_...>
+   STRIPE_WEBHOOK_SECRET=<whsec_...>
+   # STRIPE_BASE_URL defaults to https://api.stripe.com (no need to set)
+   ```
+
+4. **Validation test**
+   - Set a household's currency to a non-BRL value (e.g. USD)
+   - Start checkout → you should be redirected to the Stripe hosted invoice
+   - Pay with a Stripe test card (`4242 4242 4242 4242`)
+   - Confirm the household becomes Pro (the `invoice.paid` webhook flips it)
+
+5. **Promote to production**
+   - Switch the dashboard to live mode, repeat steps 1–2 with live keys, update the Railway envs
+
+---
+
 ## 2. R2 — Pro Photos
 
 ### What it is
@@ -205,7 +247,8 @@ A final manual test: scan a real NFC-e and check the end-to-end behavior.
 
 | Feature | Env Variable | When to Get It | Without It |
 |---------|---|---|---|
-| **Asaas** | `ASAAS_API_KEY`, `ASAAS_WEBHOOK_TOKEN`, `ASAAS_BASE_URL` | Create an asaas.com account | Billing 501 |
+| **Asaas** (BRL) | `ASAAS_API_KEY`, `ASAAS_WEBHOOK_TOKEN`, `ASAAS_BASE_URL` | Create an asaas.com account | BRL billing 501 |
+| **Stripe** (non-BRL) | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Create a stripe.com account | Non-BRL billing 501 |
 | **R2** | `R2_ACCOUNT_ID`, `R2_BUCKET`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` | Cloudflare Dashboard | Photos 501 |
 | **Turnstile** | `TURNSTILE_SECRET` (Railway) + `VITE_TURNSTILE_SITE_KEY` (web build) | Cloudflare Turnstile | Widget off |
 | **Gemini** | `GEMINI_API_KEY` | aistudio.google.com | Fuzzy matching only + nl-list 501 |
@@ -240,7 +283,7 @@ A final manual test: scan a real NFC-e and check the end-to-end behavior.
 ## Support
 
 If you hit errors:
-- **501 on /billing**: Asaas envs missing or invalid
+- **501 on /billing**: Asaas envs missing or invalid (BRL) / Stripe envs missing (non-BRL)
 - **501 on POST /photos**: R2 envs missing
 - **"State not supported"**: Infosimples token missing (Sergipe)
 - **Inaccurate matching**: Gemini key missing

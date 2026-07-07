@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import { Hono } from 'hono';
 import { AsaasProvider } from '../billing/asaas-provider.js';
 import { applyBillingEvent } from '../billing/lifecycle.js';
+import { StripeProvider, verifyStripeSignature } from '../billing/stripe-provider.js';
 import { suppress } from '../lib/email-suppression.js';
 
 /**
@@ -79,6 +80,54 @@ export const webhooksRoute = new Hono()
       return c.json({ ok: true });
     }
     console.log('[webhook:asaas]', event.type, event.externalSubscriptionId, result);
+    return c.json({ ok: true });
+  })
+  .post('/stripe', async (c) => {
+    // Assinatura no header Stripe-Signature (t=<ts>,v1=<hmac>). Sem STRIPE_WEBHOOK_SECRET
+    // no env, não verifica (dev) — igual ao Asaas/Resend. Assinatura inválida = 401 sem efeito.
+    const payload = await c.req.text();
+    const secret = process.env.STRIPE_WEBHOOK_SECRET;
+    if (secret) {
+      if (!verifyStripeSignature(secret, c.req.header('stripe-signature') ?? null, payload)) {
+        return c.json({ error: 'invalid_signature' }, 401);
+      }
+    } else {
+      console.warn('[webhook:stripe] STRIPE_WEBHOOK_SECRET ausente — assinatura não verificada (dev).');
+    }
+
+    // Body inválido (não-JSON) = 400. Só depois de já ter passado a autenticação.
+    try {
+      JSON.parse(payload);
+    } catch {
+      return c.json({ error: 'bad_payload' }, 400);
+    }
+
+    // Reusa o parser/mapping do adapter. A assinatura já foi verificada acima; a
+    // requisição sintética não reprova (sem STRIPE_WEBHOOK_SECRET o adapter aceita;
+    // com o secret, reassinamos abaixo pra o adapter revalidar o mesmo payload).
+    const provider = new StripeProvider(process.env.STRIPE_SECRET_KEY ?? '');
+    const headers: Record<string, string> = {};
+    const sig = c.req.header('stripe-signature');
+    if (sig) headers['stripe-signature'] = sig;
+    const synthetic = new Request('http://webhook/stripe', {
+      method: 'POST',
+      headers,
+      body: payload,
+    });
+    const event = await provider.verifyAndParseWebhook(synthetic);
+    // Evento não mapeado (ou sem assinatura correlacionável) → 200 sem efeito.
+    if (!event) return c.json({ ok: true });
+
+    // Um bug nosso nunca pode devolver 5xx (o Stripe reentrega e alarma). Qualquer
+    // exceção interna vira log + 200.
+    let result: string;
+    try {
+      result = await applyBillingEvent(event, 'stripe');
+    } catch (err) {
+      console.error('[webhook:stripe]', event.type, event.externalSubscriptionId, 'error', err);
+      return c.json({ ok: true });
+    }
+    console.log('[webhook:stripe]', event.type, event.externalSubscriptionId, result);
     return c.json({ ok: true });
   })
   .post('/resend', async (c) => {
