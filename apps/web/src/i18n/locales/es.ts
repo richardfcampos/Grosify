@@ -112,6 +112,11 @@ export default {
       doInventory: 'Hacer inventario',
       invite: 'Invitar a alguien',
     },
+    forecast: {
+      daysLeft_one: 'out in ~{{count}}d',
+      daysLeft_other: 'out in ~{{count}}d',
+      teaser: 'Replenishment forecast — Pro',
+    },
     nav: {
       home: 'Inicio',
       shop: 'Comprar',
@@ -338,6 +343,7 @@ export default {
       exportPaywallPitch: 'Exportar precios como CSV es solo para Pro.',
       nfcePaywallPitch: 'Has alcanzado el límite de comprobantes importados este mes en el plan Gratis.',
       nlListPaywallPitch: 'Generar listas por texto es una función exclusiva del plan Pro.',
+      forecastPaywallPitch: 'Know when each item will run out — the replenishment forecast is Pro-only.',
     },
     nfce: {
       importButton: 'Importar comprobante (QR)',

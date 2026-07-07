@@ -29,6 +29,8 @@ import {
 } from '../features/ui/index.js';
 import { HouseholdSwitcher } from '../features/catalog/household-switcher.js';
 import { HiddenDataBanner } from '../features/billing/hidden-data-banner.js';
+import { ForecastBadge, ForecastTeaser } from '../features/forecast/forecast-badge.js';
+import { useReplenishmentForecast } from '../lib/use-replenishment-forecast.js';
 import { useSession } from '../lib/auth-client.js';
 import { useFormatMoney, useHouseholdPlan } from '../lib/use-currency.js';
 import { useMembership } from '../lib/use-membership.js';
@@ -48,6 +50,7 @@ export function DashboardPage() {
   const { data: session, isPending } = useSession();
   const membership = useMembership(!!session);
   const plan = useHouseholdPlan();
+  const forecast = useReplenishmentForecast();
   const [housesOpen, setHousesOpen] = useState(false);
 
   const allRecurringLists = useLiveQuery(
@@ -117,9 +120,15 @@ export function DashboardPage() {
           needed.map((n) => ({ qty: n.need, unitPriceCents: priceOf(n.itemId) })),
         ).totalCents;
         const due = isRecurrenceDue(list.recurrence, list.recurrenceDay, new Date());
-        return { list, missing: needed.length, noPrice, total, due };
+        // item mais crítico da lista: menor "dias até acabar" entre os itens com previsão
+        let soonest: number | undefined;
+        for (const e of listEntries) {
+          const d = forecast.get(e.itemId);
+          if (d !== undefined && (soonest === undefined || d < soonest)) soonest = d;
+        }
+        return { list, missing: needed.length, noPrice, total, due, soonest };
       }),
-    [lists, entries, onHand, priceOf],
+    [lists, entries, onHand, priceOf, forecast],
   );
 
   // resumo do mês: economia (estimado − pago), quantas compras vieram abaixo do
@@ -219,11 +228,13 @@ export function DashboardPage() {
 
       <SectionTitle title={t('restock.title')} sub={t('restock.subtitle')} />
 
+      {plan === 'free' && lists.length > 0 && <ForecastTeaser />}
+
       {lists.length === 0 ? (
         <p className="muted mt-2 text-center text-sm">{t('restock.noLists')}</p>
       ) : (
         <div className="flex flex-col gap-3">
-          {perList.map(({ list, missing, noPrice, total, due }) => (
+          {perList.map(({ list, missing, noPrice, total, due, soonest }) => (
             <Link
               key={list.id}
               to="/listas/$id"
@@ -234,13 +245,14 @@ export function DashboardPage() {
                 <span className="flex-none text-[26px] leading-none">{list.icon}</span>
               )}
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <span className="truncate text-base font-semibold">{list.name}</span>
                   {due && (
                     <Badge tone="oferta" style={{ fontSize: 10 }}>
                       {t('restock.dueToday')}
                     </Badge>
                   )}
+                  <ForecastBadge daysLeft={soonest} />
                 </div>
                 <div className="muted mt-0.5 text-[13px]">
                   {missing > 0 ? t('restock.missingCount', { count: missing }) : t('restock.nothing')}

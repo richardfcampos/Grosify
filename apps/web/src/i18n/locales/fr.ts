@@ -112,6 +112,11 @@ export default {
       doInventory: 'Do inventory',
       invite: 'Invite someone',
     },
+    forecast: {
+      daysLeft_one: 'out in ~{{count}}d',
+      daysLeft_other: 'out in ~{{count}}d',
+      teaser: 'Replenishment forecast — Pro',
+    },
     nav: {
       home: 'Home',
       shop: 'Shop',
@@ -338,6 +343,7 @@ export default {
       exportPaywallPitch: 'Exporting prices as CSV is Pro-only.',
       nfcePaywallPitch: "You've reached this month's imported receipt limit on the Free plan.",
       nlListPaywallPitch: 'Générer des listes à partir de texte est une fonction exclusive du plan Pro.',
+      forecastPaywallPitch: 'Know when each item will run out — the replenishment forecast is Pro-only.',
     },
     nfce: {
       importButton: 'Import receipt (QR)',
