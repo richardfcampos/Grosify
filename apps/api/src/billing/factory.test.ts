@@ -23,6 +23,11 @@ describe('billingProviderFor (factory / env-gate por moeda)', () => {
     expect(p?.name).toBe('asaas');
   });
 
+  it('BRL NUNCA roteia pro Stripe, mesmo com STRIPE_SECRET_KEY presente (fronteira da moeda)', () => {
+    const p = billingProviderFor('BRL', { ASAAS_API_KEY: 'k', STRIPE_SECRET_KEY: 'sk' });
+    expect(p?.name).toBe('asaas');
+  });
+
   it('USD sem STRIPE_SECRET_KEY → null (stub sem credencial → 501)', () => {
     expect(billingProviderFor('USD', { ASAAS_API_KEY: 'k' })).toBeNull();
   });
