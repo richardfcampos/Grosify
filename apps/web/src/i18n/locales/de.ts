@@ -186,6 +186,16 @@ export default {
       searchStore: 'Laden suchen…',
       noStores: 'Füge zuerst einen Laden hinzu.',
     },
+    priceInsights: {
+      title: 'Buy now or wait',
+      teaser: 'Buy now or wait — Pro',
+      verdict: {
+        buy: 'Good moment: {{current}} is below the {{avg}} average.',
+        wait: 'Better to wait: {{current}} is above the {{avg}} average and rising.',
+        neutral: 'Price steady near the {{avg}} average.',
+      },
+      swap: '{{cheaper}} is {{pct}}% cheaper than {{pricier}} at {{store}}.',
+    },
     brands: {
       label: 'Marke',
       none: 'Keine Marke',
@@ -344,6 +354,7 @@ export default {
       nfcePaywallPitch: 'Du hast das Limit für importierte Belege diesen Monat im kostenlosen Plan erreicht.',
       nlListPaywallPitch: 'Listen aus Text zu erstellen ist exklusiv im Pro-Plan.',
       forecastPaywallPitch: 'Know when each item will run out — the replenishment forecast is Pro-only.',
+      priceInsightsPaywallPitch: 'Find out when to buy and which brand is cheaper — price insights are Pro-only.',
     },
     nfce: {
       importButton: 'Beleg importieren (QR)',
