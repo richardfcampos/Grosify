@@ -1,42 +1,42 @@
-# Lista por linguagem natural — Design
+# Natural-language list — Design
 
 **Spec**: `.specs/features/nl-list/spec.md`
 **Context**: `.specs/features/nl-list/context.md`
-**Status**: Draft (aguardando aprovação)
-**Base**: reuso direto do pipeline de NFC-e (matching + embedding + cliente Gemini REST) — file:line citados abaixo são código real lido, não pesquisa.
+**Status**: Draft (awaiting approval)
+**Base**: direct reuse of the NFC-e pipeline (matching + embedding + Gemini REST client) — the file:line references cited below are real code that was read, not research.
 
 ---
 
-## Abordagens consideradas (Medium → exploração das decisões não-óbvias)
+## Approaches considered (Medium → exploration of the non-obvious decisions)
 
-### Como casar a linha gerada com o catálogo (reuso do matching)
+### How to match the generated line against the catalog (matching reuse)
 
-| | Abordagem | Trade-off |
+| | Approach | Trade-off |
 |---|---|---|
-| **A (recomendada)** | **Adaptador `GeneratedLine → NfceItem-like`** e chamar `matchItems` como está | ✅ zero mudança na assinatura do NFC-e (verificado: `matchItems(itens, catalog, env)` só usa `item.descricao`); reuso total do fuzzy+embedding+cache. ❌ criar um `NfceItem` "de mentira" com preço 0 (campo não usado pelo matching) |
-| B | Refatorar `matchItems` pra aceitar `{descricao}[]` (tipo mínimo `MatchableLine`) | ✅ semanticamente mais limpo. ❌ toca código NFC-e testado e estável (risco de regressão numa feature Pro já entregue) — viola "decisão verificada é sticky" |
-| C | Duplicar a lógica de matching pro nl-list | ❌ DRY violado; 2 pipelines divergem no tempo |
+| **A (recommended)** | **Adapter `GeneratedLine → NfceItem-like`** and call `matchItems` as-is | ✅ zero change to the NFC-e signature (verified: `matchItems(itens, catalog, env)` only uses `item.descricao`); full reuse of fuzzy+embedding+cache. ❌ creating a "fake" `NfceItem` with price 0 (a field unused by matching) |
+| B | Refactor `matchItems` to accept `{descricao}[]` (minimal type `MatchableLine`) | ✅ semantically cleaner. ❌ touches tested and stable NFC-e code (regression risk in an already-shipped Pro feature) — violates "a verified decision is sticky" |
+| C | Duplicate the matching logic for nl-list | ❌ DRY violated; the 2 pipelines diverge over time |
 
-**Escolha: A.** O `matchItems` (`matching.ts:142`) só lê `item.descricao` de cada `NfceItem` — o adaptador monta `{descricao: line.name, quantidade: line.qty, unidade: line.unit, valorUnitCents: 0, valorTotalCents: 0, ean: null}`. Sem tocar o NFC-e. Reusa `loadCatalog`/`embedAndCacheCatalog` (`embed-cache.ts`) idênticos.
+**Choice: A.** `matchItems` (`matching.ts:142`) only reads `item.descricao` from each `NfceItem` — the adapter builds `{descricao: line.name, quantidade: line.qty, unidade: line.unit, valorUnitCents: 0, valorTotalCents: 0, ean: null}`. Without touching NFC-e. Reuses `loadCatalog`/`embedAndCacheCatalog` (`embed-cache.ts`) identically.
 
-### Tela de revisão (reusar nfce-review vs. duplicar)
+### Review screen (reuse nfce-review vs. duplicate)
 
-| | Abordagem | Trade-off |
+| | Approach | Trade-off |
 |---|---|---|
-| **Generalizar (recomendado)** | `nfce-line-row` ganha props `showPrice`/`showStore` (default true); nl-list passa false | ✅ 1 componente de linha (troca de item, criar inline, ignorar, editar qty já existem); nl-list reaproveita o picker. ❌ o componente vira levemente parametrizado |
-| Duplicar enxuto | `nl-review.tsx` + `nl-line-row.tsx` próprios | ✅ isolamento total. ❌ duplica o picker + o toggle ignorar + a edição de qty (≈150 linhas repetidas que divergem) |
+| **Generalize (recommended)** | `nfce-line-row` gains props `showPrice`/`showStore` (default true); nl-list passes false | ✅ 1 line component (swapping item, inline create, ignore, editing qty already exist); nl-list reuses the picker. ❌ the component becomes slightly parameterized |
+| Lean duplication | dedicated `nl-review.tsx` + `nl-line-row.tsx` | ✅ full isolation. ❌ duplicates the picker + the ignore toggle + the qty edit (≈150 repeated lines that diverge) |
 
-**Escolha: generalizar a LINHA, container próprio.** `nfce-line-row.tsx` (`:33`) já tem tudo que a nl-list precisa (nome gerado, qty editável, trocar/criar/ignorar, `ItemPickerSheet`). Adicionar `showPrice`/`showStore` (bool, default true → NFC-e intacto). O **container** é próprio (`nl-review.tsx`) porque o fluxo difere: sem passo de loja, sem `price_records`, alvo = lista (nova/existente) via `confirmNlReview`. Não mexer no `nfce-review.tsx` (fluxo de preço/loja é dele).
+**Choice: generalize the ROW, dedicated container.** `nfce-line-row.tsx` (`:33`) already has everything nl-list needs (generated name, editable qty, swap/create/ignore, `ItemPickerSheet`). Add `showPrice`/`showStore` (bool, default true → NFC-e untouched). The **container** is dedicated (`nl-review.tsx`) because the flow differs: no store step, no `price_records`, target = list (new/existing) via `confirmNlReview`. Do not touch `nfce-review.tsx` (the price/store flow is its own).
 
-### Provider de geração (structured output)
+### Generation provider (structured output)
 
-| | Abordagem | Trade-off |
+| | Approach | Trade-off |
 |---|---|---|
-| **Gemini generateContent + responseSchema (recomendado)** | fetch REST puro no molde do `embedding.ts` | ✅ mesma chave/env-gate/timeout já provados; structured output nativo (JSON garantido por schema); sem SDK. ❌ 1 método novo de rede |
-| SDK `@google/genai` | dep nova | ❌ o projeto NÃO usa SDK (o `embedding.ts` é fetch puro por decisão) — não introduzir |
-| Prompt "responda JSON" sem responseSchema | mais frágil | ❌ modelo às vezes embrulha em markdown/prosa; responseSchema elimina o parse frágil |
+| **Gemini generateContent + responseSchema (recommended)** | pure REST fetch following the `embedding.ts` pattern | ✅ same key/env-gate/timeout already proven; native structured output (JSON guaranteed by schema); no SDK. ❌ 1 new network method |
+| SDK `@google/genai` | new dependency | ❌ the project does NOT use an SDK (`embedding.ts` is pure fetch by decision) — don't introduce one |
+| Prompt "respond in JSON" without responseSchema | more fragile | ❌ the model sometimes wraps in markdown/prose; responseSchema eliminates the fragile parse |
 
-**Escolha: Gemini REST puro com `responseMimeType: application/json` + `responseSchema`**, no mesmo módulo-vizinho do `embedding.ts`. Modelo `gemini-2.0-flash` (rápido/barato; ajustável). Verificado: NÃO existe `generateContent`/`responseSchema` no repo hoje (`grep` vazio) — é código novo, mas segue o padrão exato do `embed`.
+**Choice: pure Gemini REST with `responseMimeType: application/json` + `responseSchema`**, in the same neighboring module as `embedding.ts`. Model `gemini-2.0-flash` (fast/cheap; adjustable). Verified: `generateContent`/`responseSchema` do NOT exist in the repo today (empty `grep`) — it is new code, but follows the exact pattern of `embed`.
 
 ---
 
@@ -44,141 +44,141 @@
 
 ```mermaid
 graph TD
-    A[Entrada a: NewListSheet campo texto] -->|prompt| SVC[lib/nl-list.ts]
-    B[Entrada b: lista existente botão adicionar] -->|prompt + listId| SVC
+    A[Input a: NewListSheet text field] -->|prompt| SVC[lib/nl-list.ts]
+    B[Input b: existing list add button] -->|prompt + listId| SVC
     SVC -->|POST /ai/generate-list {prompt}| RT[routes/ai.ts<br/>requireHousehold + rateLimit 10/min]
     RT --> GATE{plan === pro?}
     GATE -->|free| E403[403 pro_required]
     GATE -->|pro| KEY{GEMINI_API_KEY?}
-    KEY -->|não| E501[501 ai_unavailable]
-    KEY -->|sim| GEN[nfce/gemini-generate.ts<br/>generateContent + responseSchema<br/>1 retry se JSON inválido]
-    GEN -->|falha/timeout| E502[502 ai_generation_failed]
-    GEN -->|array vazio| EMPTY[200 items:[]<br/>UI avisa sem itens]
-    GEN -->|GeneratedLine[]| ADAPT[adaptador → NfceItem-like<br/>preço 0]
+    KEY -->|no| E501[501 ai_unavailable]
+    KEY -->|yes| GEN[nfce/gemini-generate.ts<br/>generateContent + responseSchema<br/>1 retry if JSON invalid]
+    GEN -->|failure/timeout| E502[502 ai_generation_failed]
+    GEN -->|empty array| EMPTY[200 items:[]<br/>UI warns no items]
+    GEN -->|GeneratedLine[]| ADAPT[adapter → NfceItem-like<br/>price 0]
     ADAPT --> MATCH[matchItemsForHousehold<br/>loadCatalog + embedAndCacheCatalog + matchItems]
-    MATCH -->|GEMINI_API_KEY?| EMB[(Gemini embed<br/>opcional, cache items.embedding)]
-    MATCH -->|MatchResult[] + GeneratedLine[]| REV[client: nl-review.tsx<br/>matcheado/novo/ignorar, qty editável]
-    REV -->|confirm alvo=lista nova| CL[createList + setListEntry]
-    REV -->|confirm alvo=lista existente| SE[setListEntry na lista aberta]
+    MATCH -->|GEMINI_API_KEY?| EMB[(Gemini embed<br/>optional, cache items.embedding)]
+    MATCH -->|MatchResult[] + GeneratedLine[]| REV[client: nl-review.tsx<br/>matched/new/ignore, editable qty]
+    REV -->|confirm target=new list| CL[createList + setListEntry]
+    REV -->|confirm target=existing list| SE[setListEntry on the open list]
     CL --> OUT[outbox → POST /shopping/lists + entries]
     SE --> OUT
 ```
 
-**Rota stateless.** Diferente do NFC-e (que persiste `nfce_imports` pra cache/quota), a nl-list **não persiste nada server-side**: gera + casa + responde. A materialização (lista/itens/entradas) é do CLIENT via repositórios Dexie + outbox — padrão do projeto (todo write do client passa por Dexie+outbox; não há endpoint batch).
+**Stateless route.** Unlike NFC-e (which persists `nfce_imports` for cache/quota), nl-list **persists nothing server-side**: it generates + matches + responds. Materialization (list/items/entries) is done by the CLIENT via Dexie repositories + outbox — the project pattern (every client write goes through Dexie+outbox; there is no batch endpoint).
 
-**Reuso do coração:** `matchItemsForHousehold` hoje é helper **privado** em `routes/nfce.ts:165`. Design: extrair pra `apps/api/src/nfce/match-for-household.ts` (mesma lógica: `loadCatalog` → `embedAndCacheCatalog` → `matchItems`) e importar nas duas rotas — sem duplicar. Alternativa (se extrair for arriscado): exportar do `nfce/index.ts`. **Extrair é o caminho** (função pura sobre o catálogo, sem acoplamento de rota).
+**Reusing the core:** `matchItemsForHousehold` is currently a **private** helper in `routes/nfce.ts:165`. Design: extract it to `apps/api/src/nfce/match-for-household.ts` (same logic: `loadCatalog` → `embedAndCacheCatalog` → `matchItems`) and import it in both routes — without duplicating. Alternative (if extracting is risky): export it from `nfce/index.ts`. **Extracting is the way** (a pure function over the catalog, with no route coupling).
 
 ---
 
 ## Code Reuse Analysis
 
-| Existente | Local | Uso |
+| Existing | Location | Use |
 |---|---|---|
-| Cliente Gemini REST env-gated | `apps/api/src/nfce/embedding.ts:36` (`embed` — fetch, `AbortSignal.timeout`, key-gate) | Molde EXATO do `generateContent`: mesmo endpoint base, mesmo padrão de erro-silencioso→null vira erro-tipado aqui |
-| Matching híbrido | `apps/api/src/nfce/matching.ts:142` (`matchItems(itens, catalog, env)` → `MatchResult[]`) | Reusar sem tocar; só lê `item.descricao` (verificado) → adaptador monta `NfceItem` c/ preço 0 |
-| Carga + cache de catálogo | `apps/api/src/nfce/embed-cache.ts:37,86` (`embedAndCacheCatalog`/`loadCatalog`) | Reuso idêntico; embedding do catálogo cacheado em `items.embedding` (já existe da migração 0027 do NFC-e) |
-| Pipeline por casa | `apps/api/src/routes/nfce.ts:165` (`matchItemsForHousehold`, hoje privado) | **Extrair** pra `nfce/match-for-household.ts` e reusar nas 2 rotas |
-| Log seguro | `apps/api/src/nfce/nfce-log.ts:36` (`logNfceLookup` — mascara chave) | Molde do log de geração (`{householdId parcial, promptLen, itemCount, status}` — nunca prompt cru) |
-| Gate Pro no request | `apps/api/src/routes/uploads.ts:29` (`c.get('plan') !== 'pro' → 403 pro_required`) | Copiar literalmente no início da rota, ANTES do fetch |
-| Rate limit IP | `apps/api/src/middleware/rate-limit.ts:11`; uso `routes/households.ts:283` (`rateLimit({windowMs:60_000, max:...})`) | `rateLimit({windowMs:60_000, max:10})` no `.post('/generate-list', ...)` |
-| Plano efetivo | `apps/api/src/middleware/household.ts` (`resolveEffectivePlan`→`c.get('plan')`) | Gate lê `c.get('plan')` |
-| Rota household-scoped | `apps/api/src/routes/nfce.ts:73` (`.use(requireHousehold)`, mount em `index.ts`) | Molde de `routes/ai.ts`; household vem da sessão, nunca do body |
-| Linha de revisão editável | `apps/web/src/features/nfce/nfce-line-row.tsx:33` (nome+qty+trocar/criar/ignorar+`ItemPickerSheet`) | Generalizar c/ `showPrice`/`showStore` (default true → NFC-e intacto); nl-list passa false |
-| Erro tipado no client | `apps/web/src/lib/nfce-import.ts:66` (`NfceImportError` → `t('errors.<code>')`) | Molde de `NlListError` (`ai_unavailable`, `ai_generation_failed`, `prompt_*`, `pro_required`) |
-| PaywallSheet + union | `apps/web/src/features/billing/paywall-sheet.tsx:7` (`PaywallFeature`) | `PaywallFeature` ganha `'nlList'` + pitch `billing.nlListPaywallPitch` |
-| Criar lista avulsa | `apps/web/src/pages/listas-page.tsx:104` (`NewListSheet`), `repositories.ts:396` (`createList`) | Entrada (a): campo de texto opcional no sheet; confirm chama `createList` + `setListEntry` |
-| Lista existente + entradas | `apps/web/src/pages/lista-detail-page.tsx`, `repositories.ts:453` (`setListEntry` upsert) | Entrada (b): botão "adicionar por texto"; confirm chama `setListEntry` na lista aberta |
-| Criar item opt-in | `apps/web/src/db/repositories.ts:46` (`createItem(NewItemInput)`) | Linha "criar" → `createItem({name, unit, ...})` antes da entrada |
-| Confirm offline (molde) | `apps/web/src/db/nfce-confirm.ts:28` (`confirmNfceReview` — item antes do vínculo) | Molde de `confirmNlReview` (item novo antes da entrada; sem preço/loja) |
-| Harness pglite / fake-idb | `apps/api/src/test/*`, `apps/web` vitest.setup | Integration da rota (Gemini via fetch mock) + confirm no client |
+| Env-gated Gemini REST client | `apps/api/src/nfce/embedding.ts:36` (`embed` — fetch, `AbortSignal.timeout`, key-gate) | EXACT pattern for `generateContent`: same base endpoint, same silent-error→null pattern becomes a typed error here |
+| Hybrid matching | `apps/api/src/nfce/matching.ts:142` (`matchItems(itens, catalog, env)` → `MatchResult[]`) | Reuse without touching; only reads `item.descricao` (verified) → the adapter builds an `NfceItem` w/ price 0 |
+| Catalog load + cache | `apps/api/src/nfce/embed-cache.ts:37,86` (`embedAndCacheCatalog`/`loadCatalog`) | Identical reuse; catalog embedding cached in `items.embedding` (already exists from the NFC-e migration 0027) |
+| Per-household pipeline | `apps/api/src/routes/nfce.ts:165` (`matchItemsForHousehold`, private today) | **Extract** to `nfce/match-for-household.ts` and reuse in the 2 routes |
+| Safe log | `apps/api/src/nfce/nfce-log.ts:36` (`logNfceLookup` — masks the key) | Pattern for the generation log (`{householdId partial, promptLen, itemCount, status}` — never the raw prompt) |
+| Pro gate on the request | `apps/api/src/routes/uploads.ts:29` (`c.get('plan') !== 'pro' → 403 pro_required`) | Copy literally at the start of the route, BEFORE the fetch |
+| IP rate limit | `apps/api/src/middleware/rate-limit.ts:11`; used in `routes/households.ts:283` (`rateLimit({windowMs:60_000, max:...})`) | `rateLimit({windowMs:60_000, max:10})` on `.post('/generate-list', ...)` |
+| Effective plan | `apps/api/src/middleware/household.ts` (`resolveEffectivePlan`→`c.get('plan')`) | The gate reads `c.get('plan')` |
+| Household-scoped route | `apps/api/src/routes/nfce.ts:73` (`.use(requireHousehold)`, mounted in `index.ts`) | Pattern for `routes/ai.ts`; household comes from the session, never from the body |
+| Editable review row | `apps/web/src/features/nfce/nfce-line-row.tsx:33` (name+qty+swap/create/ignore+`ItemPickerSheet`) | Generalize w/ `showPrice`/`showStore` (default true → NFC-e untouched); nl-list passes false |
+| Typed client error | `apps/web/src/lib/nfce-import.ts:66` (`NfceImportError` → `t('errors.<code>')`) | Pattern for `NlListError` (`ai_unavailable`, `ai_generation_failed`, `prompt_*`, `pro_required`) |
+| PaywallSheet + union | `apps/web/src/features/billing/paywall-sheet.tsx:7` (`PaywallFeature`) | `PaywallFeature` gains `'nlList'` + pitch `billing.nlListPaywallPitch` |
+| Create standalone list | `apps/web/src/pages/listas-page.tsx:104` (`NewListSheet`), `repositories.ts:396` (`createList`) | Input (a): optional text field in the sheet; confirm calls `createList` + `setListEntry` |
+| Existing list + entries | `apps/web/src/pages/lista-detail-page.tsx`, `repositories.ts:453` (`setListEntry` upsert) | Input (b): "add by text" button; confirm calls `setListEntry` on the open list |
+| Opt-in item creation | `apps/web/src/db/repositories.ts:46` (`createItem(NewItemInput)`) | "Create" row → `createItem({name, unit, ...})` before the entry |
+| Offline confirm (pattern) | `apps/web/src/db/nfce-confirm.ts:28` (`confirmNfceReview` — item before the link) | Pattern for `confirmNlReview` (new item before the entry; no price/store) |
+| pglite / fake-idb harness | `apps/api/src/test/*`, `apps/web` vitest.setup | Route integration (Gemini via fetch mock) + client confirm |
 
 ---
 
 ## Components
 
-### 1. `apps/api/src/nfce/gemini-generate.ts` (novo — geração via Gemini REST, env-gated)
-- `generateShoppingList(prompt: string, env?): Promise<GeneratedLine[] | null>` — POST em `…/models/gemini-2.0-flash:generateContent?key=…` com `generationConfig: { responseMimeType: 'application/json', responseSchema: {...array de {name, qty, unit}...} }`; `AbortSignal.timeout`; **retorna null** quando sem `GEMINI_API_KEY` (caller vira 501) OU quando a chamada/parse falha (caller decide retry→502). Molde do `embedding.ts:36`.
-- `GeneratedLine = { name: string; qty: number; unit: string }` — saída validada por zod antes de retornar (descarta linhas sem `name`).
-- Prompt-engineering: system instruction curta ("você monta listas de compras de supermercado; devolva itens genéricos com quantidade e unidade; responda no idioma do prompt do usuário; não invente marcas"). O `responseSchema` garante o shape; o zod é a rede de segurança.
-- `<200 linhas`.
+### 1. `apps/api/src/nfce/gemini-generate.ts` (new — generation via Gemini REST, env-gated)
+- `generateShoppingList(prompt: string, env?): Promise<GeneratedLine[] | null>` — POST to `…/models/gemini-2.0-flash:generateContent?key=…` with `generationConfig: { responseMimeType: 'application/json', responseSchema: {...array of {name, qty, unit}...} }`; `AbortSignal.timeout`; **returns null** when there is no `GEMINI_API_KEY` (the caller turns it into 501) OR when the call/parse fails (the caller decides retry→502). Pattern from `embedding.ts:36`.
+- `GeneratedLine = { name: string; qty: number; unit: string }` — output validated by zod before returning (discards lines without `name`).
+- Prompt-engineering: short system instruction ("you assemble supermarket shopping lists; return generic items with quantity and unit; respond in the user prompt's language; don't invent brands"). The `responseSchema` guarantees the shape; the zod is the safety net.
+- `<200 lines`.
 
-### 2. `apps/api/src/nfce/match-for-household.ts` (novo — extração do helper privado)
-- `matchLinesForHousehold(householdId, lines: {descricao: string; quantidade: number; unidade: string; ...}[]): Promise<MatchResult[]>` — move a lógica de `routes/nfce.ts:165` (`loadCatalog` → `embedAndCacheCatalog` → `matchItems`). `routes/nfce.ts` passa a importar daqui (sem duplicar).
-- `generatedToNfceItem(line: GeneratedLine): NfceItem` — adaptador: `{descricao: line.name, quantidade: line.qty, unidade: normalizeUnit(line.unit), valorUnitCents: 0, valorTotalCents: 0, ean: null}`. `normalizeUnit` mapeia a string do modelo pro enum `Unit` do app (default `'un'`).
+### 2. `apps/api/src/nfce/match-for-household.ts` (new — extraction of the private helper)
+- `matchLinesForHousehold(householdId, lines: {descricao: string; quantidade: number; unidade: string; ...}[]): Promise<MatchResult[]>` — moves the logic from `routes/nfce.ts:165` (`loadCatalog` → `embedAndCacheCatalog` → `matchItems`). `routes/nfce.ts` now imports from here (without duplicating).
+- `generatedToNfceItem(line: GeneratedLine): NfceItem` — adapter: `{descricao: line.name, quantidade: line.qty, unidade: normalizeUnit(line.unit), valorUnitCents: 0, valorTotalCents: 0, ean: null}`. `normalizeUnit` maps the model's string to the app's `Unit` enum (default `'un'`).
 
-### 3. `apps/api/src/routes/ai.ts` (novo) — household-scoped
-- `POST /ai/generate-list` — `.use(requireHousehold)` + `rateLimit({windowMs:60_000, max:10})`; zValidator (`prompt` 3–500 chars → 400 `prompt_too_short`/`prompt_too_long`; `listId?` uuid opcional só ecoa pro client, não usado server-side); **gate Pro primeiro** (`c.get('plan') !== 'pro' → 403 pro_required`, ANTES do Gemini); **env-gate** (`!GEMINI_API_KEY → 501 ai_unavailable`); chama `generateShoppingList` (1 retry se null por parse); falha persistente → `502 ai_generation_failed`; array vazio → `200 { items: [], lines: [] }`; sucesso → adapta + `matchLinesForHousehold` → `200 { items: GeneratedLine[], lines: MatchResult[] }`; log seguro (`{promptLen, itemCount, status}`, nunca o prompt).
-- Mount em `apps/api/src/index.ts` (`.route('/ai', aiRoute)`, no mesmo bloco das outras rotas household-scoped).
+### 3. `apps/api/src/routes/ai.ts` (new) — household-scoped
+- `POST /ai/generate-list` — `.use(requireHousehold)` + `rateLimit({windowMs:60_000, max:10})`; zValidator (`prompt` 3–500 chars → 400 `prompt_too_short`/`prompt_too_long`; `listId?` optional uuid, only echoed back to the client, not used server-side); **Pro gate first** (`c.get('plan') !== 'pro' → 403 pro_required`, BEFORE Gemini); **env-gate** (`!GEMINI_API_KEY → 501 ai_unavailable`); calls `generateShoppingList` (1 retry if null due to parse); persistent failure → `502 ai_generation_failed`; empty array → `200 { items: [], lines: [] }`; success → adapts + `matchLinesForHousehold` → `200 { items: GeneratedLine[], lines: MatchResult[] }`; safe log (`{promptLen, itemCount, status}`, never the prompt).
+- Mounted in `apps/api/src/index.ts` (`.route('/ai', aiRoute)`, in the same block as the other household-scoped routes).
 
 ### 4. Client (`apps/web`)
-- **`lib/nl-list.ts`**: `generateNlList(prompt, listId?): Promise<NlGenerateResult>` — POST `/ai/generate-list`; mapeia erros tipados → `NlListError(code)` (`ai_unavailable`, `ai_generation_failed`, `prompt_too_short`, `prompt_too_long`, `pro_required`); devolve `{ items: NlGeneratedItem[], lines: NlLine[] }` (espelha `MatchResult`). `pro_required` tratado à parte pelo caller (paywall).
-- **`features/nl-list/nl-review.tsx`** (`<200 linhas`): container da revisão. Recebe `{ prompt, target }` onde `target = {kind:'new', name} | {kind:'existing', listId}`; roda `generateNlList`; renderiza linhas via `NfceLineRow` (com `showPrice={false} showStore={false}`); aviso quando `lines.length === 0`; confirmar → `confirmNlReview`. Paywall quando `pro_required`.
-- **`db/nl-confirm.ts`**: `confirmNlReview({target, lines})` — se `target.kind==='new'`: `const listId = await createList({name, isRecurring:false})`; depois por linha não-ignorada: `itemId = line.itemId ?? await createItem({name, unit, ...})` → `setListEntry(listId, itemId, qty)`. Se `existing`: mesmo laço na `target.listId`. Ordem: item novo ANTES da entrada (molde `nfce-confirm.ts:28`). Sem preço, sem loja.
-- **Entrada (a)** — `pages/listas-page.tsx` (`NewListSheet:104`): adicionar campo `<textarea>` opcional "descreva por texto (opcional)"; se preenchido no submit → abre `NlReview` com `target={kind:'new', name}` em vez de criar lista vazia direto.
-- **Entrada (b)** — `pages/lista-detail-page.tsx`: botão "Adicionar por texto" → sheet com textarea → `NlReview` com `target={kind:'existing', listId}`.
-- **Generalizar** `features/nfce/nfce-line-row.tsx`: props `showPrice?: boolean` e `showStore?: boolean` (default true); nl-list passa false (esconde os inputs de preço; o passo de loja é do container, então nl-review simplesmente não renderiza `NfceStoreStep`).
-- **Gate no client**: botões visíveis a todos; `pro_required` do servidor → `PaywallSheet feature="nlList"`.
-- i18n: `nlList.*` + `errors.*` novos nos **6 locales**.
+- **`lib/nl-list.ts`**: `generateNlList(prompt, listId?): Promise<NlGenerateResult>` — POST `/ai/generate-list`; maps typed errors → `NlListError(code)` (`ai_unavailable`, `ai_generation_failed`, `prompt_too_short`, `prompt_too_long`, `pro_required`); returns `{ items: NlGeneratedItem[], lines: NlLine[] }` (mirrors `MatchResult`). `pro_required` handled separately by the caller (paywall).
+- **`features/nl-list/nl-review.tsx`** (`<200 lines`): the review container. Receives `{ prompt, target }` where `target = {kind:'new', name} | {kind:'existing', listId}`; runs `generateNlList`; renders rows via `NfceLineRow` (with `showPrice={false} showStore={false}`); warns when `lines.length === 0`; confirm → `confirmNlReview`. Paywall when `pro_required`.
+- **`db/nl-confirm.ts`**: `confirmNlReview({target, lines})` — if `target.kind==='new'`: `const listId = await createList({name, isRecurring:false})`; then per non-ignored line: `itemId = line.itemId ?? await createItem({name, unit, ...})` → `setListEntry(listId, itemId, qty)`. If `existing`: same loop on `target.listId`. Order: new item BEFORE the entry (pattern from `nfce-confirm.ts:28`). No price, no store.
+- **Input (a)** — `pages/listas-page.tsx` (`NewListSheet:104`): add an optional `<textarea>` "describe in text (optional)"; if filled on submit → open `NlReview` with `target={kind:'new', name}` instead of creating an empty list directly.
+- **Input (b)** — `pages/lista-detail-page.tsx`: "Add by text" button → sheet with textarea → `NlReview` with `target={kind:'existing', listId}`.
+- **Generalize** `features/nfce/nfce-line-row.tsx`: props `showPrice?: boolean` and `showStore?: boolean` (default true); nl-list passes false (hides the price inputs; the store step belongs to the container, so nl-review simply doesn't render `NfceStoreStep`).
+- **Client gate**: buttons visible to all; server `pro_required` → `PaywallSheet feature="nlList"`.
+- i18n: new `nlList.*` + `errors.*` in the **6 locales**.
 
 ---
 
 ## Error Handling Strategy
 
-| Cenário | Tratamento | Usuário vê |
+| Scenario | Handling | User sees |
 |---|---|---|
-| Free chama a rota | `403 pro_required` ANTES do Gemini | `PaywallSheet` (feature nlList) |
-| Rate limit estourado (mesmo Pro) | `429 rate_limited` antes do Gemini | "muitas gerações, aguarde um instante" (`errors.rate_limited`) |
-| `GEMINI_API_KEY` ausente | `501 ai_unavailable` | "geração por texto indisponível" |
-| Prompt <3 / >500 chars | `400 prompt_too_short` / `prompt_too_long` (zod) | mensagem de tamanho |
-| JSON inválido do modelo | 1 retry; falhando → `502 ai_generation_failed` | "não consegui gerar agora, tente de novo" |
-| Timeout do Gemini | abort → `502 ai_generation_failed` | idem |
-| Array vazio / sem itens | `200 { items: [] }` (não é erro) | revisão vazia + aviso "não entendi itens nesse texto" |
-| Catálogo vazio | tudo "novo" | revisão com criar-tudo |
-| Idioma fora dos 6 | gera mesmo assim | resultado normal (pode ter mais "novo") |
-| Unidade não-canônica do modelo | `normalizeUnit → 'un'` | qty preservada, unidade default |
+| Free calls the route | `403 pro_required` BEFORE Gemini | `PaywallSheet` (nlList feature) |
+| Rate limit exceeded (even Pro) | `429 rate_limited` before Gemini | "too many generations, please wait a moment" (`errors.rate_limited`) |
+| `GEMINI_API_KEY` missing | `501 ai_unavailable` | "text generation unavailable" |
+| Prompt <3 / >500 chars | `400 prompt_too_short` / `prompt_too_long` (zod) | length message |
+| Invalid JSON from the model | 1 retry; failing → `502 ai_generation_failed` | "couldn't generate right now, try again" |
+| Gemini timeout | abort → `502 ai_generation_failed` | same |
+| Empty array / no items | `200 { items: [] }` (not an error) | empty review + warning "couldn't recognize items in this text" |
+| Empty catalog | everything "new" | review with create-all |
+| Language outside the 6 | generates anyway | normal result (may have more "new") |
+| Non-canonical unit from the model | `normalizeUnit → 'un'` | qty preserved, default unit |
 
-**Handler nunca vaza o prompt cru nem o catálogo nos logs**: log só `{householdId parcial, promptLen, itemCount, status, tokens?}`. O Gemini recebe SÓ o prompt do usuário + (implicitamente, via matching pós-geração) o catálogo da PRÓPRIA casa — nunca dados de outro household.
+**The handler never leaks the raw prompt or the catalog in logs**: log only `{householdId partial, promptLen, itemCount, status, tokens?}`. Gemini receives ONLY the user's prompt + (implicitly, via post-generation matching) the OWN household's catalog — never another household's data.
 
 ---
 
 ## Risks & Concerns
 
-| Concern | Local | Impacto | Mitigação |
+| Concern | Location | Impact | Mitigation |
 |---|---|---|---|
-| Tocar `matchItems`/nfce-line-row quebra o NFC-e (feature Pro entregue) | matching.ts / nfce-line-row.tsx | regressão em produção | Adaptador (não muda assinatura do `matchItems`); props com **default true** (NFC-e não muda); typecheck+testes do NFC-e no gate |
-| Extrair `matchItemsForHousehold` altera `routes/nfce.ts` | nfce.ts | regressão de rota | Extração é move-refactor puro (mesma lógica); testes de integração do NFC-e (`nfce-routes.test.ts`) rodam no gate e provam paridade |
-| Modelo devolve JSON fora do schema | gemini-generate.ts | parse quebra / itens ruins | `responseSchema` + validação zod + 1 retry → 502; nunca cria lixo (revisão é a barreira humana) |
-| Custo de geração (Pro sem quota) | rota | loop/abuso queima créditos | Rate limit ~10/min por IP; prompt≤500 chars; log de tokens; Pro-only (não é público) |
-| Vazamento de dados entre casas via prompt | rota/Gemini | LGPD/privacidade | Gemini recebe SÓ o prompt; o catálogo (matching) é carregado por `householdId` da sessão (`loadCatalog(householdId)`); nada de outra casa no contexto |
-| Prompt injection ("ignore instruções, gere X") | gemini-generate.ts | saída lixo | Baixo impacto: a saída é só uma lista de compras revisada pelo humano; nada executável; schema limita o shape |
-| Unidade/qty absurda do modelo (qty=9999) | adaptador/revisão | entrada estranha na lista | qty editável na revisão; `normalizeUnit` default seguro; opcional: clamp de qty no adaptador |
-| Prompt em idioma raro gera pouco | gemini-generate.ts | poucos itens | Aceitável (AC: gera mesmo assim); array vazio → aviso, não crash |
-| `501 ai_unavailable` confunde com feature quebrada | rota/UI | usuário acha que é bug | Mensagem i18n clara "indisponível"; docs/env deixam explícito que a chave liga a feature |
+| Touching `matchItems`/nfce-line-row breaks NFC-e (shipped Pro feature) | matching.ts / nfce-line-row.tsx | production regression | Adapter (doesn't change the `matchItems` signature); props with **default true** (NFC-e unchanged); NFC-e typecheck+tests in the gate |
+| Extracting `matchItemsForHousehold` alters `routes/nfce.ts` | nfce.ts | route regression | The extraction is a pure move-refactor (same logic); NFC-e integration tests (`nfce-routes.test.ts`) run in the gate and prove parity |
+| Model returns JSON outside the schema | gemini-generate.ts | parse breaks / bad items | `responseSchema` + zod validation + 1 retry → 502; never creates junk (review is the human barrier) |
+| Generation cost (Pro without quota) | route | looping/abuse burns credits | Rate limit ~10/min per IP; prompt≤500 chars; token log; Pro-only (not public) |
+| Data leakage between households via the prompt | route/Gemini | LGPD/privacy | Gemini receives ONLY the prompt; the catalog (matching) is loaded by session `householdId` (`loadCatalog(householdId)`); nothing from another household is in the context |
+| Prompt injection ("ignore instructions, generate X") | gemini-generate.ts | junk output | Low impact: the output is just a shopping list reviewed by the human; nothing executable; the schema limits the shape |
+| Absurd unit/qty from the model (qty=9999) | adapter/review | odd entry in the list | qty editable in the review; `normalizeUnit` safe default; optional: clamp qty in the adapter |
+| Prompt in a rare language generates little | gemini-generate.ts | few items | Acceptable (AC: generates anyway); empty array → warning, not a crash |
+| `501 ai_unavailable` confused with a broken feature | route/UI | user thinks it's a bug | Clear i18n message "unavailable"; docs/env make it explicit that the key turns the feature on |
 
 ---
 
-## Tech Decisions (não-óbvias)
+## Tech Decisions (non-obvious)
 
-| Decisão | Escolha | Rationale |
+| Decision | Choice | Rationale |
 |---|---|---|
-| Matching | Adaptador `GeneratedLine → NfceItem` + `matchItems` intacto | `matchItems` só lê `descricao` (verificado `matching.ts:96-122`); não tocar código NFC-e estável |
-| Helper por casa | Extrair `matchItemsForHousehold` (privado hoje) pra `nfce/match-for-household.ts` | Reuso entre 2 rotas sem duplicar; move-refactor de baixo risco |
-| Provider | Gemini `generateContent` + `responseSchema`, REST puro | Structured output nativo; mesmo padrão/env do `embedding.ts`; projeto não usa SDK |
-| Modelo | `gemini-2.0-flash` (ajustável) | Rápido, barato, structured output, free tier cobre |
-| Gate | Pro-only (`403 pro_required`), SEM quota Free | Decisão explícita do usuário (mais protetivo que NFC-e); geração é feature-valor Pro |
-| Anti-abuso | Rate limit ~10/min por IP na rota | Custo é centavos mas evita loop; barra antes do Gemini |
-| Sem chave | `501 ai_unavailable` (sem fallback) | A geração É a feature; nada a degradar (≠ matching do NFC-e) |
-| Estado server | Stateless (não persiste geração) | Lista vive no client via outbox; sem tabela nova; menos superfície |
-| Revisão | Generalizar a LINHA (`showPrice/showStore`), container próprio | Reusa picker/ignorar/qty; NFC-e intacto por default; fluxo de alvo (lista) é próprio |
-| Confirm | `createList`/`setListEntry` (sem preço/loja) | nl-list monta lista, não registra preço; upsert evita duplicar entrada |
-| Idioma | Itens no idioma do prompt; matching normaliza | Modelo responde na língua; `normalizeDescription` já tira acento/caixa |
-| Retry | 1 retry só em JSON inválido → 502 | Robustez barata; não retry infinito (custo) |
+| Matching | Adapter `GeneratedLine → NfceItem` + `matchItems` untouched | `matchItems` only reads `descricao` (verified `matching.ts:96-122`); don't touch stable NFC-e code |
+| Per-household helper | Extract `matchItemsForHousehold` (private today) to `nfce/match-for-household.ts` | Reuse across 2 routes without duplicating; low-risk move-refactor |
+| Provider | Gemini `generateContent` + `responseSchema`, pure REST | Native structured output; same pattern/env as `embedding.ts`; the project doesn't use an SDK |
+| Model | `gemini-2.0-flash` (adjustable) | Fast, cheap, structured output, free tier covers it |
+| Gate | Pro-only (`403 pro_required`), NO Free quota | Explicit user decision (more protective than NFC-e); generation is the Pro value feature |
+| Anti-abuse | Rate limit ~10/min per IP on the route | Cost is minor units but it prevents looping; blocks before Gemini |
+| No key | `501 ai_unavailable` (no fallback) | Generation IS the feature; nothing to degrade (≠ NFC-e matching) |
+| Server state | Stateless (does not persist the generation) | The list lives on the client via outbox; no new table; less surface |
+| Review | Generalize the ROW (`showPrice/showStore`), dedicated container | Reuses picker/ignore/qty; NFC-e untouched by default; the target flow (list) is its own |
+| Confirm | `createList`/`setListEntry` (no price/store) | nl-list assembles a list, doesn't record a price; upsert avoids duplicating an entry |
+| Language | Items in the prompt's language; matching normalizes | The model responds in the language; `normalizeDescription` already strips accents/case |
+| Retry | 1 retry only on invalid JSON → 502 | Cheap robustness; not an infinite retry (cost) |
 
 ---
 
 ## Unresolved questions
-1. Modelo exato do Gemini (`gemini-2.0-flash` vs. flash GA vigente na implementação) e limites do free tier de `generateContent` — confirmar no AI Studio; folga grande pro volume (rate limit 10/min).
-2. `responseSchema` exato (campos `name/qty/unit`; incluir `category`/`aisle` opcional pro modelo agrupar?) — MVP fica em `{name, qty, unit}`; enriquecer depois se útil.
-3. Clamp de qty no adaptador (limite superior pra qty absurda do modelo) — provável sim (ex. ≤999), mas a revisão editável já cobre; decidir na implementação.
-4. Extrair `matchItemsForHousehold` para módulo próprio vs. exportar do `nfce/index.ts` — recomendado extrair (função pura); confirmar que o barrel `nfce/index.ts` não puxa `db` indevidamente pros testes unitários (nota já existe em `index.ts:17-21`).
-5. Registrar tokens no log exige a resposta `usageMetadata` do `generateContent` — incluir se o endpoint retornar; senão só `promptLen`+`itemCount`.
+1. The exact Gemini model (`gemini-2.0-flash` vs. the GA flash current at implementation time) and the `generateContent` free tier limits — confirm in AI Studio; plenty of headroom for the volume (rate limit 10/min).
+2. The exact `responseSchema` (`name/qty/unit` fields; include optional `category`/`aisle` for the model to group by?) — MVP stays at `{name, qty, unit}`; enrich later if useful.
+3. Qty clamp in the adapter (an upper bound for an absurd qty from the model) — probably yes (e.g. ≤999), but the editable review already covers it; decide at implementation time.
+4. Extract `matchItemsForHousehold` into its own module vs. export it from `nfce/index.ts` — extracting recommended (pure function); confirm the `nfce/index.ts` barrel doesn't pull in `db` improperly for the unit tests (a note already exists at `index.ts:17-21`).
+5. Logging tokens requires the `usageMetadata` from the `generateContent` response — include it if the endpoint returns it; otherwise only `promptLen`+`itemCount`.

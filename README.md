@@ -1,31 +1,31 @@
 # Grosify
 
-App de compras domésticas: lista recorrente mensal, histórico de preços por loja, inventário pré-compra e modo compra offline-first. Web PWA mobile-first agora; app Expo na fase 7.
+Household grocery shopping app: monthly recurring list, per-store price history, pre-shopping inventory, and an offline-first shopping mode. Mobile-first web PWA for now; Expo app in phase 7.
 
-Documentação do projeto: [`.specs/project/`](.specs/project/) (visão, roadmap, decisões).
+Project documentation: [`.specs/project/`](.specs/project/) (vision, roadmap, decisions).
 
 ## Stack
 
 - **Monorepo**: pnpm workspaces + Turborepo
 - **Web** (`apps/web`): React + Vite + TanStack Router/Query + Tailwind, PWA
 - **API** (`apps/api`): Hono + Drizzle + Postgres + Better Auth
-- **Compartilhado**: `packages/shared` (schemas Zod + lógica de domínio), `packages/api-client` (client Hono RPC tipado)
+- **Shared**: `packages/shared` (Zod schemas + domain logic), `packages/api-client` (typed Hono RPC client)
 
-## Desenvolvimento
+## Development
 
 ```bash
 pnpm install
-docker compose up -d            # Postgres local na porta 5433
+docker compose up -d            # Local Postgres on port 5433
 cp .env.example apps/api/.env
 echo 'VITE_API_URL=http://localhost:3010' > apps/web/.env
 pnpm --filter @grosify/api db:migrate
-pnpm dev                        # API em :3010, web em :5174
+pnpm dev                        # API on :3010, web on :5174
 ```
 
-## Comandos
+## Commands
 
 ```bash
-pnpm typecheck   # tsc em todos os workspaces
+pnpm typecheck   # tsc across all workspaces
 pnpm test        # vitest
-pnpm build       # build do web (PWA)
+pnpm build       # web build (PWA)
 ```

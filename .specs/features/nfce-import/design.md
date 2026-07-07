@@ -1,35 +1,35 @@
-# Importar NFC-e por QR — Design
+# Import NFC-e via QR — Design
 
 **Spec**: `.specs/features/nfce-import/spec.md`
 **Context**: `.specs/features/nfce-import/context.md`
-**Status**: Draft (aguardando aprovação)
-**Base da pesquisa**: 4 relatórios (viabilidade QR/SEFAZ, APIs de terceiros, embeddings, scout de integração) — file:line/URLs citados abaixo vêm daí.
+**Status**: Draft (awaiting approval)
+**Research base**: 4 reports (QR/SEFAZ feasibility, third-party APIs, embeddings, integration scout) — the file:line/URLs cited below come from those.
 
 ---
 
-## Abordagens consideradas (Large → exploração obrigatória)
+## Approaches considered (Large → mandatory exploration)
 
-### Rota de consulta (como obter os itens da nota)
+### Lookup route (how to obtain the receipt items)
 
-| | Abordagem | Trade-off |
+| | Approach | Trade-off |
 |---|---|---|
-| **A (recomendada)** | **Deep-link do QR, fetch+parse server-side por UF** + adapter pago só nas UFs bloqueadas | ✅ custo zero nas UFs abertas (SVRS/SP/MG confirmados HTTP 200 sem captcha hoje); ✅ dados completos por ENCAT. ❌ 1 parser por família de portal; quebra quando SEFAZ redesenha (mitigado por fixture) |
-| B | API paga única pra tudo (Infosimples 27 UFs) | ✅ 1 integração, JSON limpo, cobre SE. ❌ piso R$100/mês independente de volume; custo por consulta em toda nota; dependência externa dura |
-| C | Consulta manual por chave (sem QR) | ❌ reCAPTCHA desde 2017 em várias UFs; inviável server-side. Descartada |
-| D | WebView no dispositivo (request sai do IP/browser do usuário) | ✅ contorna WAF/Turnstile de graça (uso pretendido pelo fisco). ❌ parsing no client, UX de webview, mais superfície. Fica como evolução p/ SE |
+| **A (recommended)** | **QR deep-link, server-side fetch+parse per state** + paid adapter only for blocked states | ✅ zero cost in open states (SVRS/SP/MG confirmed HTTP 200 with no captcha today); ✅ complete data per ENCAT. ❌ 1 parser per portal family; breaks when SEFAZ redesigns (mitigated by fixture) |
+| B | Single paid API for everything (Infosimples, 27 states) | ✅ 1 integration, clean JSON, covers SE. ❌ R$100/month floor regardless of volume; per-query cost on every receipt; hard external dependency |
+| C | Manual lookup by key (no QR) | ❌ reCAPTCHA since 2017 in several states; unviable server-side. Discarded |
+| D | WebView on the device (the request leaves from the user's IP/browser) | ✅ works around WAF/Turnstile for free (the intended use per the tax authority). ❌ parsing on the client, webview UX, more surface. Kept as an evolution for SE |
 
-**Escolha: A + fallback pago só onde A não funciona.** Parsers próprios pras UFs abertas (custo zero, volume baixo); Sergipe (Turnstile confirmado) via Infosimples env-gated; demais UFs = erro tipado até termos parser. B fica anotada como caminho se o nº de UFs bloqueadas crescer. D (WebView) é a evolução natural de SE sem custo.
+**Choice: A + paid fallback only where A doesn't work.** Own parsers for the open states (zero cost, low volume); Sergipe (Turnstile confirmed) via Infosimples env-gated; other states = typed error until we have a parser. B is noted as the path if the number of blocked states grows. D (WebView) is the natural evolution for SE at no cost.
 
-### Matching (casar descrição de cupom com catálogo)
+### Matching (matching a receipt description to the catalog)
 
-| | Abordagem | Trade-off |
+| | Approach | Trade-off |
 |---|---|---|
-| **Híbrido (recomendado)** | Normalização + fuzzy token-set primeiro; **embedding só pros não resolvidos** | ✅ ~80-90% resolve só com token (categoria aparece literal na descrição); embedding é minoria; degrada sem chave. ❌ 2 caminhos de código |
-| Só embedding | Cosine de tudo contra tudo | ❌ chamada de API por linha sempre; quebra sem chave; custo/latência à toa em recompra |
-| Só fuzzy | Sem embedding nenhum | ✅ zero dep externa. ❌ perde sinônimos opacos ("MACARRAO ESPAGUETE"→"Massa") |
-| pgvector | Índice vetorial no Postgres | ❌ overkill: ≤200 itens/casa = 0.6 MB, cosine em memória <1ms. Infra nova à toa |
+| **Hybrid (recommended)** | Normalization + fuzzy token-set first; **embedding only for the unresolved ones** | ✅ ~80-90% resolved with tokens alone (the category appears literally in the description); embedding is the minority; degrades without a key. ❌ 2 code paths |
+| Embedding only | Cosine of everything against everything | ❌ an API call per line always; breaks without a key; cost/latency wasted on repeat purchases |
+| Fuzzy only | No embedding at all | ✅ zero external dep. ❌ misses opaque synonyms ("MACARRAO ESPAGUETE"→"Massa") |
+| pgvector | Vector index in Postgres | ❌ overkill: ≤200 items/household = 0.6 MB, cosine in memory <1ms. New infra for nothing |
 
-**Escolha: híbrido, cosine em memória, sem pgvector.** Embedding é **opcional** (env-gated Gemini). Catálogo cacheado em coluna; query embeddada só quando o fuzzy empata.
+**Choice: hybrid, cosine in memory, no pgvector.** Embedding is **optional** (env-gated Gemini). Catalog cached in a column; the query is embedded only when fuzzy ties.
 
 ---
 
@@ -37,166 +37,166 @@
 
 ```mermaid
 graph TD
-    QR[ScannerModal lê qr_code] -->|rawValue = URL SEFAZ?| ICT[caller: detecta padrão SEFAZ<br/>extrai chave+UF]
+    QR[ScannerModal reads qr_code] -->|rawValue = SEFAZ URL?| ICT[caller: detects SEFAZ pattern<br/>extracts key+state]
     ICT -->|POST /nfce/lookup {chave,url}| RT[routes/nfce.ts<br/>requireHousehold]
-    RT --> Q{quota: nfce_imports<br/>count no mês}
+    RT --> Q{quota: nfce_imports<br/>count for the month}
     Q -->|Free>=2| E403[403 nfce_quota_free]
     Q -->|Pro>=60| E429[429 nfce_quota_pro]
-    Q -->|cache hit chave| CACHE[retorna itens cacheados<br/>não conta quota]
-    Q -->|ok| F[nfce/index.ts roteador<br/>lookupFor UF]
-    F -->|SVRS/SP/MG| P[parsers próprios<br/>fetch UA browser + parse HTML]
+    Q -->|cache hit key| CACHE[returns cached items<br/>does not count toward quota]
+    Q -->|ok| F[nfce/index.ts router<br/>lookupFor state]
+    F -->|SVRS/SP/MG| P[own parsers<br/>fetch browser UA + parse HTML]
     F -->|SE + INFOSIMPLES_TOKEN| INFO[infosimples-adapter.ts]
-    F -->|SE sem token| E501[501 state_unsupported]
-    F -->|UF sem rota| E422[422 uf_unsupported]
-    P --> ITEMS[NfceResult: itens + emitente<br/>CPF descartado]
+    F -->|SE without token| E501[501 state_unsupported]
+    F -->|state without route| E422[422 uf_unsupported]
+    P --> ITEMS[NfceResult: items + issuer<br/>CPF discarded]
     INFO --> ITEMS
-    ITEMS --> M[nfce/matching.ts<br/>normaliza+fuzzy → embedding se ambíguo]
-    M -->|GEMINI_API_KEY?| G[(Gemini embed<br/>opcional)]
-    M --> REV[client: tela de revisão<br/>matcheado/novo/ignorar editável]
-    REV -->|confirm| REPO[repositories: recordPrice source=import<br/>+ createItem opt-in + store por CNPJ]
+    ITEMS --> M[nfce/matching.ts<br/>normalize+fuzzy → embedding if ambiguous]
+    M -->|GEMINI_API_KEY?| G[(Gemini embed<br/>optional)]
+    M --> REV[client: review screen<br/>matched/new/ignore editable]
+    REV -->|confirm| REPO[repositories: recordPrice source=import<br/>+ createItem opt-in + store by CNPJ]
     REPO --> OUT[outbox → POST /shopping/prices etc.]
 ```
 
-**Fonte da verdade = nosso banco (offline-first).** O lookup é server-side (porta env-gated), mas a **gravação** segue o padrão do projeto: client cria via repositórios Dexie + outbox — não há endpoint batch. O servidor guarda a nota consultada (`nfce_imports`) pra cache/quota/idempotência; os `price_records`/itens fluem pela outbox como qualquer mutação.
+**Source of truth = our database (offline-first).** The lookup is server-side (env-gated port), but the **writing** follows the project pattern: the client creates via Dexie repositories + outbox — there is no batch endpoint. The server stores the queried receipt (`nfce_imports`) for cache/quota/idempotency; the `price_records`/items flow through the outbox like any mutation.
 
-**Inversão de dependência (mesmo pedido do billing/email):** porta `NfceLookup` + roteador (único lugar que conhece UFs concretas) + `setNfceLookup()` pra testes. UF nova = 1 parser + 1 case.
+**Dependency inversion (same as the billing/email ask):** a `NfceLookup` port + router (the only place that knows concrete states) + `setNfceLookup()` for tests. A new state = 1 parser + 1 case.
 
 ---
 
 ## Code Reuse Analysis
 
-| Existente | Local | Uso |
+| Existing | Location | Use |
 |---|---|---|
-| Scanner já lê QR | `apps/web/src/features/scanner/use-barcode-scanner.ts:5,16` | URL da NFC-e (~130+ chars) passa no `acceptValue` de `qr_code`; caller distingue por padrão de URL SEFAZ |
-| ScannerModal `{onDetect,onClose}` | `apps/web/src/features/scanner/scanner-modal.tsx:11` | Reusar; abrir a partir do pós-compra (`compra-page.tsx:528+`, slot "anexar recibo" `:715-737`) e standalone |
-| Intercept de QR desconhecido | `apps/web/src/pages/compra-page.tsx:108` (`resolveBarcode==null → UnknownBarcodeSheet`) | Ponto barato pra interceptar QR de nota ANTES do resolveBarcode |
-| Padrão porta/factory/env-gate | `apps/api/src/email/index.ts:20` (factory+noop+setProvider) | Copiar pro `nfce/index.ts` (roteador por UF + setNfceLookup p/ testes) |
-| Env-gate fetch externo | `apps/api/src/lib/turnstile.ts:10` (passthrough/fail-closed + `AbortSignal.timeout`) | Molde do fetch de portal SEFAZ e do adapter Infosimples (timeout + try/catch → erro tipado) |
-| Env-gate #1 (R2) | `apps/api/src/lib/r2.ts:14` (`const enabled = Boolean(...)` + 501) | Molde de `INFOSIMPLES_TOKEN`/`GEMINI_API_KEY` |
-| Rota household-scoped | `apps/api/src/routes/shopping.ts:211` (POST /prices; zValidator + onConflictDoNothing + FK→409) | Molde de `routes/nfce.ts` (`.use(requireHousehold)`, montado em `index.ts:46-53`) |
-| Plan efetivo no request | `apps/api/src/middleware/household.ts:52` (`resolveEffectivePlan` → `c.get('plan')`) | Gate de quota lê `c.get('plan')` p/ escolher 2 vs 60 |
-| Reconciliação linha-a-linha | `apps/web/src/features/brands/unknown-barcode-sheet.tsx:24` (busca OU cria inline + BrandPicker + addBarcode) | Padrão pronto pra revisão: descrição da nota pré-preenche o nome (no lugar do OpenFoodFacts) |
-| Escrita de preço offline | `apps/web/src/db/repositories.ts:505` (`recordPrice` → Dexie put + enqueue POST /shopping/prices) | Import chama o mesmo caminho; **novo `source:'import'`** |
-| Match barcode→item | `apps/web/src/db/repositories.ts:280` (`resolveBarcode`), `:132` (`addBarcode`) | EAN da nota vincula item na confirmação |
-| Harness pglite | `apps/api/src/test/db-integration.test.ts` | Lookup/quota/cache (add `nfce_imports` ao TRUNCATE) |
-| Harness fake-indexeddb | `apps/web` vitest.setup | Preflight/confirm no client |
-| uuidv7 time-ordered | ids de todas as linhas | Sem coluna extra de ordem |
+| Scanner already reads QR | `apps/web/src/features/scanner/use-barcode-scanner.ts:5,16` | The NFC-e URL (~130+ chars) passes the `acceptValue` of `qr_code`; the caller distinguishes by SEFAZ URL pattern |
+| ScannerModal `{onDetect,onClose}` | `apps/web/src/features/scanner/scanner-modal.tsx:11` | Reuse; open from post-purchase (`compra-page.tsx:528+`, "attach receipt" slot `:715-737`) and standalone |
+| Unknown-QR intercept | `apps/web/src/pages/compra-page.tsx:108` (`resolveBarcode==null → UnknownBarcodeSheet`) | A cheap point to intercept a receipt QR BEFORE resolveBarcode |
+| Port/factory/env-gate pattern | `apps/api/src/email/index.ts:20` (factory+noop+setProvider) | Copy into `nfce/index.ts` (router per state + setNfceLookup for tests) |
+| External fetch env-gate | `apps/api/src/lib/turnstile.ts:10` (passthrough/fail-closed + `AbortSignal.timeout`) | Template for the SEFAZ portal fetch and the Infosimples adapter (timeout + try/catch → typed error) |
+| Env-gate #1 (R2) | `apps/api/src/lib/r2.ts:14` (`const enabled = Boolean(...)` + 501) | Template for `INFOSIMPLES_TOKEN`/`GEMINI_API_KEY` |
+| Household-scoped route | `apps/api/src/routes/shopping.ts:211` (POST /prices; zValidator + onConflictDoNothing + FK→409) | Template for `routes/nfce.ts` (`.use(requireHousehold)`, mounted in `index.ts:46-53`) |
+| Effective plan on the request | `apps/api/src/middleware/household.ts:52` (`resolveEffectivePlan` → `c.get('plan')`) | The quota gate reads `c.get('plan')` to choose 2 vs 60 |
+| Line-by-line reconciliation | `apps/web/src/features/brands/unknown-barcode-sheet.tsx:24` (search OR create inline + BrandPicker + addBarcode) | Ready-made pattern for the review: the receipt description pre-fills the name (in place of OpenFoodFacts) |
+| Offline price write | `apps/web/src/db/repositories.ts:505` (`recordPrice` → Dexie put + enqueue POST /shopping/prices) | Import calls the same path; **new `source:'import'`** |
+| Barcode→item match | `apps/web/src/db/repositories.ts:280` (`resolveBarcode`), `:132` (`addBarcode`) | The receipt EAN links an item on confirmation |
+| pglite harness | `apps/api/src/test/db-integration.test.ts` | Lookup/quota/cache (add `nfce_imports` to the TRUNCATE) |
+| fake-indexeddb harness | `apps/web` vitest.setup | Preflight/confirm on the client |
+| uuidv7 time-ordered | ids for all rows | No extra ordering column |
 
 ---
 
 ## Components
 
-### 1. `packages/shared/src/nfce.ts` (novo — parsing puro, testável, sem I/O)
-- `parseNfceQr(rawValue): { chave: string; url: string } | null` — aceita a URL do QR; extrai o campo 1 do `p=` (chave 44 díg.); valida v2 (`chave|2|...`) e v3 (`chave|3|...`); retorna null se não for padrão SEFAZ (→ `nfce_invalid_qr`)
-- `ufFromChave(chave): Uf | null` — 2 primeiros dígitos = código IBGE; mapeia p/ sigla; null se inválido (→ `nfce_invalid_key`)
-- `NFCE_UF_ROUTES` — tabela embutida (cópia de `uri_consulta_nfce.json` do sped-nfe): sigla → {portalUrlTemplate, family: 'svrs'|'sp'|'mg'|'infosimples'|null}
-- `normalizeDescription(desc): string` — uppercase, sem acento, strip `\d+(KG|G|L|ML|UN|TP\d+)`, dicionário de abreviações BR (LTE→leite, REFRIG→refrigerante, CERV→cerveja, FGO→frango…)
-- `NFCE_FREE_QUOTA=2`, `NFCE_PRO_QUOTA=60`, `nfceQuota(plan)` — teto por plano
-- Constrói string pra i18n/erros compartilhados
+### 1. `packages/shared/src/nfce.ts` (new — pure parsing, testable, no I/O)
+- `parseNfceQr(rawValue): { chave: string; url: string } | null` — accepts the QR URL; extracts field 1 of `p=` (44-digit key); validates v2 (`chave|2|...`) and v3 (`chave|3|...`); returns null if it isn't a SEFAZ pattern (→ `nfce_invalid_qr`)
+- `ufFromChave(chave): Uf | null` — the first 2 digits = IBGE code; maps to the abbreviation; null if invalid (→ `nfce_invalid_key`)
+- `NFCE_UF_ROUTES` — embedded table (a copy of `uri_consulta_nfce.json` from sped-nfe): abbreviation → {portalUrlTemplate, family: 'svrs'|'sp'|'mg'|'infosimples'|null}
+- `normalizeDescription(desc): string` — uppercase, no accents, strip `\d+(KG|G|L|ML|UN|TP\d+)`, BR abbreviation dictionary (LTE→leite, REFRIG→refrigerante, CERV→cerveja, FGO→frango…)
+- `NFCE_FREE_QUOTA=2`, `NFCE_PRO_QUOTA=60`, `nfceQuota(plan)` — cap per plan
+- Builds the string for shared i18n/errors
 
-### 2. `apps/api/src/nfce/` (novo módulo — a porta)
-- `types.ts`: `NfceLookup { lookup(chave, url): Promise<NfceResult> }`; `NfceResult = { emitente:{cnpj,nome}, itens: NfceItem[] }`; `NfceItem = { descricao, quantidade, unidade, valorUnitCents, valorTotalCents, ean?, ncm? }` — **sem campo de CPF** (descartado na origem)
-- `parsers/svrs-parser.ts`, `parsers/sp-parser.ts`, `parsers/mg-parser.ts`: cada um faz fetch (UA browser, `AbortSignal.timeout`) + parseia o HTML do portal → `NfceResult`; `<200 linhas` cada; **CPF nunca extraído**
-- `infosimples-adapter.ts`: POST na API Infosimples com `INFOSIMPLES_TOKEN` → mapeia `produtos[]` (codigo/nome/quantidade/valor_unitario/valor_total) → `NfceItem[]`; JSON já estruturado
-- `index.ts`: roteador `lookupFor(uf)`: family svrs/sp/mg → parser próprio; infosimples → adapter se `INFOSIMPLES_TOKEN` senão `state_unsupported`; null → `uf_unsupported`; `setNfceLookup()` p/ testes (mesmo shape do `email/index.ts`)
-- `matching.ts`: `matchItems(itens, catalog): MatchResult[]` — (1) normaliza + fuzzy token-set (`fuzzball`); score ≥ alto → matcheado; (2) ambíguo E `GEMINI_API_KEY` → cosine (embedding query vs coluna cacheada do catálogo); (3) abaixo do mínimo → "novo"; catálogo vazio → tudo "novo"; **nunca lança por falta de chave**
-- `embedding.ts`: `embed(texts): Promise<number[][] | null>` — Gemini `gemini-embedding-001` @768d, batch; retorna null sem `GEMINI_API_KEY` (matching cai pra fuzzy). Cosine em memória
+### 2. `apps/api/src/nfce/` (new module — the port)
+- `types.ts`: `NfceLookup { lookup(chave, url): Promise<NfceResult> }`; `NfceResult = { emitente:{cnpj,nome}, itens: NfceItem[] }`; `NfceItem = { descricao, quantidade, unidade, valorUnitCents, valorTotalCents, ean?, ncm? }` — **no CPF field** (discarded at the source)
+- `parsers/svrs-parser.ts`, `parsers/sp-parser.ts`, `parsers/mg-parser.ts`: each fetches (browser UA, `AbortSignal.timeout`) + parses the portal HTML → `NfceResult`; `<200 lines` each; **CPF never extracted**
+- `infosimples-adapter.ts`: POST to the Infosimples API with `INFOSIMPLES_TOKEN` → maps `produtos[]` (codigo/nome/quantidade/valor_unitario/valor_total) → `NfceItem[]`; already structured JSON
+- `index.ts`: `lookupFor(uf)` router: family svrs/sp/mg → own parser; infosimples → adapter if `INFOSIMPLES_TOKEN` otherwise `state_unsupported`; null → `uf_unsupported`; `setNfceLookup()` for tests (same shape as `email/index.ts`)
+- `matching.ts`: `matchItems(itens, catalog): MatchResult[]` — (1) normalize + fuzzy token-set (`fuzzball`); score ≥ high → matched; (2) ambiguous AND `GEMINI_API_KEY` → cosine (query embedding vs the catalog's cached column); (3) below the minimum → "new"; empty catalog → everything "new"; **never throws for a missing key**
+- `embedding.ts`: `embed(texts): Promise<number[][] | null>` — Gemini `gemini-embedding-001` @768d, batch; returns null without `GEMINI_API_KEY` (matching falls back to fuzzy). Cosine in memory
 
-### 3. Schema (migração 0027) — server guarda a nota, client guarda entidades
+### 3. Schema (migration 0027) — the server stores the receipt, the client stores entities
 ```ts
 nfceImports: { id uuid pk (uuidv7), householdId uuid fk cascade,
-  chave text,                 // 44 dígitos
+  chave text,                 // 44 digits
   uf text, storeCnpj text, storeName text,
   status text enum['pending','parsed','confirmed','failed'],
-  itemCount integer, rawJson jsonb,  // itens parseados (cache); SEM CPF
-  createdAt tsz defaultNow, ...syncColumns? (server-authoritative, provavelmente sem sync) }
-// unique(householdId, chave) → cache + idempotência + serialização de scan simultâneo
+  itemCount integer, rawJson jsonb,  // parsed items (cache); NO CPF
+  createdAt tsz defaultNow, ...syncColumns? (server-authoritative, probably no sync) }
+// unique(householdId, chave) → cache + idempotency + serialization of concurrent scans
 uniqueIndex('nfce_imports_household_chave_uq').on(householdId, chave)
-index p/ contagem de quota: (householdId, createdAt) filtrando status IN ('parsed','confirmed')
+index for quota counting: (householdId, createdAt) filtering status IN ('parsed','confirmed')
 
-items: + embedding jsonb null   // vetor 768d cacheado (gerado no create/rename; reusado no matching)
-stores: + cnpj text null        // emitente identifica loja por CNPJ (hoje stores só tem nome/cidade/geo)
-priceRecords.source enum: + 'import'   // distingue preço importado
+items: + embedding jsonb null   // cached 768d vector (generated on create/rename; reused in matching)
+stores: + cnpj text null        // the issuer identifies the store by CNPJ (today stores only have name/city/geo)
+priceRecords.source enum: + 'import'   // distinguishes an imported price
 ```
-**CPF do consumidor NÃO é persistido nem em `rawJson`** (LGPD): descartado no parser/adapter, antes de qualquer escrita ou log.
+**The consumer's CPF is NOT persisted, not even in `rawJson`** (LGPD): discarded in the parser/adapter, before any write or log.
 
-### 4. `apps/api/src/routes/nfce.ts` (novo) — household-scoped
-- `POST /nfce/lookup {chave, url}` — requireHousehold (viewer bloqueado pelo middleware); zValidator; **quota primeiro** (count `nfce_imports` do mês por plano de `c.get('plan')`: Free≥2→403 `nfce_quota_free`, Pro≥60→429 `nfce_quota_pro`) — antes de tocar o portal; **cache** (chave existe → retorna `rawJson`, não conta quota); senão `lookupFor(uf)`: `uf_unsupported`→422, `state_unsupported`→501, portal timeout→504 `nfce_portal_error`, adapter erro→502 `nfce_provider_error`, parse vazio→422 `nfce_parse_failed` (status `failed`, **não conta quota**); sucesso → grava `nfce_imports` status `parsed` + retorna itens
-- `GET /nfce/imports` — lista do mês (contador visível se precisar) — opcional
-- Mount em `index.ts:46-53` (`.route('/nfce', nfceRoute)`)
+### 4. `apps/api/src/routes/nfce.ts` (new) — household-scoped
+- `POST /nfce/lookup {chave, url}` — requireHousehold (viewer blocked by the middleware); zValidator; **quota first** (count `nfce_imports` for the month per plan from `c.get('plan')`: Free≥2→403 `nfce_quota_free`, Pro≥60→429 `nfce_quota_pro`) — before touching the portal; **cache** (key exists → returns `rawJson`, does not count toward quota); otherwise `lookupFor(uf)`: `uf_unsupported`→422, `state_unsupported`→501, portal timeout→504 `nfce_portal_error`, adapter error→502 `nfce_provider_error`, empty parse→422 `nfce_parse_failed` (status `failed`, **does not count toward quota**); success → writes `nfce_imports` with status `parsed` + returns items
+- `GET /nfce/imports` — lists the month (visible counter if needed) — optional
+- Mount in `index.ts:46-53` (`.route('/nfce', nfceRoute)`)
 
 ### 5. Client (`apps/web`)
-- **Intercept do QR**: no caller do ScannerModal (compra-page, standalone), se `parseNfceQr(rawValue)` retorna chave → abre fluxo de import; senão comportamento atual (produto). Reusa o scanner, sem lib nova
-- **`lib/nfce-import.ts`**: chama `POST /nfce/lookup`; mapeia erros pra `errors.*`; roda `matchItems` server-side (matching é server; client só renderiza `MatchResult[]`)
-- **Tela de revisão** (`features/nfce/nfce-review.tsx` + subcomponentes <200 linhas): lista `MatchResult[]`; por linha → matcheado (trocar), novo (criar inline, nome pré-preenchido), ignorar; editar preço/qty; **1 passo de loja** (casar/criar por CNPJ). Reusa o padrão do `unknown-barcode-sheet`
-- **Confirm**: por linha não-ignorada → `recordPrice(itemId, storeId, priceCents, brandId, source:'import')` (via repositório+outbox); linhas "criar" → `createItem` + `addBarcode(ean)` antes do preço. Tudo offline-first
-- **Entrada UI**: botão "Importar nota (QR)" no Summary pós-compra (`compra-page.tsx:528+`) + entrada standalone (rota nova no `router.tsx` seguindo `compraRoute:135`)
-- **Gate no client**: import é ação Pro-degustação; o gate real é servidor (quota). Client mostra o botão pra todos; 403/429 → sheet/mensagem
-- i18n: `nfce.*` + `errors.*` novos nos **6 locales**
+- **QR intercept**: in the ScannerModal caller (compra-page, standalone), if `parseNfceQr(rawValue)` returns a key → opens the import flow; otherwise the current behavior (product). Reuses the scanner, no new lib
+- **`lib/nfce-import.ts`**: calls `POST /nfce/lookup`; maps errors to `errors.*`; runs `matchItems` server-side (matching is server; the client only renders `MatchResult[]`)
+- **Review screen** (`features/nfce/nfce-review.tsx` + subcomponents <200 lines): lists `MatchResult[]`; per line → matched (swap), new (create inline, name pre-filled), ignore; edit price/qty; **1 store step** (match/create by CNPJ). Reuses the `unknown-barcode-sheet` pattern
+- **Confirm**: per non-ignored line → `recordPrice(itemId, storeId, priceCents, brandId, source:'import')` (via repository+outbox); "create" lines → `createItem` + `addBarcode(ean)` before the price. All offline-first
+- **UI entry**: "Import receipt (QR)" button in the post-purchase Summary (`compra-page.tsx:528+`) + a standalone entry (new route in `router.tsx` following `compraRoute:135`)
+- **Client-side gate**: import is a Pro-taste action; the real gate is the server (quota). The client shows the button to everyone; 403/429 → sheet/message
+- i18n: new `nfce.*` + `errors.*` across all **6 locales**
 
 ---
 
 ## Error Handling Strategy
 
-| Cenário | Tratamento | Usuário vê |
+| Scenario | Handling | User sees |
 |---|---|---|
-| QR não é NFC-e | `parseNfceQr` null → não abre import | fluxo normal de produto; se veio do botão import: `nfce_invalid_qr` |
-| Chave 44 díg. mas UF inválida | 422 `nfce_invalid_key` (ou barra no client) | "cupom não reconhecido" |
-| UF sem parser nem adapter | 422 `uf_unsupported` (sigla na resposta) | "importação ainda não disponível em {UF}" |
-| SE sem `INFOSIMPLES_TOKEN` | 501 `state_unsupported` | idem + "em breve" |
-| Portal SEFAZ timeout/down | 504 `nfce_portal_error` — **não conta quota** | "portal indisponível, tente mais tarde" |
-| Infosimples down / token inválido | 502 `nfce_provider_error` — não conta quota | idem |
-| HTML mudou, 0 itens | 422 `nfce_parse_failed` — não conta quota; log alerta | "não consegui ler essa nota" |
-| Nota já importada (chave existe) | cache, não conta quota, não duplica | "nota já importada" + mostra itens |
-| Free estourou 2/mês | 403 `nfce_quota_free` (antes do portal) | paywall Pro |
-| Pro estourou 60/mês | 429 `nfce_quota_pro` (antes do portal) | mensagem discreta "limite mensal" |
-| Gemini off/erro | matching cai pra fuzzy silenciosamente | resultado normal (talvez mais linhas "novo") |
-| Catálogo vazio | tudo "novo" | revisão com criar-tudo |
+| QR is not NFC-e | `parseNfceQr` null → does not open import | normal product flow; if it came from the import button: `nfce_invalid_qr` |
+| 44-digit key but invalid state | 422 `nfce_invalid_key` (or blocked on the client) | "receipt not recognized" |
+| State with no parser or adapter | 422 `uf_unsupported` (abbreviation in the response) | "import not yet available in {state}" |
+| SE without `INFOSIMPLES_TOKEN` | 501 `state_unsupported` | same + "coming soon" |
+| SEFAZ portal timeout/down | 504 `nfce_portal_error` — **does not count toward quota** | "portal unavailable, try again later" |
+| Infosimples down / invalid token | 502 `nfce_provider_error` — does not count toward quota | same |
+| HTML changed, 0 items | 422 `nfce_parse_failed` — does not count toward quota; log alert | "couldn't read this receipt" |
+| Receipt already imported (key exists) | cache, does not count toward quota, does not duplicate | "receipt already imported" + shows items |
+| Free exceeded 2/month | 403 `nfce_quota_free` (before the portal) | Pro paywall |
+| Pro exceeded 60/month | 429 `nfce_quota_pro` (before the portal) | discreet "monthly limit" message |
+| Gemini off/error | matching falls back to fuzzy silently | normal result (perhaps more "new" lines) |
+| Empty catalog | everything "new" | review with create-all |
 
-**Handler nunca vaza CPF**: parsers/adapter descartam o campo antes de retornar; logs usam chave parcial/hash, nunca o HTML cru.
+**The handler never leaks CPF**: parsers/adapter discard the field before returning; logs use a partial key/hash, never the raw HTML.
 
 ---
 
 ## Risks & Concerns
 
-| Concern | Local | Impacto | Mitigação |
+| Concern | Location | Impact | Mitigation |
 |---|---|---|---|
-| HTML dos portais muda (SEFAZ redesenha) | parsers svrs/sp/mg | parser quebra silencioso, itens vazios | Fixture HTML por portal no teste (detecta regressão) + `nfce_parse_failed` gracioso (nunca itens vazios silenciosos); parser isolado por UF |
-| Custo Infosimples (piso R$100/mês) | infosimples-adapter | conta trial acaba; SE fica caro | Env-gated (sem token = SE desligado, não quebra); só SE usa; decisão de preço/trial fica no checklist operacional do dono |
-| Rate limit / bloqueio de IP por volume | fetch dos portais | consultas em massa → bloqueio temporário | Cache por chave (re-scan não consulta); volume baixo (import = ação pontual); UA de browser; quota limita abuso; timeout curto |
-| CPF do consumidor no HTML/JSON | parsers/adapter | vazamento LGPD | Descartar no parser antes de retornar; `NfceItem`/`NfceResult` sem campo CPF; log sem HTML cru — verificado por teste |
-| Conversão reais→cents | parsers/adapter | erro = preço 100x errado | `valorUnitCents = round(valor*100)`; teste explícito (ex. "12,90"→1290) por parser, igual ao risco do billing |
-| `value` decimal com vírgula (pt-BR) | parsers | parse errado ("1.234,56") | Normalizar separadores no parser; teste de fixture com valores reais |
-| SP majoritariamente CF-e SAT (modelo 59) | escopo | usuário SP escaneia cupom SAT e não funciona | Fora do MVP e documentado; SP aqui = NFC-e 65; erro tipado se vier SAT |
-| Matching casa errado | matching.ts | preço no item errado | Thresholds conservadores; ambíguo → "novo"/escolher (nunca auto-match no empate); revisão é editável (humano confirma) |
-| Free "hackeável" (quota client) | gate | burlar 2/mês via devtools | Quota é HARD no servidor (count `nfce_imports`); client é só UX |
-| Embedding indisponível intermitente | embedding.ts | matching pior | Degradação graciosa (fuzzy sempre resolve maioria); embedding é desempate, não caminho crítico |
-| Escrita em lote pela outbox | confirm | N POSTs; item novo rejeitado → FK nos preços | Reusar mapeamento FK→409 `ref_missing` (`shopping.ts:235`); criar item antes do preço na ordem do confirm |
+| Portal HTML changes (SEFAZ redesigns) | parsers svrs/sp/mg | parser breaks silently, empty items | HTML fixture per portal in the test (detects regression) + graceful `nfce_parse_failed` (never silently empty items); parser isolated per state |
+| Infosimples cost (R$100/month floor) | infosimples-adapter | trial account runs out; SE gets expensive | Env-gated (no token = SE off, doesn't break); only SE uses it; the pricing/trial decision stays in the owner's operational checklist |
+| Rate limit / IP blocking by volume | portal fetch | mass queries → temporary block | Cache by key (re-scan doesn't query); low volume (import = a one-off action); browser UA; quota limits abuse; short timeout |
+| Consumer's CPF in the HTML/JSON | parsers/adapter | LGPD leak | Discard in the parser before returning; `NfceItem`/`NfceResult` with no CPF field; log without raw HTML — verified by test |
+| Reais→cents conversion | parsers/adapter | error = price off by 100x | `valorUnitCents = round(valor*100)`; explicit test (e.g. "12,90"→1290) per parser, same as the billing risk |
+| `value` decimal with comma (pt-BR) | parsers | wrong parse ("1.234,56") | Normalize separators in the parser; fixture test with real values |
+| SP mostly CF-e SAT (model 59) | scope | an SP user scans a SAT receipt and it doesn't work | Out of the MVP and documented; SP here = NFC-e 65; typed error if a SAT one arrives |
+| Matching matches wrong | matching.ts | price on the wrong item | Conservative thresholds; ambiguous → "new"/choose (never auto-match on a tie); the review is editable (a human confirms) |
+| Free "hackable" (client quota) | gate | bypass 2/month via devtools | Quota is HARD on the server (count `nfce_imports`); the client is only UX |
+| Embedding intermittently unavailable | embedding.ts | worse matching | Graceful degradation (fuzzy always resolves the majority); embedding is a tiebreaker, not a critical path |
+| Batch write through the outbox | confirm | N POSTs; a new item rejected → FK on the prices | Reuse the FK→409 `ref_missing` mapping (`shopping.ts:235`); create the item before the price in the confirm order |
 
 ---
 
-## Tech Decisions (não-óbvias)
+## Tech Decisions (non-obvious)
 
-| Decisão | Escolha | Rationale |
+| Decision | Choice | Rationale |
 |---|---|---|
-| Rota de consulta | Deep-link do QR server-side (A) + adapter pago só p/ SE | Custo zero nas UFs abertas; deep-link não tem captcha (chave avulsa tem) |
-| Roteamento UF | Tabela embutida (cópia `uri_consulta_nfce.json`) | Não depender de asset remoto em runtime; UF = 2 díg. IBGE |
-| Matching | Híbrido fuzzy-primeiro; embedding opcional env-gated | ~80-90% resolve por token; degrada sem chave; recompra é hit direto |
-| Vetores | Cosine em memória, coluna `items.embedding` jsonb | ≤200 itens/casa = <1ms; pgvector é overkill |
-| Embedding | Gemini `gemini-embedding-001` @768d (MRL) | #1 MTEB multilíngue (pt); free tier cobre; melhor que OpenAI em pt |
-| Quota | Free 2 / Pro 60 por mês-calendário, HARD no servidor | Degustação Free + teto de custo Pro invisível (pedido do user) |
-| Cache/idempotência | `nfce_imports` unique(household,chave) | Nota imutável: re-scan não consulta, não duplica, não conta quota — 1 tabela faz cache+quota+idempotência |
-| Gravação | Client via repositórios+outbox (offline-first), não batch server | Regra do projeto: todo write do client passa por Dexie+outbox |
-| `source` do preço | Novo `'import'` no enum | Distingue de manual/shopping (analytics/auditoria) |
-| CPF | Descartado no parser/adapter | LGPD; guardar só itens+CNPJ (público) |
-| Preço vs item | Preço sempre; item novo opt-in por linha | Preço é o valor central; não poluir catálogo sem consentimento |
-| Loja | Match por CNPJ (coluna nova em `stores`) | Emitente identifica por CNPJ; nome muda entre notas |
-| SE bloqueado | Adapter Infosimples env-gated (não WebView no MVP) | Turnstile confirmado; WebView é evolução; adapter entrega já |
+| Lookup route | QR deep-link server-side (A) + paid adapter only for SE | Zero cost in the open states; a deep-link has no captcha (a standalone key does) |
+| State routing | Embedded table (a copy of `uri_consulta_nfce.json`) | Don't depend on a remote asset at runtime; state = 2 IBGE digits |
+| Matching | Hybrid fuzzy-first; embedding optional env-gated | ~80-90% resolved by tokens; degrades without a key; a repeat purchase is a direct hit |
+| Vectors | Cosine in memory, `items.embedding` jsonb column | ≤200 items/household = <1ms; pgvector is overkill |
+| Embedding | Gemini `gemini-embedding-001` @768d (MRL) | #1 MTEB multilingual (pt); the free tier covers it; better than OpenAI in pt |
+| Quota | Free 2 / Pro 60 per calendar month, HARD on the server | Free taste + an invisible Pro cost ceiling (user request) |
+| Cache/idempotency | `nfce_imports` unique(household,chave) | Immutable receipt: a re-scan doesn't query, doesn't duplicate, doesn't count toward quota — 1 table does cache+quota+idempotency |
+| Writing | Client via repositories+outbox (offline-first), not a server batch | Project rule: every client write goes through Dexie+outbox |
+| Price `source` | New `'import'` in the enum | Distinguishes it from manual/shopping (analytics/audit) |
+| CPF | Discarded in the parser/adapter | LGPD; keep only items+CNPJ (public) |
+| Price vs item | Price always; new item opt-in per line | The price is the core value; don't pollute the catalog without consent |
+| Store | Match by CNPJ (new column in `stores`) | The issuer identifies by CNPJ; the name changes between receipts |
+| SE blocked | Infosimples adapter env-gated (not WebView in the MVP) | Turnstile confirmed; WebView is an evolution; the adapter delivers now |
 
 ---
 
 ## Unresolved questions
-1. Formato exato do HTML de cada portal (SVRS/SP/MG) — capturar fixtures reais na implementação (o parser depende do DOM atual; pesquisa confirmou HTTP 200 mas não o seletor exato).
-2. Cobertura de itens da Infosimples por UF pra SE — pesquisa diz "completo" mas não há SLA público; validar no trial.
-3. Se a tela de revisão deve permitir 1 loja por import ou múltiplas (nota tem 1 emitente → 1 loja; assumido 1).
-4. Limites exatos do free tier de embeddings Gemini (fontes terceiras: ~100 RPM/1k RPD) — folga grande pro volume, mas confirmar no AI Studio se escalar.
+1. The exact HTML format of each portal (SVRS/SP/MG) — capture real fixtures during implementation (the parser depends on the current DOM; research confirmed HTTP 200 but not the exact selector).
+2. Infosimples item coverage per state for SE — research says "complete" but there's no public SLA; validate during the trial.
+3. Whether the review screen should allow 1 store per import or several (a receipt has 1 issuer → 1 store; assumed 1).
+4. The exact limits of the Gemini embeddings free tier (third-party sources: ~100 RPM/1k RPD) — plenty of headroom for the volume, but confirm in AI Studio if it scales.

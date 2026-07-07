@@ -1,31 +1,31 @@
-# Feature: Sync offline (Fase 3)
+# Feature: Offline sync (Phase 3)
 
-## Contexto
-Compras acontecem no mercado, muitas vezes sem sinal. App precisa funcionar offline e subir os dados quando a internet voltar. Repository sobre Dexie (fases 1-2) já isola a UI — agora vira local-first.
+## Context
+Shopping happens at the store, often with no signal. The app needs to work offline and upload the data when the connection returns. The repository over Dexie (phases 1-2) already isolates the UI — now it becomes local-first.
 
-## Abordagem (pragmática)
-- **Escrita local-first**: repos escrevem no Dexie na hora (otimista) + enfileiram a operação numa **outbox**. UI reativa instantânea.
-- **Engine** replica a outbox nas rotas existentes (idempotentes) quando online; remove da fila no sucesso.
-- **Pull incremental** novo: `/sync/pull?cursor=N` retorna linhas com `server_version > N` de todas as tabelas sync, **incluindo tombstones** (deletes propagam). Cursor monotônico (sequence global já existe).
-- **Idempotência**: id gerado no client (UUIDv7) + `ON CONFLICT (id) DO NOTHING` nos creates → replay não duplica.
-- **LWW simplificado**: server é fonte de verdade no pull; "last-sync-wins" entre membros. Aceitável em escala de casa (2-4 pessoas, edições raramente colidem no mesmo item). True per-field LWW fica pra quando houver concorrência real.
+## Approach (pragmatic)
+- **Local-first writes**: repos write to Dexie immediately (optimistic) + enqueue the operation in an **outbox**. Instant reactive UI.
+- **Engine** replays the outbox against the existing (idempotent) routes when online; removes items from the queue on success.
+- **New incremental pull**: `/sync/pull?cursor=N` returns rows with `server_version > N` across all sync tables, **including tombstones** (deletes propagate). Monotonic cursor (a global sequence already exists).
+- **Idempotency**: id generated on the client (UUIDv7) + `ON CONFLICT (id) DO NOTHING` on creates → a replay doesn't duplicate.
+- **Simplified LWW**: the server is the source of truth on pull; "last-sync-wins" between members. Acceptable at household scale (2-4 people, edits rarely collide on the same item). True per-field LWW is deferred until there's real concurrency.
 
-## Requisitos
-- SY-1: criar/editar/excluir offline → muda na UI na hora, fica pendente.
-- SY-2: ao voltar online → outbox sobe automaticamente (ordem preservada).
-- SY-3: pull incremental traz mudanças de outros devices/membros, incluindo deletes (tombstone).
-- SY-4: merge do pull preserva foto local (blob) e não sobrescreve linha com pendência local.
-- SY-5: indicador de status (offline / N pendências) na UI.
-- SY-6: app shell carrega offline (Workbox precache — já via vite-plugin-pwa autoUpdate).
-- SY-7: replay idempotente (reconexão após resposta perdida não duplica).
+## Requirements
+- SY-1: create/edit/delete offline → changes in the UI immediately, stays pending.
+- SY-2: on coming back online → the outbox uploads automatically (order preserved).
+- SY-3: incremental pull brings changes from other devices/members, including deletes (tombstone).
+- SY-4: the pull merge preserves the local photo (blob) and does not overwrite a row with a local pending change.
+- SY-5: a status indicator (offline / N pending) in the UI.
+- SY-6: the app shell loads offline (Workbox precache — already via vite-plugin-pwa autoUpdate).
+- SY-7: idempotent replay (reconnecting after a lost response doesn't duplicate).
 
-## Fora de escopo
-- Modo compra / scanner-pra-marcar (fase 4).
-- SSE/push em tempo real, per-field LWW com vector clock (pós-MVP).
-- packages/sync storage-agnostic (fase 7, quando Expo existir).
+## Out of scope
+- Shopping mode / scan-to-check (phase 4).
+- Real-time SSE/push, per-field LWW with a vector clock (post-MVP).
+- A storage-agnostic packages/sync (phase 7, once Expo exists).
 
-## Critérios de aceite
-- DevTools offline → criar item → aparece na lista + indicador de pendência → reconectar → sobe → pendência zera.
-- Segundo browser dá pull e vê o item.
-- Excluir item → some no segundo browser após pull (tombstone).
-- Recarregar offline → app shell abre, dados do Dexie visíveis.
+## Acceptance criteria
+- DevTools offline → create an item → it appears in the list + a pending indicator → reconnect → it uploads → pending count goes to zero.
+- A second browser pulls and sees the item.
+- Delete an item → it disappears in the second browser after a pull (tombstone).
+- Reload offline → the app shell opens, Dexie data visible.
