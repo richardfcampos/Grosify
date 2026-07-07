@@ -15,6 +15,7 @@ export type {
 type Env = Record<string, string | undefined>;
 
 const ASAAS_DEFAULT_BASE_URL = 'https://api-sandbox.asaas.com/v3';
+const STRIPE_DEFAULT_BASE_URL = 'https://api.stripe.com';
 
 /**
  * Factory — ÚNICO lugar que conhece providers concretos. Roteia por moeda:
@@ -36,7 +37,7 @@ export function billingProviderFor(
 
   const key = env.STRIPE_SECRET_KEY;
   if (!key) return null;
-  return new StripeProvider();
+  return new StripeProvider(key, env.STRIPE_BASE_URL ?? STRIPE_DEFAULT_BASE_URL);
 }
 
 // Injeção pra testes: 2 slots (BRL e "resto"). Espelha setEmailProvider, adaptado

@@ -6,20 +6,12 @@ import {
   setBillingProvider,
 } from './index.js';
 import { StripeProvider } from './stripe-provider.js';
-import type { CreateSubscriptionParams, PaymentProvider } from './types.js';
+import type { PaymentProvider } from './types.js';
 
 afterEach(() => {
   resetBillingProviders();
   vi.restoreAllMocks();
 });
-
-const params: CreateSubscriptionParams = {
-  householdId: 'h1',
-  cycle: 'monthly',
-  currency: 'BRL',
-  priceCents: 1290,
-  customer: { name: 'A', email: 'a@b.c', cpfCnpj: '123' },
-};
 
 describe('billingProviderFor (factory / env-gate por moeda)', () => {
   it('BRL sem ASAAS_API_KEY → null (rota → 501)', () => {
@@ -28,6 +20,11 @@ describe('billingProviderFor (factory / env-gate por moeda)', () => {
 
   it('BRL com ASAAS_API_KEY → asaas', () => {
     const p = billingProviderFor('BRL', { ASAAS_API_KEY: 'k' });
+    expect(p?.name).toBe('asaas');
+  });
+
+  it('BRL NUNCA roteia pro Stripe, mesmo com STRIPE_SECRET_KEY presente (fronteira da moeda)', () => {
+    const p = billingProviderFor('BRL', { ASAAS_API_KEY: 'k', STRIPE_SECRET_KEY: 'sk' });
     expect(p?.name).toBe('asaas');
   });
 
@@ -45,19 +42,15 @@ describe('billingProviderFor (factory / env-gate por moeda)', () => {
   });
 });
 
-describe('StripeProvider (stub)', () => {
-  it('createSubscription lança provider_unavailable', () => {
-    expect(() => new StripeProvider().createSubscription(params)).toThrow('provider_unavailable');
+describe('StripeProvider (adapter real)', () => {
+  it('name é stripe', () => {
+    expect(new StripeProvider('sk_test').name).toBe('stripe');
   });
 
-  it('cancelSubscription lança provider_unavailable', () => {
-    expect(() => new StripeProvider().cancelSubscription('sub_1')).toThrow('provider_unavailable');
-  });
-
-  it('verifyAndParseWebhook lança provider_unavailable', () => {
-    expect(() => new StripeProvider().verifyAndParseWebhook(new Request('http://x'))).toThrow(
-      'provider_unavailable',
-    );
+  it('factory USD com STRIPE_SECRET_KEY entrega uma instância utilizável (não o stub que lançava)', () => {
+    const p = billingProviderFor('USD', { STRIPE_SECRET_KEY: 'sk_test' });
+    expect(p).toBeInstanceOf(StripeProvider);
+    expect(p?.name).toBe('stripe');
   });
 });
 
