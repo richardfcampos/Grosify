@@ -107,6 +107,9 @@ export const nfceRoute = new Hono<HouseholdEnv>()
     }
 
     // 4) Consulta o portal/adapter. Erro tipado → status failed (não conta quota) + HTTP.
+    // DEBUG_NFCE (temporário): mede o tempo total do lookup+matching pra correlacionar
+    // com timeouts de proxy. Remover junto com o debug do infosimples-provider.
+    const lookupStart = Date.now();
     try {
       const provider = lookupFor(uf);
       const result = await provider.fetchItems(parsed.chave, parsed.url);
@@ -119,17 +122,37 @@ export const nfceRoute = new Hono<HouseholdEnv>()
       });
 
       await saveParsedImport(householdId, parsed.chave, result);
+      const lines = await matchLinesForHousehold(householdId, result.itens);
+      console.info(
+        '[nfce:debug]',
+        JSON.stringify({ event: 'lookup_ok', uf, totalMs: Date.now() - lookupStart }),
+      );
       return c.json({
         cached: false,
         alreadyImported: false,
         emitente: result.emitente,
         totalCents: result.totalCents,
         itens: result.itens,
-        lines: await matchLinesForHousehold(householdId, result.itens),
+        lines,
       });
     } catch (err) {
       // Só NfceLookupError é esperado aqui; qualquer outro erro sobe (bug → 500).
-      if (!(err instanceof NfceLookupError)) throw err;
+      if (!(err instanceof NfceLookupError)) {
+        // DEBUG_NFCE (temporário): captura a exceção inesperada (matching/Gemini/DB)
+        // que hoje vira 500 mudo. Remover quando o import de SE estiver validado.
+        console.error(
+          '[nfce:debug]',
+          JSON.stringify({
+            event: 'lookup_unexpected_error',
+            uf,
+            totalMs: Date.now() - lookupStart,
+            errorName: err instanceof Error ? err.name : 'unknown',
+            errorMsg: err instanceof Error ? err.message : String(err),
+            stack: err instanceof Error ? err.stack : undefined,
+          }),
+        );
+        throw err;
+      }
       logNfceLookup({ uf, status: err.code, chave: parsed.chave });
       await saveFailedImport(householdId, parsed.chave, uf);
       return c.json({ error: err.code, uf }, ERROR_STATUS[err.code]);

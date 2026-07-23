@@ -49,6 +49,10 @@ interface InfosimplesData {
 
 interface InfosimplesResponse {
   code?: number;
+  /** Mensagem legível do code (ex.: "Requisição bem sucedida", "Token inválido"). */
+  code_message?: string;
+  /** Detalhes de erro quando a consulta falha (ex.: nota não encontrada, captcha). */
+  errors?: unknown;
   data?: InfosimplesData[];
 }
 
@@ -88,7 +92,19 @@ export class InfosimplesProvider implements NfceLookup {
     const uf = ufFromChave(chave);
     if (!uf) throw new NfceLookupError('nfce_provider_error');
 
+    // DEBUG_NFCE (temporário): instrumenta a chamada Infosimples pra diagnosticar
+    // falhas em prod. Remover quando o import de SE estiver validado.
+    const startedAt = Date.now();
+    const debug = (event: string, extra: Record<string, unknown> = {}) => {
+      console.info(
+        '[nfce:debug]',
+        JSON.stringify({ event, uf, elapsedMs: Date.now() - startedAt, ...extra }),
+      );
+    };
+    debug('infosimples_request', { endpoint: `${uf.toLowerCase()}/nfce`, qrUrl });
+
     let body: InfosimplesResponse;
+    let httpStatus = 0;
     try {
       const res = await fetch(`${BASE_URL}/${uf.toLowerCase()}/nfce`, {
         method: 'POST',
@@ -97,14 +113,29 @@ export class InfosimplesProvider implements NfceLookup {
         body: JSON.stringify({ token: this.token, nfce: qrUrl }),
         signal: AbortSignal.timeout(TIMEOUT_MS),
       });
+      httpStatus = res.status;
       body = (await res.json()) as InfosimplesResponse;
-    } catch {
+    } catch (e) {
       // Timeout, rede, JSON inválido → erro de provider (rota → 502, sem quota).
+      debug('infosimples_fetch_threw', {
+        httpStatus,
+        errorName: e instanceof Error ? e.name : 'unknown',
+        errorMsg: e instanceof Error ? e.message : String(e),
+      });
       throw new NfceLookupError('nfce_provider_error', uf);
     }
 
+    debug('infosimples_response', {
+      httpStatus,
+      apiCode: body.code,
+      codeMessage: body.code_message,
+      produtosCount: body.data?.[0]?.produtos?.length ?? 0,
+      errors: body.errors,
+    });
+
     // Contrato da Infosimples: code 200 = sucesso; qualquer outro é falha da consulta.
     if (body.code !== 200) {
+      debug('infosimples_non_200', { apiCode: body.code, codeMessage: body.code_message });
       throw new NfceLookupError('nfce_provider_error', uf);
     }
 
@@ -112,8 +143,11 @@ export class InfosimplesProvider implements NfceLookup {
     const produtos = data?.produtos ?? [];
     if (!data || produtos.length === 0) {
       // Sem produtos = consulta não trouxe a nota → trata como falha de provider.
+      debug('infosimples_empty', { hasData: !!data, produtosCount: produtos.length });
       throw new NfceLookupError('nfce_provider_error', uf);
     }
+
+    debug('infosimples_ok', { produtosCount: produtos.length });
 
     const itens = produtos.map(mapProduto);
     const cnpj = digitsOnly(data.emitente_cnpj ?? data.emitente?.cnpj ?? '');
