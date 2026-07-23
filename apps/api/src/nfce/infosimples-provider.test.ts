@@ -107,6 +107,15 @@ describe('InfosimplesProvider — mapeamento da resposta', () => {
     expect(serialized).not.toContain('123.456.789-09');
     expect(serialized).not.toContain('12345678909');
   });
+
+  it('envia a CHAVE pura no parâmetro nfce, NUNCA a URL do QR (a API valida e rejeita a URL v3)', async () => {
+    const spy = mockFetchJson(successBody());
+    await new InfosimplesProvider('tok').fetchItems(CHAVE_SE, QR_URL);
+    const init = spy.mock.calls[0]![1]!;
+    const sent = JSON.parse(init.body as string) as { nfce: string };
+    expect(sent.nfce).toBe(CHAVE_SE);
+    expect(sent.nfce).not.toContain('http'); // regressão pra URL reintroduz o code 607
+  });
 });
 
 describe('InfosimplesProvider — erros → nfce_provider_error', () => {

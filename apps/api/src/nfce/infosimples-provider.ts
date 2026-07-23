@@ -109,8 +109,11 @@ export class InfosimplesProvider implements NfceLookup {
       const res = await fetch(`${BASE_URL}/${uf.toLowerCase()}/nfce`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        // `nfce` = URL de consulta pública do QR (a Infosimples resolve o portal).
-        body: JSON.stringify({ token: this.token, nfce: qrUrl }),
+        // `nfce` = chave de acesso pura (44 díg.). A Infosimples valida esse campo e
+        // REJEITA a URL do QR v3 (chave|3|tpAmb → code 607); a chave sozinha é aceita
+        // e ela resolve o portal do lado dela. `qrUrl` fica só pro log/parser das
+        // outras famílias (svrs/sp/mg fazem scraping direto da URL).
+        body: JSON.stringify({ token: this.token, nfce: chave }),
         signal: AbortSignal.timeout(TIMEOUT_MS),
       });
       httpStatus = res.status;
