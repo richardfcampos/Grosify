@@ -1,5 +1,6 @@
 import {
   cheapestStore,
+  currencyFractionDigits,
   historyCutoff,
   parseToMinorUnits,
   priceChange,
@@ -69,8 +70,15 @@ export function CheckItemSheet({
 
   const [storeId, setStoreId] = useState(initialStoreId ?? sessionItem.estimatedPriceStoreId ?? '');
   const [brandId, setBrandId] = useState<string | null>(initialBrandId ?? sessionItem.actualBrandId ?? null);
-  const [qty, setQty] = useState(String(sessionItem.neededQty || 1));
-  const [value, setValue] = useState('');
+  // Reabrir um item já comprado pré-preenche qtd/preço reais (preencher-depois não perde o que já tem).
+  const [qty, setQty] = useState(String(sessionItem.actualQty ?? sessionItem.neededQty ?? 1));
+  const [value, setValue] = useState(
+    sessionItem.actualUnitPriceCents != null
+      ? (sessionItem.actualUnitPriceCents / 10 ** currencyFractionDigits(currency)).toFixed(
+          currencyFractionDigits(currency),
+        )
+      : '',
+  );
   const [rating, setRating] = useState<number | null>(null);
   const [priceScan, setPriceScan] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -96,12 +104,14 @@ export function CheckItemSheet({
     e.preventDefault();
     setBusy(true);
     try {
+      // Preço é opcional: vazio → null (marca comprado sem registrar preço; preenche depois).
+      const priceCents = value.trim() ? parseToMinorUnits(value, currency) : null;
       await checkSessionItem(
         sessionItem.id,
         sessionItem.itemId,
         storeId,
         Number(qty.replace(',', '.')),
-        parseToMinorUnits(value, currency),
+        priceCents,
         brandId,
         rating,
       );
@@ -169,7 +179,7 @@ export function CheckItemSheet({
                     value={value}
                     onChange={(e) => setValue(e.target.value)}
                     inputMode="decimal"
-                    required
+                    placeholder={t('shopping.priceOptional')}
                     className="gro-field gro-field--mono"
                   />
                   <button
@@ -198,7 +208,7 @@ export function CheckItemSheet({
               size="lg"
               fullWidth
               type="submit"
-              disabled={busy || !storeId || !value}
+              disabled={busy || !storeId || !qty.trim()}
             >
               {busy ? t('common.saving') : t('shopping.confirm')}
             </Button>

@@ -729,17 +729,24 @@ export async function startShoppingSessionWith(
   return sessionId;
 }
 
-/** Marca item da sessão como comprado: registra preço real (da marca) + atualiza o item. */
+/**
+ * Marca item da sessão como comprado. Preço é OPCIONAL (preenche depois manual ou pela
+ * NFC-e): com preço, registra no histórico (`recordPrice`); sem preço (`null`), só marca
+ * comprado — loja/qtd continuam obrigatórios (validados na UI).
+ */
 export async function checkSessionItem(
   sessionItemId: string,
   itemId: string,
   storeId: string,
   actualQty: number,
-  actualUnitPriceCents: number,
+  actualUnitPriceCents: number | null,
   brandId: string | null = null,
   rating: number | null = null,
 ): Promise<void> {
-  await recordPrice(itemId, storeId, actualUnitPriceCents, brandId, rating);
+  // Sem preço não há o que registrar no histórico — só marca a compra.
+  if (actualUnitPriceCents !== null) {
+    await recordPrice(itemId, storeId, actualUnitPriceCents, brandId, rating);
+  }
   const ts = nowISO();
   await db.sessionItems.update(sessionItemId, {
     checkedAt: ts,

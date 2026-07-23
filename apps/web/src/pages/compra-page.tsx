@@ -449,9 +449,18 @@ function SessionItemRow({
           {item.name}
         </div>
         <div className="muted mono mt-0.5 text-[12.5px]">
-          {si.checkedAt && si.actualUnitPriceCents
-            ? `${si.actualQty} × ${fmt(si.actualUnitPriceCents)}`
-            : `${si.neededQty} ${t(`catalog.units.${item.unit}`)}`}
+          {done ? (
+            si.actualUnitPriceCents != null ? (
+              `${si.actualQty} × ${fmt(si.actualUnitPriceCents)}`
+            ) : (
+              // Comprado sem preço → destaca (toque na linha reabre pra preencher).
+              <span style={{ color: 'var(--gro-yellow)' }}>
+                {si.actualQty} {t(`catalog.units.${item.unit}`)} · {t('shopping.noPriceYet')}
+              </span>
+            )
+          ) : (
+            `${si.neededQty} ${t(`catalog.units.${item.unit}`)}`
+          )}
         </div>
       </div>
       {done ? (
@@ -566,6 +575,8 @@ function Summary({
   );
   const saved = estimated - current;
   const boughtItems = sessionItems.filter((si) => si.checkedAt);
+  // Comprados sem preço → o total é parcial; a pessoa preenche depois (manual ou pela nota).
+  const noPriceCount = boughtItems.filter((si) => si.actualUnitPriceCents == null).length;
   useHydrateReceipt(session.id, session.receiptKey, session.receiptBlob);
   const receiptUrl = useObjectUrl(session.receiptBlob ?? null);
 
@@ -762,6 +773,12 @@ function Summary({
           {t('shopping.toHome')}
         </Button>
       </div>
+
+      {noPriceCount > 0 && (
+        <p className="text-center text-[13px] font-medium" style={{ color: 'var(--gro-yellow)' }}>
+          {t('shopping.itemsWithoutPrice', { count: noPriceCount })}
+        </p>
+      )}
 
       <button
         onClick={() => setNfceScannerOpen(true)}
