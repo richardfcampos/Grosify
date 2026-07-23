@@ -22,7 +22,10 @@ import { brMoneyToCents, brQuantity, digitsOnly } from './parsers/html-parse.js'
 // Reason: consistência de nomenclatura de porta no repo; comportamento inalterado.
 
 const BASE_URL = 'https://api.infosimples.com/api/v2/consultas/sefaz';
-const TIMEOUT_MS = 20_000; // API paga faz o scraping do lado deles — pode demorar mais.
+// Infosimples resolve Turnstile e raspa o portal do lado deles — latência VARIÁVEL e
+// alta (medido >20s em nota grande de SE). 60s absorve a variância e fica sob o teto de
+// proxy (Cloudflare ~100s); o client mostra loading enquanto isso.
+const TIMEOUT_MS = 60_000;
 
 /** Produto no JSON da Infosimples (só os campos que consumimos). */
 interface InfosimplesProduto {
