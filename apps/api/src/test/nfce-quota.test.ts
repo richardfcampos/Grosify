@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { PGlite } from '@electric-sql/pglite';
-import { and, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { drizzle, type PgliteDatabase } from 'drizzle-orm/pglite';
 import { Hono } from 'hono';
 import { v7 as uuidv7 } from 'uuid';
@@ -49,10 +49,6 @@ function chaveFor(ibge: string, n: number): string {
 const chaveRs = (n: number) => chaveFor('43', n);
 function qrFor(chave: string): string {
   return `https://www.sefazvirtual.rs.gov.br/NFCE/consulta?p=${chave}|3|1`;
-}
-// URL de UF sem parser (BA=29) pra forçar lookup falho.
-function qrBa(n: number): string {
-  return `https://www.sefazvirtual.rs.gov.br/NFCE/consulta?p=${chaveFor('29', n)}|3|1`;
 }
 
 beforeAll(async () => {
@@ -117,8 +113,9 @@ function post(path: string, body: unknown) {
 }
 
 /**
- * Semeia uma linha de import já parseada diretamente (com createdAt controlável) —
- * mais rápido que N lookups e permite manipular a data pra testar a virada de mês.
+ * Semeia uma linha de import diretamente (com createdAt controlável) — mais rápido que N
+ * lookups e permite manipular a data pra testar a virada de mês, e o status pra testar o
+ * que conta/não conta na quota.
  */
 async function seedImport(
   hid: string,
@@ -138,8 +135,23 @@ async function seedImport(
   });
 }
 
+/** Aguarda o scrape em background resolver a nota no status esperado. */
+async function waitForImportStatus(hid: string, want: string, timeoutMs = 3000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const [row] = await db()
+      .select({ status: schema.nfceImports.status })
+      .from(schema.nfceImports)
+      .where(eq(schema.nfceImports.householdId, hid))
+      .limit(1);
+    if (row?.status === want) return;
+    await new Promise((r) => setTimeout(r, 10));
+  }
+  throw new Error(`import de ${hid} não virou "${want}" em ${timeoutMs}ms`);
+}
+
 describe('quota Free (NFCE-04 AC1)', () => {
-  it('2 imports no mês → 3º lookup responde 403 nfce_quota_free', async () => {
+  it('2 imports no mês → 3º lookup responde 403 nfce_quota_free (antes de disparar)', async () => {
     const { hid } = await seed('free');
     await seedImport(hid, 1, 'parsed');
     await seedImport(hid, 2, 'confirmed'); // confirmed também conta
@@ -148,19 +160,19 @@ describe('quota Free (NFCE-04 AC1)', () => {
     const res = await post('/nfce/lookup', { qrUrl: qrFor(chaveRs(3)) });
     expect(res.status).toBe(403);
     expect(await res.json()).toEqual({ error: 'nfce_quota_free' });
-    // Não gravou a 3ª (quota barra ANTES do portal).
+    // Não criou a 3ª (quota barra ANTES de disparar o scrape).
     const rows = await db().select().from(schema.nfceImports).where(eq(schema.nfceImports.householdId, hid));
     expect(rows).toHaveLength(2);
   });
 
-  it('flip pro → passa da faixa Free (o mesmo estado que barrava Free vira ok)', async () => {
+  it('flip pro → passa da faixa Free (o mesmo estado que barrava Free dispara o scrape)', async () => {
     const { hid } = await seed('pro');
     await seedImport(hid, 1, 'parsed');
     await seedImport(hid, 2, 'parsed');
     setNfceLookup(fakeLookup());
 
     const res = await post('/nfce/lookup', { qrUrl: qrFor(chaveRs(3)) });
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(202); // dentro da quota → dispara (processing)
   });
 });
 
@@ -181,41 +193,40 @@ describe('quota Pro (NFCE-04 AC2)', () => {
     setNfceLookup(fakeLookup());
 
     const res = await post('/nfce/lookup', { qrUrl: qrFor(chaveRs(60)) });
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(202);
   });
 });
 
 describe('o que NÃO consome quota (NFCE-04 AC3/AC4)', () => {
-  it('lookup falho (portal fora / UF sem parser) NÃO conta — Free ainda importa', async () => {
+  it('imports failed NÃO contam — Free ainda importa', async () => {
     const { hid } = await seed('free');
-    // 3 lookups falhos (BA = uf_unsupported) → nenhum conta pra quota.
-    await post('/nfce/lookup', { qrUrl: qrBa(1) });
-    await post('/nfce/lookup', { qrUrl: qrBa(2) });
-    await post('/nfce/lookup', { qrUrl: qrBa(3) });
-    const failed = await db()
-      .select()
-      .from(schema.nfceImports)
-      .where(and(eq(schema.nfceImports.householdId, hid), eq(schema.nfceImports.status, 'failed')));
-    expect(failed).toHaveLength(3);
+    // 3 imports failed (ex.: portal fora no background) — failed nunca conta pra quota.
+    await seedImport(hid, 1, 'failed');
+    await seedImport(hid, 2, 'failed');
+    await seedImport(hid, 3, 'failed');
 
-    // Agora um lookup válido ainda passa (os 3 failed não consumiram os 2 do Free).
+    const quota = await app.request('/nfce/quota');
+    expect(((await quota.json()) as { used: number }).used).toBe(0);
+
+    // Um lookup de chave nova ainda dispara (os 3 failed não consumiram os 2 do Free).
     setNfceLookup(fakeLookup());
     const res = await post('/nfce/lookup', { qrUrl: qrFor(chaveRs(9)) });
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(202);
   });
 
   it('re-scan de chave já parseada retorna cache e NÃO incrementa', async () => {
     const { hid } = await seed('free');
     setNfceLookup(fakeLookup());
-    // 1 import real; depois 5 re-scans da MESMA chave → cache, não conta.
+    // 1 import real (dispara + espera parsear); depois 5 re-scans da MESMA chave → cache.
     await post('/nfce/lookup', { qrUrl: qrFor(chaveRs(1)) });
+    await waitForImportStatus(hid, 'parsed');
     for (let i = 0; i < 5; i++) await post('/nfce/lookup', { qrUrl: qrFor(chaveRs(1)) });
 
     // used ainda é 1 → um 2º import de chave NOVA ainda passa (não estourou o Free=2).
     const quota = await app.request('/nfce/quota');
     expect(await quota.json()).toEqual({ used: 1, limit: 2, plan: 'free' });
     const res = await post('/nfce/lookup', { qrUrl: qrFor(chaveRs(2)) });
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(202);
   });
 });
 
@@ -229,10 +240,10 @@ describe('virada de mês zera o contador (NFCE-04 AC5)', () => {
     await seedImport(hid, 2, 'parsed', lastMonth);
     setNfceLookup(fakeLookup());
 
-    // Contador do mês corrente = 0 → o import passa (não bate no Free=2 do mês passado).
+    // Contador do mês corrente = 0 → o import dispara (não bate no Free=2 do mês passado).
     const quota = await app.request('/nfce/quota');
-    expect((await quota.json() as { used: number }).used).toBe(0);
+    expect(((await quota.json()) as { used: number }).used).toBe(0);
     const res = await post('/nfce/lookup', { qrUrl: qrFor(chaveRs(3)) });
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(202);
   });
 });

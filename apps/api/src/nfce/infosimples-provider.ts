@@ -23,9 +23,9 @@ import { brMoneyToCents, brQuantity, digitsOnly } from './parsers/html-parse.js'
 
 const BASE_URL = 'https://api.infosimples.com/api/v2/consultas/sefaz';
 // Infosimples resolve Turnstile e raspa o portal do lado deles — latência VARIÁVEL e
-// alta (medido >20s em nota grande de SE). 60s absorve a variância e fica sob o teto de
-// proxy (Cloudflare ~100s); o client mostra loading enquanto isso.
-const TIMEOUT_MS = 60_000;
+// alta (cold ~73s medido em nota grande de SE). Roda em background (runScrapeInBackground),
+// sem request/proxy esperando, então o teto é generoso: 120s cobre o cold com folga.
+const TIMEOUT_MS = 120_000;
 
 /** Produto no JSON da Infosimples (só os campos que consumimos). */
 interface InfosimplesProduto {

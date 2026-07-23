@@ -54,15 +54,26 @@ describe('lookupNfce — dispara POST /nfce/lookup só pra QR de nota', () => {
     );
     vi.stubGlobal('fetch', fetchMock);
 
-    const result = await lookupNfce(QR_SEFAZ);
+    const outcome = await lookupNfce(QR_SEFAZ);
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(result.chave).toBe(CHAVE_RS);
-    expect(result.cached).toBe(false);
-    expect(result.emitente.cnpj).toBe('11222333000181');
-    expect(result.totalCents).toBe(4770);
-    expect(result.lines).toHaveLength(1);
-    expect(result.itens).toHaveLength(1);
+    expect(outcome.status).toBe('ready');
+    if (outcome.status !== 'ready') throw new Error('esperava ready');
+    expect(outcome.result.chave).toBe(CHAVE_RS);
+    expect(outcome.result.cached).toBe(false);
+    expect(outcome.result.emitente.cnpj).toBe('11222333000181');
+    expect(outcome.result.totalCents).toBe(4770);
+    expect(outcome.result.lines).toHaveLength(1);
+    expect(outcome.result.itens).toHaveLength(1);
+  });
+
+  it('HTTP 202 → outcome processing (nota sendo consultada no portal em background)', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ status: 'processing' }, true, 202));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const outcome = await lookupNfce(QR_SEFAZ);
+    expect(outcome.status).toBe('processing');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it('QR que não é de nota (produto) → recusa sem chamar o servidor', async () => {

@@ -145,16 +145,36 @@ async function importRows(hid: string) {
     .where(eq(schema.nfceImports.householdId, hid));
 }
 
-describe('POST /nfce/lookup — happy path (NFCE-02 AC2)', () => {
-  it('lookup ok → grava status parsed + itens + emitente + totalCents (cached:false)', async () => {
+/**
+ * Aguarda o scrape em background resolver a nota no status esperado (parsed/failed). O
+ * lookup é assíncrono: POST /lookup responde 202 e o scrape roda fora do request, então
+ * o teste faz polling do banco (com o fake que resolve na hora, converge em poucos ms).
+ */
+async function waitForImportStatus(hid: string, want: string, timeoutMs = 3000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const rows = await importRows(hid);
+    if (rows[0]?.status === want) return;
+    await new Promise((r) => setTimeout(r, 10));
+  }
+  throw new Error(`import de ${hid} não virou "${want}" em ${timeoutMs}ms`);
+}
+
+describe('POST /nfce/lookup — happy path assíncrono', () => {
+  it('202 processing → background grava parsed → poll retorna itens/emitente/totalCents', async () => {
     const { hid } = await seed('owner');
     setNfceLookup(fakeLookup());
 
-    const res = await post('/nfce/lookup', { qrUrl: qrFor(CHAVE_RS) });
+    const res1 = await post('/nfce/lookup', { qrUrl: qrFor(CHAVE_RS) });
+    expect(res1.status).toBe(202);
+    expect((await res1.json()) as { status: string }).toEqual({ status: 'processing' });
 
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as Record<string, unknown>;
-    expect(body.cached).toBe(false);
+    await waitForImportStatus(hid, 'parsed');
+
+    const res2 = await post('/nfce/lookup', { qrUrl: qrFor(CHAVE_RS) });
+    expect(res2.status).toBe(200);
+    const body = (await res2.json()) as Record<string, unknown>;
+    expect(body.status).toBe('ready');
     expect(body.alreadyImported).toBe(false);
     expect(body.totalCents).toBe(4770);
     expect((body.emitente as { cnpj: string }).cnpj).toBe('11222333000181');
@@ -166,13 +186,14 @@ describe('POST /nfce/lookup — happy path (NFCE-02 AC2)', () => {
     expect(rows[0]!.itemCount).toBe(2);
     expect(rows[0]!.chave).toBe(CHAVE_RS);
     expect(rows[0]!.uf).toBe('RS');
-    // rawJson guarda os itens (cache) — sem CPF (o fake nem tem CPF).
     expect((rows[0]!.rawJson as NfceResult).itens).toHaveLength(2);
   });
 
   it('catálogo vazio → todas as linhas vêm "novo" (itemId null)', async () => {
-    await seed('owner');
+    const { hid } = await seed('owner');
     setNfceLookup(fakeLookup());
+    await post('/nfce/lookup', { qrUrl: qrFor(CHAVE_RS) });
+    await waitForImportStatus(hid, 'parsed');
     const res = await post('/nfce/lookup', { qrUrl: qrFor(CHAVE_RS) });
     const body = (await res.json()) as { lines: Array<{ itemId: string | null }> };
     expect(body.lines.every((l) => l.itemId === null)).toBe(true);
@@ -180,17 +201,19 @@ describe('POST /nfce/lookup — happy path (NFCE-02 AC2)', () => {
 });
 
 describe('POST /nfce/lookup — cache/idempotência (NFCE-02 AC5)', () => {
-  it('re-scan da mesma chave retorna cache (cached:true) sem re-consultar o portal', async () => {
+  it('re-scan da mesma chave retorna cache (status ready) sem re-consultar o portal', async () => {
     const { hid } = await seed('owner');
     const fetchItems = vi.fn(async () => fakeResult());
     setNfceLookup(fakeLookup({ fetchItems }));
 
     await post('/nfce/lookup', { qrUrl: qrFor(CHAVE_RS) });
+    await waitForImportStatus(hid, 'parsed');
     expect(fetchItems).toHaveBeenCalledTimes(1);
 
     const res2 = await post('/nfce/lookup', { qrUrl: qrFor(CHAVE_RS) });
-    const body2 = (await res2.json()) as Record<string, unknown>;
     expect(res2.status).toBe(200);
+    const body2 = (await res2.json()) as Record<string, unknown>;
+    expect(body2.status).toBe('ready');
     expect(body2.cached).toBe(true);
     // Não chamou o portal de novo.
     expect(fetchItems).toHaveBeenCalledTimes(1);
@@ -202,6 +225,7 @@ describe('POST /nfce/lookup — cache/idempotência (NFCE-02 AC5)', () => {
     const { hid } = await seed('owner');
     setNfceLookup(fakeLookup());
     await post('/nfce/lookup', { qrUrl: qrFor(CHAVE_RS) });
+    await waitForImportStatus(hid, 'parsed');
     await post('/nfce/confirm', { chave: CHAVE_RS });
 
     const res = await post('/nfce/lookup', { qrUrl: qrFor(CHAVE_RS) });
@@ -212,7 +236,7 @@ describe('POST /nfce/lookup — cache/idempotência (NFCE-02 AC5)', () => {
   });
 });
 
-describe('POST /nfce/lookup — erros tipados (NFCE-07)', () => {
+describe('POST /nfce/lookup — validação/estado síncronos (falha rápida, sem background)', () => {
   it('QR não-SEFAZ → 400 nfce_invalid_qr, sem gravar import', async () => {
     const { hid } = await seed('owner');
     setNfceLookup(fakeLookup());
@@ -222,7 +246,7 @@ describe('POST /nfce/lookup — erros tipados (NFCE-07)', () => {
     expect(await importRows(hid)).toHaveLength(0);
   });
 
-  it('UF sem parser (BA) → 422 uf_unsupported + status failed', async () => {
+  it('UF sem parser (BA) → 422 uf_unsupported, sem criar import (validado antes do async)', async () => {
     const { hid } = await seed('owner');
     // sem setNfceLookup: roteia pela tabela real (BA = unsupported → uf_unsupported).
     const res = await post('/nfce/lookup', { qrUrl: qrFor(CHAVE_BA) });
@@ -230,19 +254,20 @@ describe('POST /nfce/lookup — erros tipados (NFCE-07)', () => {
     const body = (await res.json()) as Record<string, unknown>;
     expect(body.error).toBe('uf_unsupported');
     expect(body.uf).toBe('BA');
-    const rows = await importRows(hid);
-    expect(rows[0]!.status).toBe('failed');
+    expect(await importRows(hid)).toHaveLength(0);
   });
 
-  it('SE sem INFOSIMPLES_TOKEN → 501 state_unsupported + status failed', async () => {
+  it('SE sem INFOSIMPLES_TOKEN → 501 state_unsupported, sem criar import', async () => {
     const { hid } = await seed('owner');
     const res = await post('/nfce/lookup', { qrUrl: qrFor(CHAVE_SE) });
     expect(res.status).toBe(501);
-    expect((await res.json() as { error: string }).error).toBe('state_unsupported');
-    expect((await importRows(hid))[0]!.status).toBe('failed');
+    expect(((await res.json()) as { error: string }).error).toBe('state_unsupported');
+    expect(await importRows(hid)).toHaveLength(0);
   });
+});
 
-  it('portal timeout → 504 nfce_portal_error + status failed (não conta quota)', async () => {
+describe('POST /nfce/lookup — falha no background (NFCE-07)', () => {
+  it('erro no scrape → status failed; poll sem retry → 502 nfce_provider_error (não conta quota)', async () => {
     const { hid } = await seed('owner');
     const { NfceLookupError } = await import('../nfce/index.js');
     setNfceLookup(
@@ -252,40 +277,36 @@ describe('POST /nfce/lookup — erros tipados (NFCE-07)', () => {
         }),
       }),
     );
-    const res = await post('/nfce/lookup', { qrUrl: qrFor(CHAVE_RS) });
-    expect(res.status).toBe(504);
-    expect((await res.json() as { error: string }).error).toBe('nfce_portal_error');
+
+    const res1 = await post('/nfce/lookup', { qrUrl: qrFor(CHAVE_RS) });
+    expect(res1.status).toBe(202);
+    await waitForImportStatus(hid, 'failed');
+
+    // Poll (retry=false) sobre nota failed → erro genérico de provider; não re-raspa.
+    const res2 = await post('/nfce/lookup', { qrUrl: qrFor(CHAVE_RS) });
+    expect(res2.status).toBe(502);
+    expect(((await res2.json()) as { error: string }).error).toBe('nfce_provider_error');
     expect((await importRows(hid))[0]!.status).toBe('failed');
   });
 
-  it('adapter down → 502 nfce_provider_error', async () => {
-    await seed('owner');
+  it('retry=true (novo scan do usuário) re-dispara uma nota failed', async () => {
+    const { hid } = await seed('owner');
     const { NfceLookupError } = await import('../nfce/index.js');
-    setNfceLookup(
-      fakeLookup({
-        fetchItems: vi.fn(async () => {
-          throw new NfceLookupError('nfce_provider_error', 'RS');
-        }),
-      }),
-    );
-    const res = await post('/nfce/lookup', { qrUrl: qrFor(CHAVE_RS) });
-    expect(res.status).toBe(502);
-    expect((await res.json() as { error: string }).error).toBe('nfce_provider_error');
-  });
+    const fetchItems = vi
+      .fn()
+      .mockImplementationOnce(async () => {
+        throw new NfceLookupError('nfce_portal_error', 'RS');
+      })
+      .mockImplementationOnce(async () => fakeResult());
+    setNfceLookup(fakeLookup({ fetchItems }));
 
-  it('parse vazio → 422 nfce_parse_failed', async () => {
-    await seed('owner');
-    const { NfceLookupError } = await import('../nfce/index.js');
-    setNfceLookup(
-      fakeLookup({
-        fetchItems: vi.fn(async () => {
-          throw new NfceLookupError('nfce_parse_failed', 'RS');
-        }),
-      }),
-    );
-    const res = await post('/nfce/lookup', { qrUrl: qrFor(CHAVE_RS) });
-    expect(res.status).toBe(422);
-    expect((await res.json() as { error: string }).error).toBe('nfce_parse_failed');
+    await post('/nfce/lookup', { qrUrl: qrFor(CHAVE_RS) });
+    await waitForImportStatus(hid, 'failed');
+
+    const res = await post('/nfce/lookup', { qrUrl: qrFor(CHAVE_RS), retry: true });
+    expect(res.status).toBe(202);
+    await waitForImportStatus(hid, 'parsed');
+    expect(fetchItems).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -295,7 +316,7 @@ describe('POST /nfce/lookup — autorização', () => {
     setNfceLookup(fakeLookup());
     const res = await post('/nfce/lookup', { qrUrl: qrFor(CHAVE_RS) });
     expect(res.status).toBe(403);
-    expect((await res.json() as { error: string }).error).toBe('read_only');
+    expect(((await res.json()) as { error: string }).error).toBe('read_only');
   });
 });
 
@@ -304,6 +325,7 @@ describe('POST /nfce/confirm', () => {
     const { hid } = await seed('owner');
     setNfceLookup(fakeLookup());
     await post('/nfce/lookup', { qrUrl: qrFor(CHAVE_RS) });
+    await waitForImportStatus(hid, 'parsed');
 
     const res = await post('/nfce/confirm', { chave: CHAVE_RS });
     expect(res.status).toBe(200);
@@ -319,15 +341,16 @@ describe('POST /nfce/confirm', () => {
     await seed('owner');
     const res = await post('/nfce/confirm', { chave: CHAVE_SP });
     expect(res.status).toBe(404);
-    expect((await res.json() as { error: string }).error).toBe('nfce_import_not_found');
+    expect(((await res.json()) as { error: string }).error).toBe('nfce_import_not_found');
   });
 });
 
 describe('GET /nfce/quota', () => {
-  it('devolve {used, limit, plan} do mês corrente', async () => {
-    await seed('owner', 'free');
+  it('devolve {used, limit, plan} do mês corrente (só parsed conta)', async () => {
+    const { hid } = await seed('owner', 'free');
     setNfceLookup(fakeLookup());
     await post('/nfce/lookup', { qrUrl: qrFor(CHAVE_RS) });
+    await waitForImportStatus(hid, 'parsed');
 
     const res = await app.request('/nfce/quota');
     expect(res.status).toBe(200);

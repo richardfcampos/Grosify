@@ -76,20 +76,36 @@ export function isNfceQr(rawValue: string): boolean {
 }
 
 /**
- * Consulta o lookup de uma NFC-e a partir do rawValue do QR. Lança
- * `NfceImportError` com o código tipado devolvido pelo servidor (o caller
- * decide UI: paywall pra quota_free, mensagem pros demais).
+ * Resultado do lookup: a nota já está pronta (`ready`) ou ainda está sendo consultada
+ * no portal (`processing`) — o lookup é assíncrono porque o provider pago faz cold
+ * scraping >70s. Em `processing` o caller faz polling até virar `ready` (ou erro).
  */
-export async function lookupNfce(qrUrl: string): Promise<NfceLookupResult> {
+export type LookupOutcome =
+  | { status: 'ready'; result: NfceLookupResult }
+  | { status: 'processing' };
+
+/**
+ * Consulta o lookup de uma NFC-e a partir do rawValue do QR. Retorna `processing` (HTTP
+ * 202) enquanto o portal é consultado em background, ou `ready` com a nota. Lança
+ * `NfceImportError` com o código tipado em erro (o caller decide UI: paywall pra
+ * quota_free, mensagem pros demais). `retry` só no scan inicial do usuário — re-dispara
+ * uma nota que falhou antes; os polls omitem (não re-raspam falha em loop).
+ */
+export async function lookupNfce(
+  qrUrl: string,
+  opts?: { retry?: boolean },
+): Promise<LookupOutcome> {
   const parsed = parseNfceQr(qrUrl);
   if (!parsed) throw new NfceImportError('nfce_invalid_qr');
 
-  const res = await api.nfce.lookup.$post({ json: { qrUrl } });
+  const res = await api.nfce.lookup.$post({ json: { qrUrl, retry: opts?.retry ?? false } });
   if (!res.ok) {
     const body = (await res.json().catch(() => null)) as { error?: string } | null;
     const code = (body?.error ?? 'nfce_portal_error') as NfceErrorCode;
     throw new NfceImportError(code);
   }
+  // 202 = nota ainda em consulta no portal (background). O caller faz polling.
+  if (res.status === 202) return { status: 'processing' };
 
   const body = (await res.json()) as {
     cached: boolean;
@@ -101,13 +117,16 @@ export async function lookupNfce(qrUrl: string): Promise<NfceLookupResult> {
   };
 
   return {
-    chave: parsed.chave,
-    cached: body.cached,
-    alreadyImported: body.alreadyImported,
-    emitente: body.emitente,
-    totalCents: body.totalCents,
-    itens: body.itens,
-    lines: body.lines,
+    status: 'ready',
+    result: {
+      chave: parsed.chave,
+      cached: body.cached,
+      alreadyImported: body.alreadyImported,
+      emitente: body.emitente,
+      totalCents: body.totalCents,
+      itens: body.itens,
+      lines: body.lines,
+    },
   };
 }
 

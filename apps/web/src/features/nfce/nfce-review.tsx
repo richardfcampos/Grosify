@@ -26,21 +26,39 @@ interface Props {
  */
 export function NfceReview({ qrUrl, onClose }: Props) {
   const { t } = useTranslation();
-  const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [state, setState] = useState<'loading' | 'processing' | 'ready' | 'error'>('loading');
   const [result, setResult] = useState<NfceLookupResult | null>(null);
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const [showPaywall, setShowPaywall] = useState(false);
 
   useEffect(() => {
     let alive = true;
-    setState('loading');
-    lookupNfce(qrUrl)
-      .then((r) => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const startedAt = Date.now();
+    // O portal (Infosimples) faz cold scraping >70s em background; damos ~3,5min de
+    // polling (a cada 8s) antes de desistir.
+    const POLL_MS = 8_000;
+    const MAX_WAIT_MS = 210_000;
+
+    async function attempt(isFirst: boolean) {
+      try {
+        // retry só no 1º disparo (scan do usuário): re-tenta uma nota que falhou antes.
+        const outcome = await lookupNfce(qrUrl, { retry: isFirst });
         if (!alive) return;
-        setResult(r);
-        setState('ready');
-      })
-      .catch((err: unknown) => {
+        if (outcome.status === 'ready') {
+          setResult(outcome.result);
+          setState('ready');
+          return;
+        }
+        // Ainda processando no portal → segue no polling até o teto.
+        if (Date.now() - startedAt > MAX_WAIT_MS) {
+          setErrorCode('nfce_timeout');
+          setState('error');
+          return;
+        }
+        setState('processing');
+        timer = setTimeout(() => void attempt(false), POLL_MS);
+      } catch (err: unknown) {
         if (!alive) return;
         if (err instanceof NfceImportError) {
           if (err.code === 'nfce_quota_free') {
@@ -52,9 +70,14 @@ export function NfceReview({ qrUrl, onClose }: Props) {
           setErrorCode('generic');
         }
         setState('error');
-      });
+      }
+    }
+
+    setState('loading');
+    void attempt(true);
     return () => {
       alive = false;
+      if (timer) clearTimeout(timer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [qrUrl]);
@@ -75,6 +98,7 @@ export function NfceReview({ qrUrl, onClose }: Props) {
         </div>
 
         {state === 'loading' && <p className="muted text-sm">{t('nfce.loading')}</p>}
+        {state === 'processing' && <p className="muted text-sm">{t('nfce.processing')}</p>}
 
         {state === 'error' && (
           <p className="text-sm" style={{ color: 'var(--gro-red)' }}>
