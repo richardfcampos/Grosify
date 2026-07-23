@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { db, type LocalItem } from '../../db/dexie.js';
 import { confirmNfceReview } from '../../db/nfce-confirm.js';
+import { backfillSessionPricesFromNfce } from '../../db/repositories.js';
 import {
   confirmNfce,
   lookupNfce,
@@ -17,6 +18,8 @@ import { NfceStoreStep } from './nfce-store-step.js';
 interface Props {
   qrUrl: string;
   onClose: () => void;
+  /** Compra em andamento: ao confirmar a nota, backfilla o preço dos itens sem preço dela. */
+  sessionId?: string;
 }
 
 /**
@@ -24,7 +27,7 @@ interface Props {
  * itens matcheados/novos/ignorados + loja → confirma (grava via repositórios
  * Dexie + outbox em `confirmNfceReview`, offline-first).
  */
-export function NfceReview({ qrUrl, onClose }: Props) {
+export function NfceReview({ qrUrl, onClose, sessionId }: Props) {
   const { t } = useTranslation();
   const [state, setState] = useState<'loading' | 'processing' | 'ready' | 'error'>('loading');
   const [result, setResult] = useState<NfceLookupResult | null>(null);
@@ -107,7 +110,7 @@ export function NfceReview({ qrUrl, onClose }: Props) {
         )}
 
         {state === 'ready' && result && (
-          <NfceReviewBody result={result} onClose={onClose} />
+          <NfceReviewBody result={result} onClose={onClose} sessionId={sessionId} />
         )}
       </div>
     </div>
@@ -121,7 +124,15 @@ interface StoreResolution {
 }
 
 /** Corpo da revisão: lista de linhas editáveis + passo de loja + confirmar. */
-function NfceReviewBody({ result, onClose }: { result: NfceLookupResult; onClose: () => void }) {
+function NfceReviewBody({
+  result,
+  onClose,
+  sessionId,
+}: {
+  result: NfceLookupResult;
+  onClose: () => void;
+  sessionId?: string;
+}) {
   const { t } = useTranslation();
   const items = useLiveQuery(
     () => db.items.filter((i) => i.deletedAt === null).toArray(),
@@ -160,13 +171,15 @@ function NfceReviewBody({ result, onClose }: { result: NfceLookupResult; onClose
   async function onConfirm() {
     setBusy(true);
     try {
-      await confirmNfceReview({
+      const priced = await confirmNfceReview({
         chave: result.chave,
         emitente: result.emitente,
         store,
         lines: lines.filter((l) => !l.ignored),
       });
       await confirmNfce(result.chave); // best-effort — status server-side
+      // "Usar a nota": preenche o preço dos itens comprados-sem-preço desta compra.
+      if (sessionId) await backfillSessionPricesFromNfce(sessionId, priced);
       onClose();
     } finally {
       setBusy(false);

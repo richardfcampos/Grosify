@@ -351,7 +351,9 @@ export function CompraPage() {
         />
       )}
       {scannerOpen && <ScannerModal onDetect={onScanned} onClose={() => setScannerOpen(false)} />}
-      {nfceQrUrl && <NfceReview qrUrl={nfceQrUrl} onClose={() => setNfceQrUrl(null)} />}
+      {nfceQrUrl && (
+        <NfceReview qrUrl={nfceQrUrl} onClose={() => setNfceQrUrl(null)} sessionId={session?.id} />
+      )}
       {unknownCode && (
         <UnknownBarcodeSheet
           code={unknownCode}
@@ -796,7 +798,9 @@ function Summary({
           onClose={() => setNfceScannerOpen(false)}
         />
       )}
-      {nfceQrUrl && <NfceReview qrUrl={nfceQrUrl} onClose={() => setNfceQrUrl(null)} />}
+      {nfceQrUrl && (
+        <NfceReview qrUrl={nfceQrUrl} onClose={() => setNfceQrUrl(null)} sessionId={session.id} />
+      )}
     </main>
   );
 }

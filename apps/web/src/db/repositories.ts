@@ -779,6 +779,46 @@ export async function uncheckSessionItem(sessionItemId: string): Promise<void> {
   });
 }
 
+/**
+ * Backfill de preços de uma NFC-e numa compra em andamento ("usar a nota"): preenche o
+ * `actualUnitPriceCents` dos itens comprados-SEM-preço da sessão cujo `itemId` casa com
+ * uma linha da nota. Não re-registra no histórico (a confirmação da nota já gravou os
+ * price_records); aqui só completa o item da compra. Retorna quantos foram preenchidos.
+ *
+ * Casa por `itemId` (já resolvido no matching da nota). Linhas "novas" (item recém-criado)
+ * não estão na sessão, então não backfillam nada — entram só no histórico. Se um itemId
+ * aparece em várias linhas, usa o 1º preço (dedupe).
+ */
+export async function backfillSessionPricesFromNfce(
+  sessionId: string,
+  priced: Array<{ itemId: string; priceCents: number }>,
+): Promise<number> {
+  const priceByItem = new Map<string, number>();
+  for (const p of priced) if (!priceByItem.has(p.itemId)) priceByItem.set(p.itemId, p.priceCents);
+
+  const noPrice = await db.sessionItems
+    .where('sessionId')
+    .equals(sessionId)
+    .filter((si) => si.deletedAt === null && si.checkedAt !== null && si.actualUnitPriceCents == null)
+    .toArray();
+
+  let filled = 0;
+  for (const si of noPrice) {
+    const priceCents = priceByItem.get(si.itemId);
+    if (priceCents === undefined) continue;
+    const ts = nowISO();
+    await db.sessionItems.update(si.id, { actualUnitPriceCents: priceCents, updatedAt: ts });
+    await enqueue({
+      method: 'PATCH',
+      path: `/shopping/sessions/items/${si.id}`,
+      body: { actualUnitPriceCents: priceCents },
+      rowId: si.id,
+    });
+    filled++;
+  }
+  return filled;
+}
+
 /** Define a loja ativa da sessão de compra (gruda como padrão dos próximos itens). */
 export async function setSessionStore(sessionId: string, storeId: string): Promise<void> {
   await db.sessions.update(sessionId, { storeId, updatedAt: nowISO() });

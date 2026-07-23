@@ -16,22 +16,34 @@ export interface ConfirmNfceReviewInput {
   lines: NfceReviewLine[];
 }
 
+/** Preço resolvido de uma linha confirmada (itemId final + preço unitário da nota). */
+export interface ConfirmedNfcePrice {
+  itemId: string;
+  priceCents: number;
+}
+
 /**
  * Confirma a revisão do import de NFC-e: grava loja (se nova) + itens novos
  * (opt-in) + preços via repositórios Dexie/outbox (offline-first) — sempre
  * nessa ordem por linha: item novo primeiro (senão o preço referencia um
  * itemId que não existe), depois o preço com `source:'import'`.
  *
+ * Retorna o itemId final + preço de cada linha (itens novos já com o id criado) —
+ * insumo do backfill de preços numa compra em andamento (parte "usar a nota").
+ *
  * O POST /nfce/confirm (status server-side) é chamado pelo caller à parte
  * (best-effort) — os dados locais já são a fonte da verdade nesta função.
  */
-export async function confirmNfceReview(input: ConfirmNfceReviewInput): Promise<void> {
+export async function confirmNfceReview(input: ConfirmNfceReviewInput): Promise<ConfirmedNfcePrice[]> {
   const storeId = await resolveStoreId(input.store, input.emitente);
 
+  const priced: ConfirmedNfcePrice[] = [];
   for (const line of input.lines) {
     const itemId = line.itemId ?? (await createItemFromLine(line));
     await recordPrice(itemId, storeId, line.priceCents, null, null, 'import');
+    priced.push({ itemId, priceCents: line.priceCents });
   }
+  return priced;
 }
 
 /** Loja existente (CNPJ já casado na revisão) ou nova, criada agora com o CNPJ do emitente. */
